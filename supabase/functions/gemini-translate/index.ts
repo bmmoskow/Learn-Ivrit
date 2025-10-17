@@ -87,6 +87,11 @@ Deno.serve(async (req: Request) => {
     } else if (path.includes("/define")) {
       const { word, targetLanguage, isAcronym, hasForeignSounds }: DefinitionRequest = await req.json();
 
+      console.log('=== DEFINE REQUEST ===');
+      console.log('word:', word);
+      console.log('isAcronym:', isAcronym);
+      console.log('hasForeignSounds:', hasForeignSounds);
+
       const acronymNote = isAcronym
         ? " NOTE: This is a Hebrew acronym/contraction. Provide the full form it represents and its meaning."
         : "";

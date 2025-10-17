@@ -46,6 +46,8 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   // Examples: רה"מ, צה"ל, ארה"ב
   const isAcronym = word.includes('״') || word.includes('"');
 
+  console.log('Word:', word, 'isAcronym:', isAcronym, 'hasForeignSounds:', hasForeignSounds);
+
   // For foreign sounds, keep the word as-is; for acronyms, remove gershayim/quotes
   const normalizedWord = isAcronym && !hasForeignSounds
     ? word.replace(/[״"]/g, '').trim()
@@ -116,18 +118,22 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
       if (!data) {
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/define`;
 
+        const requestBody = {
+          word: currentWord,
+          targetLanguage: 'Hebrew',
+          isAcronym: originalIsAcronym,
+          hasForeignSounds: originalHasForeignSounds
+        };
+
+        console.log('Sending to API:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            word: currentWord,
-            targetLanguage: 'Hebrew',
-            isAcronym: originalIsAcronym,
-            hasForeignSounds: originalHasForeignSounds
-          })
+          body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
