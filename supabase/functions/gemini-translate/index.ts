@@ -87,12 +87,16 @@ Deno.serve(async (req: Request) => {
     } else if (path.includes("/define")) {
       const { word, targetLanguage, isAcronym, hasForeignSounds }: DefinitionRequest = await req.json();
 
-      const prompt = `For the Hebrew word "${word}":
+      const acronymNote = isAcronym
+        ? " NOTE: This is a Hebrew acronym/contraction. Provide the full form it represents and its meaning."
+        : "";
 
-1. Add full nikud (vowel points) to the word
-2. Provide ONE primary English translation (the most common meaning only)
+      const prompt = `For the Hebrew word "${word}":${acronymNote}
+
+1. Add full nikud (vowel points) to the word${isAcronym ? " (or provide the full form with nikud if it's an acronym)" : ""}
+2. Provide ONE primary English translation (the most common meaning only)${isAcronym ? ". If acronym, explain what it stands for" : ""}
 3. Provide transliteration
-4. List 3 related Hebrew word forms WITH full nikud
+4. List 3 related Hebrew word forms WITH full nikud${isAcronym ? " (or variations/usage of the acronym)" : ""}
 
 You MUST respond in this EXACT format:
 WORD: [hebrew with vowel points]
@@ -110,7 +114,16 @@ TRANSLITERATION: shalom
 FORMS:
 - הַשָּׁלוֹם (ha-shalom) - the peace (definite article)
 - שְׁלוֹמִי (shlomi) - my peace (possessive)
-- בְּשָׁלוֹם (be-shalom) - in peace (prepositional)`;
+- בְּשָׁלוֹם (be-shalom) - in peace (prepositional)
+
+Example for acronym רה"מ:
+WORD: רֹאשׁ הַמֶּמְשָׁלָה (or רה״מ)
+DEFINITION: Prime Minister
+TRANSLITERATION: rosh ha-memshala (or rahm)
+FORMS:
+- רָאשֵׁי מֶמְשָׁלוֹת (rashei memshalot) - Prime Ministers (plural)
+- רֹאשׁ הַמֶּמְשָׁלָה הַקּוֹדֵם (rosh ha-memshala ha-kodem) - former Prime Minister
+- בִּרְה״מ (be-rahm) - as/by the Prime Minister`;
 
       const geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
