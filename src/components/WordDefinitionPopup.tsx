@@ -41,14 +41,13 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   // These are: ג׳ ז׳ צ׳ ת׳ ד׳
   const hasForeignSounds = /[גזצתד]׳/.test(word);
 
-  // Check if this is an acronym or contraction
-  // Acronyms use ״ (gershayim) or " (regular double quote) between letters
-  // Examples: רה"מ, צה"ל, ארה"ב
-  const isAcronym = word.includes('״') || word.includes('"');
+  // Check if this is an acronym (gershayim between letters)
+  // Acronyms use ״ (gershayim) between letters, not single ׳ (geresh)
+  const isAcronym = word.includes('״');
 
-  // For foreign sounds, keep the word as-is; for acronyms, remove gershayim/quotes
+  // For foreign sounds, keep the word as-is; for acronyms, remove gershayim
   const normalizedWord = isAcronym && !hasForeignSounds
-    ? word.replace(/[״"]/g, '').trim()
+    ? word.replace(/״/g, '').trim()
     : word.trim();
 
 
