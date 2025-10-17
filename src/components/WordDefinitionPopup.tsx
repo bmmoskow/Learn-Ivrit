@@ -60,6 +60,10 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   const [error, setError] = useState('');
   const [forceRefresh, setForceRefresh] = useState(false);
 
+  // Store the original flags so they persist even if currentWord changes
+  const [originalIsAcronym] = useState(isAcronym);
+  const [originalHasForeignSounds] = useState(hasForeignSounds);
+
   useEffect(() => {
     fetchDefinition();
     checkIfSaved();
@@ -121,8 +125,8 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
           body: JSON.stringify({
             word: currentWord,
             targetLanguage: 'Hebrew',
-            isAcronym: isAcronym,
-            hasForeignSounds: hasForeignSounds
+            isAcronym: originalIsAcronym,
+            hasForeignSounds: originalHasForeignSounds
           })
         });
 
