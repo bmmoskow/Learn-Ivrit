@@ -46,14 +46,7 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   // Examples: רה"מ, צה"ל, ארה"ב
   const isAcronym = word.includes('״') || word.includes('"');
 
-
-  // For foreign sounds, keep the word as-is; for acronyms, remove gershayim/quotes
-  const normalizedWord = isAcronym && !hasForeignSounds
-    ? word.replace(/[״"]/g, '').trim()
-    : word.trim();
-
-
-  const [currentWord, setCurrentWord] = useState(normalizedWord);
+  const [currentWord, setCurrentWord] = useState(word.trim());
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -61,9 +54,9 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   const [error, setError] = useState('');
   const [forceRefresh, setForceRefresh] = useState(false);
 
-  // Store the original flags so they persist even if currentWord changes
-  const [originalIsAcronym] = useState(isAcronym);
-  const [originalHasForeignSounds] = useState(hasForeignSounds);
+  // Recompute flags based on current word
+  const currentIsAcronym = currentWord.includes('״') || currentWord.includes('"');
+  const currentHasForeignSounds = /[גזצתד]׳/.test(currentWord);
 
   useEffect(() => {
     const loadData = async () => {
@@ -123,8 +116,8 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
         const requestBody = {
           word: currentWord,
           targetLanguage: 'Hebrew',
-          isAcronym: originalIsAcronym,
-          hasForeignSounds: originalHasForeignSounds
+          isAcronym: currentIsAcronym,
+          hasForeignSounds: currentHasForeignSounds
         };
 
 
