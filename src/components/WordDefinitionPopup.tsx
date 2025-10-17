@@ -46,7 +46,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   // Examples: רה"מ, צה"ל, ארה"ב
   const isAcronym = word.includes('״') || word.includes('"');
 
-  console.log('Word:', word, 'isAcronym:', isAcronym, 'hasForeignSounds:', hasForeignSounds);
 
   // For foreign sounds, keep the word as-is; for acronyms, remove gershayim/quotes
   const normalizedWord = isAcronym && !hasForeignSounds
@@ -67,8 +66,11 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   const [originalHasForeignSounds] = useState(hasForeignSounds);
 
   useEffect(() => {
-    fetchDefinition();
-    checkIfSaved();
+    const loadData = async () => {
+      await fetchDefinition();
+      await checkIfSaved();
+    };
+    loadData();
   }, [currentWord, forceRefresh]);
 
   const checkIfSaved = async () => {
@@ -125,7 +127,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
           hasForeignSounds: originalHasForeignSounds
         };
 
-        console.log('Sending to API:', JSON.stringify(requestBody, null, 2));
 
         const response = await fetch(apiUrl, {
           method: 'POST',
@@ -143,9 +144,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
         data = await response.json();
 
-        console.log('API Response data:', JSON.stringify(data, null, 2));
-        console.log('Definition field:', data.definition);
-        console.log('Forms from API:', data.forms);
 
         // Use definition directly as the translation
         shortEnglish = data.definition && data.definition.trim() !== ''
@@ -188,7 +186,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
       }));
 
       if (relatedWords.length === 0) {
-        console.log('No forms from API, generating basic forms');
         const basicForms = generateBasicHebrewForms(
           data.wordWithVowels || currentWord,
           data.transliteration || romanizeHebrew(currentWord)
@@ -196,7 +193,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
         relatedWords = basicForms;
       }
 
-      console.log('Final related words:', relatedWords);
 
       setDefinition({
         translation: currentWord,
