@@ -15,8 +15,6 @@ interface TranslateRequest {
 interface DefinitionRequest {
   word: string;
   targetLanguage: string;
-  isAcronym: boolean;
-  hasForeignSounds: boolean;
 }
 
 Deno.serve(async (req: Request) => {
@@ -85,23 +83,14 @@ Deno.serve(async (req: Request) => {
         }
       );
     } else if (path.includes("/define")) {
-      const { word, targetLanguage, isAcronym, hasForeignSounds }: DefinitionRequest = await req.json();
+      const { word, targetLanguage }: DefinitionRequest = await req.json();
 
-      console.log('=== DEFINE REQUEST ===');
-      console.log('word:', word);
-      console.log('isAcronym:', isAcronym);
-      console.log('hasForeignSounds:', hasForeignSounds);
+      const prompt = `For the Hebrew word "${word}":
 
-      const acronymNote = isAcronym
-        ? " NOTE: This is a Hebrew acronym/contraction. Provide the full form it represents and its meaning."
-        : "";
-
-      const prompt = `For the Hebrew word "${word}":${acronymNote}
-
-1. Add full nikud (vowel points) to the word${isAcronym ? " (or provide the full form with nikud if it's an acronym)" : ""}
-2. Provide ONE primary English translation (the most common meaning only)${isAcronym ? ". If acronym, explain what it stands for" : ""}
+1. Add full nikud (vowel points) to the word
+2. Provide ONE primary English translation (the most common meaning only)
 3. Provide transliteration
-4. List 3 related Hebrew word forms WITH full nikud${isAcronym ? " (or variations/usage of the acronym)" : ""}
+4. List 3 related Hebrew word forms WITH full nikud
 
 You MUST respond in this EXACT format:
 WORD: [hebrew with vowel points]
@@ -119,16 +108,7 @@ TRANSLITERATION: shalom
 FORMS:
 - הַשָּׁלוֹם (ha-shalom) - the peace (definite article)
 - שְׁלוֹמִי (shlomi) - my peace (possessive)
-- בְּשָׁלוֹם (be-shalom) - in peace (prepositional)
-
-Example for acronym רה"מ:
-WORD: רֹאשׁ הַמֶּמְשָׁלָה (or רה״מ)
-DEFINITION: Prime Minister
-TRANSLITERATION: rosh ha-memshala (or rahm)
-FORMS:
-- רָאשֵׁי מֶמְשָׁלוֹת (rashei memshalot) - Prime Ministers (plural)
-- רֹאשׁ הַמֶּמְשָׁלָה הַקּוֹדֵם (rosh ha-memshala ha-kodem) - former Prime Minister
-- בִּרְה״מ (be-rahm) - as/by the Prime Minister`;
+- בְּשָׁלוֹם (be-shalom) - in peace (prepositional)`;
 
       const geminiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
@@ -159,9 +139,6 @@ FORMS:
       if (geminiResponse.ok) {
         const geminiData = await geminiResponse.json();
         const rawResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-        console.log('=== GEMINI RAW RESPONSE START ===');
-        console.log(rawResponse);
-        console.log('=== GEMINI RAW RESPONSE END ===');
 
         if (rawResponse) {
           const wordMatch = rawResponse.match(/WORD:\s*([^\n]+)/i);
@@ -173,14 +150,8 @@ FORMS:
           definition = defMatch?.[1]?.trim() || '';
           transliteration = translitMatch?.[1]?.trim() || '';
 
-          console.log('Parsed values:');
-          console.log('- wordWithVowels:', wordWithVowels);
-          console.log('- definition:', definition);
-          console.log('- transliteration:', transliteration);
-
           if (formsMatch) {
             const formsText = formsMatch[1].trim();
-            console.log('Forms text:', formsText);
 
             forms = formsText
               .split('\n')
@@ -197,12 +168,8 @@ FORMS:
                 return null;
               })
               .filter(form => form !== null);
-
-            console.log('Parsed forms:', forms);
           }
         }
-      } else {
-        console.error('Gemini API error:', geminiResponse.status, await geminiResponse.text());
       }
 
       return new Response(

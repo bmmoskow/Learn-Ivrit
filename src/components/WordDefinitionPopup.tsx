@@ -37,15 +37,6 @@ type RelatedWord = {
 export function WordDefinitionPopup({ word, sentence, position, onClose, onWordSaved }: WordDefinitionPopupProps) {
   const { user, isGuest } = useAuth();
 
-  // Check if word contains foreign sound markers (letter + geresh anywhere in word)
-  // These are: ג׳ ז׳ צ׳ ת׳ ד׳
-  const hasForeignSounds = /[גזצתד]׳/.test(word);
-
-  // Check if this is an acronym or contraction
-  // Acronyms use ״ (gershayim) or " (regular double quote) between letters
-  // Examples: רה"מ, צה"ל, ארה"ב
-  const isAcronym = word.includes('״') || word.includes('"');
-
   const [currentWord, setCurrentWord] = useState(word.trim());
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,10 +44,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [forceRefresh, setForceRefresh] = useState(false);
-
-  // Recompute flags based on current word
-  const currentIsAcronym = currentWord.includes('״') || currentWord.includes('"');
-  const currentHasForeignSounds = /[גזצתד]׳/.test(currentWord);
 
   useEffect(() => {
     const loadData = async () => {
@@ -113,21 +100,16 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
       if (!data) {
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/define`;
 
-        const requestBody = {
-          word: currentWord,
-          targetLanguage: 'Hebrew',
-          isAcronym: currentIsAcronym,
-          hasForeignSounds: currentHasForeignSounds
-        };
-
-
         const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({
+            word: currentWord,
+            targetLanguage: 'Hebrew'
+          })
         });
 
         if (!response.ok) {
