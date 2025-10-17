@@ -1,6 +1,6 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { TestQuestion } from '../TestPanel';
-import { Check, X } from 'lucide-react';
+import { Check, X, ArrowRight } from 'lucide-react';
 
 type FillInBlankTestProps = {
   question: TestQuestion;
@@ -10,104 +10,115 @@ type FillInBlankTestProps = {
 };
 
 export function FillInBlankTest({ question, questionNumber, totalQuestions, onAnswer }: FillInBlankTestProps) {
-  const [answer, setAnswer] = useState('');
+  const [userInput, setUserInput] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!answer.trim()) return;
 
-    const userAnswer = answer.trim().toLowerCase();
-    const correctAnswer = question.word.english_translation.toLowerCase();
-    const correct = userAnswer === correctAnswer;
+    if (!userInput.trim() || showFeedback) return;
 
+    const correct = userInput.trim().toLowerCase() === question.word.english_translation.toLowerCase();
     setIsCorrect(correct);
     setShowFeedback(true);
 
     setTimeout(() => {
-      onAnswer(answer.trim(), correct);
-      setAnswer('');
+      onAnswer(userInput.trim(), correct);
+      setUserInput('');
       setShowFeedback(false);
-    }, 1500);
+    }, 2000);
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-orange-50 to-orange-100">
+    <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-orange-50 to-white">
       <div className="w-full max-w-2xl">
-        <div className="text-center mb-6">
-          <span className="text-sm font-semibold text-orange-600">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="text-sm font-medium text-gray-600">
             Question {questionNumber} of {totalQuestions}
-          </span>
+          </div>
+          <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-orange-600 transition-all duration-300"
+              style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
+            />
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-12">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">
+            Type the English translation
+          </p>
+
           <div className="text-center mb-8">
-            <p className="text-gray-600 text-lg mb-4">Type the English translation:</p>
-            <div className="text-5xl font-bold text-gray-900 mb-8" dir="rtl">
+            <p className="text-6xl font-bold text-gray-900 mb-4" dir="rtl">
               {question.word.hebrew_word}
-            </div>
+            </p>
+            {question.word.transliteration && (
+              <p className="text-xl text-gray-500">
+                {question.word.transliteration}
+              </p>
+            )}
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
               <input
                 type="text"
-                value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
                 disabled={showFeedback}
-                className="w-full p-4 text-xl border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:outline-none disabled:bg-gray-100"
                 placeholder="Type your answer..."
+                className="w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition disabled:bg-gray-100"
                 autoFocus
               />
             </div>
 
-            {showFeedback && (
-              <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
-                isCorrect ? 'bg-green-50 text-green-900' : 'bg-red-50 text-red-900'
-              }`}>
+            {!showFeedback && (
+              <button
+                type="submit"
+                disabled={!userInput.trim()}
+                className="w-full bg-orange-600 text-white py-4 rounded-xl font-semibold text-lg hover:bg-orange-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                Submit Answer
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
+          </form>
+
+          {showFeedback && (
+            <div className={`mt-6 p-6 rounded-xl ${
+              isCorrect
+                ? 'bg-green-100 border-2 border-green-300'
+                : 'bg-red-100 border-2 border-red-300'
+            }`}>
+              <div className="flex items-center gap-3 mb-2">
                 {isCorrect ? (
                   <>
                     <Check className="w-6 h-6 text-green-600" />
-                    <span className="text-lg font-semibold">Correct!</span>
+                    <p className="text-xl font-bold text-green-800">Correct!</p>
                   </>
                 ) : (
                   <>
                     <X className="w-6 h-6 text-red-600" />
-                    <div>
-                      <span className="text-lg font-semibold block">Incorrect</span>
-                      <span className="text-sm">Correct answer: {question.word.english_translation}</span>
-                    </div>
+                    <p className="text-xl font-bold text-red-800">Incorrect</p>
                   </>
                 )}
               </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={!answer.trim() || showFeedback}
-              className="w-full bg-orange-600 text-white py-4 rounded-xl hover:bg-orange-700 transition text-lg font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Submit Answer
-            </button>
-          </form>
+              {!isCorrect && (
+                <div className="mt-4">
+                  <p className="text-sm text-red-700 mb-1">Correct answer:</p>
+                  <p className="text-2xl font-bold text-red-900">
+                    {question.word.english_translation}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="mt-6 flex justify-center">
-          <div className="flex gap-2">
-            {Array.from({ length: totalQuestions }, (_, i) => (
-              <div
-                key={i}
-                className={`h-2 w-8 rounded-full ${
-                  i < questionNumber - 1
-                    ? 'bg-orange-600'
-                    : i === questionNumber - 1
-                    ? 'bg-orange-400'
-                    : 'bg-gray-300'
-                }`}
-              />
-            ))}
-          </div>
+        <div className="mt-6 text-center text-sm text-gray-500">
+          {!showFeedback && 'Type your answer and press Enter or click Submit'}
         </div>
       </div>
     </div>
