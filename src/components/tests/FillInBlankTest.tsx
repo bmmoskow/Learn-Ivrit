@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TestQuestion } from '../TestPanel';
 import { Check, X, ArrowRight } from 'lucide-react';
 
@@ -13,6 +13,11 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
   const [userInput, setUserInput] = useState('');
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [question]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,13 +69,13 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <input
+                ref={inputRef}
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
                 disabled={showFeedback}
                 placeholder="Type your answer..."
                 className="w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition disabled:bg-gray-100"
-                autoFocus
               />
             </div>
 
