@@ -25,13 +25,16 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
     if (!userInput.trim() || showFeedback) return;
 
     const correct = userInput.trim().toLowerCase() === question.word.english_translation.toLowerCase();
+    const answer = userInput.trim();
+
     setIsCorrect(correct);
     setShowFeedback(true);
+
+    onAnswer(answer, correct);
 
     const isLastQuestion = questionNumber === totalQuestions;
 
     setTimeout(() => {
-      onAnswer(userInput.trim(), correct);
       if (!isLastQuestion) {
         setUserInput('');
         setShowFeedback(false);

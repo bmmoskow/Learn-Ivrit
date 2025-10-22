@@ -133,7 +133,10 @@ export function TestPanel() {
   };
 
   const finishTest = async (completedTest: TestQuestion[]) => {
+    const minDisplayTime = new Promise(resolve => setTimeout(resolve, 2000));
+
     if (isGuest) {
+      await minDisplayTime;
       setShowResults(true);
       return;
     }
@@ -146,67 +149,70 @@ export function TestPanel() {
     const durationSeconds = Math.floor((Date.now() - testStartTime) / 1000);
 
     try {
-      const { data: testData, error: testError } = await supabase
-        .from('user_tests')
-        .insert({
-          user_id: user.id,
-          test_type: testType!,
-          total_questions: totalQuestions,
-          correct_answers: correctCount,
-          score_percentage: scorePercentage,
-          duration_seconds: durationSeconds
-        })
-        .select()
-        .single();
-
-      if (testError) throw testError;
-
-      setTestId(testData.id);
-
-      for (const question of completedTest) {
-        await supabase
-          .from('test_responses')
+      const saveData = async () => {
+        const { data: testData, error: testError } = await supabase
+          .from('user_tests')
           .insert({
-            test_id: testData.id,
             user_id: user.id,
-            word_id: question.word.id,
-            user_answer: question.userAnswer || '',
-            correct_answer: question.word.english_translation,
-            is_correct: question.isCorrect || false,
-            response_time_seconds: question.responseTime
-          });
+            test_type: testType!,
+            total_questions: totalQuestions,
+            correct_answers: correctCount,
+            score_percentage: scorePercentage,
+            duration_seconds: durationSeconds
+          })
+          .select()
+          .single();
 
-        const stats = question.word.statistics;
-        const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
-        const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
-        const newTotalAttempts = (stats?.total_attempts || 0) + 1;
-        const newConsecutiveCorrect = question.isCorrect
-          ? (stats?.consecutive_correct || 0) + 1
-          : 0;
+        if (testError) throw testError;
 
-        const newConfidenceScore = calculateConfidenceScore({
-          correct_count: newCorrectCount,
-          incorrect_count: newIncorrectCount,
-          total_attempts: newTotalAttempts,
-          consecutive_correct: newConsecutiveCorrect
-        });
+        setTestId(testData.id);
 
-        await supabase
-          .from('word_statistics')
-          .upsert({
-            user_id: user.id,
-            word_id: question.word.id,
+        for (const question of completedTest) {
+          await supabase
+            .from('test_responses')
+            .insert({
+              test_id: testData.id,
+              user_id: user.id,
+              word_id: question.word.id,
+              user_answer: question.userAnswer || '',
+              correct_answer: question.word.english_translation,
+              is_correct: question.isCorrect || false,
+              response_time_seconds: question.responseTime
+            });
+
+          const stats = question.word.statistics;
+          const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
+          const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
+          const newTotalAttempts = (stats?.total_attempts || 0) + 1;
+          const newConsecutiveCorrect = question.isCorrect
+            ? (stats?.consecutive_correct || 0) + 1
+            : 0;
+
+          const newConfidenceScore = calculateConfidenceScore({
             correct_count: newCorrectCount,
             incorrect_count: newIncorrectCount,
             total_attempts: newTotalAttempts,
-            consecutive_correct: newConsecutiveCorrect,
-            last_tested: new Date().toISOString(),
-            confidence_score: newConfidenceScore
-          }, {
-            onConflict: 'user_id,word_id'
+            consecutive_correct: newConsecutiveCorrect
           });
-      }
 
+          await supabase
+            .from('word_statistics')
+            .upsert({
+              user_id: user.id,
+              word_id: question.word.id,
+              correct_count: newCorrectCount,
+              incorrect_count: newIncorrectCount,
+              total_attempts: newTotalAttempts,
+              consecutive_correct: newConsecutiveCorrect,
+              last_tested: new Date().toISOString(),
+              confidence_score: newConfidenceScore
+            }, {
+              onConflict: 'user_id,word_id'
+            });
+        }
+      };
+
+      await Promise.all([minDisplayTime, saveData()]);
       setShowResults(true);
     } catch (err) {
       console.error('Error saving test results:', err);
