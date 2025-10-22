@@ -28,10 +28,14 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
     setIsCorrect(correct);
     setShowFeedback(true);
 
+    const isLastQuestion = questionNumber === totalQuestions;
+
     setTimeout(() => {
       onAnswer(userInput.trim(), correct);
-      setUserInput('');
-      setShowFeedback(false);
+      if (!isLastQuestion) {
+        setUserInput('');
+        setShowFeedback(false);
+      }
     }, 2000);
   };
 
