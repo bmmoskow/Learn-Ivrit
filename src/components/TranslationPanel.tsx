@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
@@ -36,6 +36,14 @@ export function TranslationPanel() {
   useState(() => {
     loadSavedWords();
   });
+
+  useEffect(() => {
+    if (hebrewText.trim()) {
+      translateText();
+    } else {
+      setEnglishText('');
+    }
+  }, [hebrewText]);
 
   const loadFromUrl = async () => {
     if (!urlInput.trim()) return;
@@ -327,23 +335,14 @@ export function TranslationPanel() {
           </div>
         )}
 
-        <button
-          onClick={translateText}
-          disabled={!hebrewText.trim() || translating}
-          className="mt-4 w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {translating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
+        {translating && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
               Translating...
-            </>
-          ) : (
-            <>
-              <Languages className="w-5 h-5" />
-              Translate to English
-            </>
-          )}
-        </button>
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
