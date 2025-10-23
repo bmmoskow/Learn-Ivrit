@@ -138,6 +138,8 @@ Deno.serve(async (req: Request) => {
         ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
         : "";
 
+      const lineBreakInstruction = " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
+
       const MAX_CHUNK_LENGTH = 3000;
       const sentences = text.split(/(?<=[.!?؟،])\s+/);
       const chunks: string[] = [];
@@ -158,7 +160,7 @@ Deno.serve(async (req: Request) => {
       const translations: string[] = [];
 
       for (const chunk of chunks) {
-        const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
+        const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,

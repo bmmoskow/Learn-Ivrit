@@ -373,7 +373,7 @@ export function TranslationPanel() {
               Translation in progress...
             </p>
           ) : englishText ? (
-            <p className="text-xl leading-relaxed text-gray-900">{englishText}</p>
+            <p className="text-xl leading-relaxed text-gray-900 whitespace-pre-wrap">{englishText}</p>
           ) : (
             <p className="text-gray-400 text-center mt-20">
               Translation will appear here...
