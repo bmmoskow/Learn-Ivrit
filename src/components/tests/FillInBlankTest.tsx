@@ -80,10 +80,10 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
                 ref={inputRef}
                 type="text"
                 value={userInput}
-                onChange={(e) => setUserInput(e.target.value)}
-                disabled={showFeedback}
+                onChange={(e) => !showFeedback && setUserInput(e.target.value)}
+                onKeyDown={(e) => showFeedback && e.preventDefault()}
                 placeholder="Type your answer..."
-                className="w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition disabled:bg-gray-100"
+                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${showFeedback ? 'bg-gray-100' : ''}`}
               />
             </div>
 
