@@ -14,12 +14,15 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    setUserInput('');
-    setShowFeedback(false);
-    inputRef.current?.focus();
-  }, [question]);
+    if (!isProcessing) {
+      setUserInput('');
+      setShowFeedback(false);
+      inputRef.current?.focus();
+    }
+  }, [question, isProcessing]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +37,13 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
 
     const isLastQuestion = questionNumber === totalQuestions;
 
+    if (isLastQuestion) {
+      setIsProcessing(true);
+    }
+
     setTimeout(() => {
       onAnswer(answer, correct);
-    }, isLastQuestion ? 2000 : 2000);
+    }, 2000);
   };
 
   return (
