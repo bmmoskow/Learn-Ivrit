@@ -138,36 +138,62 @@ Deno.serve(async (req: Request) => {
         ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
         : "";
 
-      const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction} Provide only the translation, nothing else:\n\n${text}`;
+      const MAX_CHUNK_LENGTH = 3000;
+      const sentences = text.split(/(?<=[.!?؟،])\s+/);
+      const chunks: string[] = [];
+      let currentChunk = "";
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{ text: prompt }],
-            }],
-            generationConfig: {
-              temperature: 0.3,
-              topK: 40,
-              topP: 0.95,
-              maxOutputTokens: 1024,
-            },
-          }),
+      for (const sentence of sentences) {
+        if ((currentChunk + sentence).length > MAX_CHUNK_LENGTH && currentChunk) {
+          chunks.push(currentChunk.trim());
+          currentChunk = sentence;
+        } else {
+          currentChunk += (currentChunk ? " " : "") + sentence;
         }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Gemini API error: ${errorText}`);
+      }
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
       }
 
-      const data = await response.json();
-      const translation = data.candidates?.[0]?.content?.parts?.[0]?.text || "Translation failed";
+      const translations: string[] = [];
+
+      for (const chunk of chunks) {
+        const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{ text: prompt }],
+              }],
+              generationConfig: {
+                temperature: 0.3,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 8192,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Gemini API error: ${errorText}`);
+        }
+
+        const data = await response.json();
+        const chunkTranslation = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        if (chunkTranslation) {
+          translations.push(chunkTranslation);
+        }
+      }
+
+      const translation = translations.join(" ");
 
       return new Response(
         JSON.stringify({ translation }),
