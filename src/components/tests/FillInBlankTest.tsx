@@ -16,6 +16,8 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setUserInput('');
+    setShowFeedback(false);
     inputRef.current?.focus();
   }, [question]);
 
@@ -30,16 +32,15 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
     setIsCorrect(correct);
     setShowFeedback(true);
 
-    onAnswer(answer, correct);
-
     const isLastQuestion = questionNumber === totalQuestions;
 
-    setTimeout(() => {
-      if (!isLastQuestion) {
-        setUserInput('');
-        setShowFeedback(false);
-      }
-    }, 2000);
+    if (isLastQuestion) {
+      onAnswer(answer, correct);
+    } else {
+      setTimeout(() => {
+        onAnswer(answer, correct);
+      }, 2000);
+    }
   };
 
   return (
