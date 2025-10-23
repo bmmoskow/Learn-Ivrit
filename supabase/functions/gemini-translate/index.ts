@@ -337,10 +337,13 @@ FORMS:
       let content = '';
 
       if (structuredData.articleBody) {
-        content = structuredData.articleBody;
-        if (structuredData.description && !content.includes(structuredData.description)) {
-          content = structuredData.description + '\n\n' + content;
+        const parts = [];
+        if (title) parts.push(title);
+        if (structuredData.description && !structuredData.articleBody.includes(structuredData.description)) {
+          parts.push(structuredData.description);
         }
+        parts.push(structuredData.articleBody);
+        content = parts.join('\n\n');
       } else {
         content = extractTextFromHtml(html);
       }
