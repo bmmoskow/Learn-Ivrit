@@ -367,7 +367,12 @@ export function TranslationPanel() {
         </div>
 
         <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
-          {englishText ? (
+          {translating ? (
+            <p className="text-gray-600 text-center mt-20 flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Translation in progress...
+            </p>
+          ) : englishText ? (
             <p className="text-xl leading-relaxed text-gray-900">{englishText}</p>
           ) : (
             <p className="text-gray-400 text-center mt-20">
