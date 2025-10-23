@@ -152,12 +152,12 @@ export function TranslationPanel() {
     const paragraphs = hebrewText.split(/\n\n+/);
 
     return (
-      <div className="text-xl leading-relaxed space-y-6" dir="rtl" lang="he">
+      <div className="text-xl leading-relaxed space-y-4" dir="rtl" lang="he">
         {paragraphs.map((paragraph, paraIndex) => {
           const lines = paragraph.split('\n');
 
           return (
-            <p key={paraIndex} className="whitespace-pre-wrap mb-6">
+            <p key={paraIndex} className="whitespace-pre-wrap">
               {lines.map((line, lineIndex) => {
                 const words = line.split(/(\s+)/);
 
