@@ -35,13 +35,12 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY environment variable is not set");
-    }
-
     if (path.includes("/translate")) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+      if (!GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set");
+      }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
       const vowelInstruction = targetLanguage === "Hebrew"
@@ -89,6 +88,12 @@ Deno.serve(async (req: Request) => {
         }
       );
     } else if (path.includes("/define")) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+      if (!GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set");
+      }
+
       const { word, targetLanguage }: DefinitionRequest = await req.json();
 
       const prompt = `For the Hebrew word "${word}":
