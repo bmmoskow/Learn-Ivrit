@@ -34,13 +34,9 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
 
     const isLastQuestion = questionNumber === totalQuestions;
 
-    if (isLastQuestion) {
+    setTimeout(() => {
       onAnswer(answer, correct);
-    } else {
-      setTimeout(() => {
-        onAnswer(answer, correct);
-      }, 2000);
-    }
+    }, isLastQuestion ? 2000 : 2000);
   };
 
   return (
