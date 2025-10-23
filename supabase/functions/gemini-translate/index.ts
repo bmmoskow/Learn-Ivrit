@@ -29,6 +29,17 @@ function extractTextFromHtml(html: string): string {
   text = text.replace(/<nav[^>]*>([\s\S]*?)<\/nav>/gi, '');
   text = text.replace(/<header[^>]*>([\s\S]*?)<\/header>/gi, '');
   text = text.replace(/<footer[^>]*>([\s\S]*?)<\/footer>/gi, '');
+  text = text.replace(/<aside[^>]*>([\s\S]*?)<\/aside>/gi, '');
+  text = text.replace(/<form[^>]*>([\s\S]*?)<\/form>/gi, '');
+  
+  text = text.replace(/<figure[^>]*>([\s\S]*?)<\/figure>/gi, '');
+  text = text.replace(/<figcaption[^>]*>([\s\S]*?)<\/figcaption>/gi, '');
+  text = text.replace(/<img[^>]*>/gi, '');
+  text = text.replace(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, '');
+  
+  text = text.replace(/<div[^>]*class="[^"]*(?:caption|credit|photo|image|img|media|video|gallery|sidebar|related|comment|ad|advertisement|promo|banner)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi, '');
+  text = text.replace(/<span[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, '');
+  text = text.replace(/<p[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, '');
   
   text = text.replace(/<br\s*\/?>/gi, '\n');
   text = text.replace(/<\/p>/gi, '\n\n');
@@ -46,6 +57,20 @@ function extractTextFromHtml(html: string): string {
   text = text.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
   text = text.replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
   
+  text = text.replace(/^[\s\S]*?<body[^>]*>/i, '');
+  text = text.replace(/<\/body>[\s\S]*$/i, '');
+  
+  const lines = text.split('\n');
+  const filteredLines = lines.filter(line => {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) return false;
+    if (trimmed.length < 15) return false;
+    if (/^(תמונה|צילום|photo|credit|image):/i.test(trimmed)) return false;
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(trimmed)) return false;
+    return true;
+  });
+  
+  text = filteredLines.join('\n');
   text = text.replace(/\n\s*\n\s*\n/g, '\n\n');
   text = text.trim();
   
