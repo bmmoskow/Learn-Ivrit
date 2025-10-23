@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Languages, Copy, X, Loader2, BookPlus } from 'lucide-react';
+import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import { WordDefinitionPopup } from './WordDefinitionPopup';
@@ -16,6 +16,9 @@ export function TranslationPanel() {
     position: { x: number; y: number };
   } | null>(null);
   const [savedWords, setSavedWords] = useState<Set<string>>(new Set());
+  const [urlInput, setUrlInput] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [loadingUrl, setLoadingUrl] = useState(false);
 
   const loadSavedWords = async () => {
     if (!user) return;
@@ -33,6 +36,41 @@ export function TranslationPanel() {
   useState(() => {
     loadSavedWords();
   });
+
+  const loadFromUrl = async () => {
+    if (!urlInput.trim()) return;
+
+    setLoadingUrl(true);
+    setError('');
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: urlInput })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to load URL');
+      }
+
+      const data = await response.json();
+      setHebrewText(data.content);
+      setShowUrlInput(false);
+      setUrlInput('');
+    } catch (err) {
+      setError('Failed to load content from URL. Please check the URL and try again.');
+      console.error('URL extraction error:', err);
+    } finally {
+      setLoadingUrl(false);
+    }
+  };
 
   const translateText = async () => {
     if (!hebrewText.trim()) return;
@@ -202,19 +240,72 @@ export function TranslationPanel() {
           )}
         </div>
 
-        {!hebrewText && (
-          <div className="mt-4 flex gap-2">
+        {!hebrewText && !showUrlInput && (
+          <div className="mt-4 space-y-3">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setHebrewText('שלום עולם')}
+                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              >
+                Try "שלום עולם"
+              </button>
+              <button
+                onClick={() => setHebrewText('אני לומד עברית')}
+                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              >
+                Try "אני לומד עברית"
+              </button>
+            </div>
+            <div className="text-center">
+              <span className="text-gray-400 text-sm">or</span>
+            </div>
             <button
-              onClick={() => setHebrewText('שלום עולם')}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              onClick={() => setShowUrlInput(true)}
+              className="w-full px-4 py-2.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center justify-center gap-2 border border-blue-200"
             >
-              Try "שלום עולם"
+              <LinkIcon className="w-4 h-4" />
+              Load from URL
             </button>
+          </div>
+        )}
+
+        {showUrlInput && !hebrewText && (
+          <div className="mt-4 space-y-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && loadFromUrl()}
+                placeholder="Enter URL (e.g., https://www.ynet.co.il/...)"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                onClick={loadFromUrl}
+                disabled={!urlInput.trim() || loadingUrl}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loadingUrl ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="w-4 h-4" />
+                    Load
+                  </>
+                )}
+              </button>
+            </div>
             <button
-              onClick={() => setHebrewText('אני לומד עברית')}
-              className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+              onClick={() => {
+                setShowUrlInput(false);
+                setUrlInput('');
+              }}
+              className="text-sm text-gray-600 hover:text-gray-800"
             >
-              Try "אני לומד עברית"
+              Cancel
             </button>
           </div>
         )}
