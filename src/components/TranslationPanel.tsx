@@ -154,25 +154,34 @@ export function TranslationPanel() {
     return (
       <div className="text-xl leading-relaxed space-y-4" dir="rtl" lang="he">
         {paragraphs.map((paragraph, paraIndex) => {
-          const words = paragraph.split(/(\s+)/);
+          const lines = paragraph.split('\n');
 
           return (
-            <p key={paraIndex}>
-              {words.map((word, index) => {
-                const trimmedWord = word.trim();
-                if (!trimmedWord) return <span key={index}>{word}</span>;
-
-                const isSaved = savedWords.has(trimmedWord);
+            <p key={paraIndex} className="whitespace-pre-wrap">
+              {lines.map((line, lineIndex) => {
+                const words = line.split(/(\s+)/);
 
                 return (
-                  <span
-                    key={index}
-                    onClick={handleWordClick}
-                    className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                      isSaved ? 'bg-green-50 border-b-2 border-green-400' : ''
-                    }`}
-                  >
-                    {word}
+                  <span key={lineIndex}>
+                    {words.map((word, index) => {
+                      const trimmedWord = word.trim();
+                      if (!trimmedWord) return <span key={index}>{word}</span>;
+
+                      const isSaved = savedWords.has(trimmedWord);
+
+                      return (
+                        <span
+                          key={index}
+                          onClick={handleWordClick}
+                          className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
+                            isSaved ? 'bg-green-50 border-b-2 border-green-400' : ''
+                          }`}
+                        >
+                          {word}
+                        </span>
+                      );
+                    })}
+                    {lineIndex < lines.length - 1 && <br />}
                   </span>
                 );
               })}
