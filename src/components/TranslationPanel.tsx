@@ -149,26 +149,34 @@ export function TranslationPanel() {
   const renderHebrewWords = () => {
     if (!hebrewText) return null;
 
-    const words = hebrewText.split(/(\s+)/);
+    const paragraphs = hebrewText.split(/\n\n+/);
 
     return (
-      <div className="text-xl leading-relaxed" dir="rtl" lang="he">
-        {words.map((word, index) => {
-          const trimmedWord = word.trim();
-          if (!trimmedWord) return <span key={index}>{word}</span>;
-
-          const isSaved = savedWords.has(trimmedWord);
+      <div className="text-xl leading-relaxed space-y-4" dir="rtl" lang="he">
+        {paragraphs.map((paragraph, paraIndex) => {
+          const words = paragraph.split(/(\s+)/);
 
           return (
-            <span
-              key={index}
-              onClick={handleWordClick}
-              className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                isSaved ? 'bg-green-50 border-b-2 border-green-400' : ''
-              }`}
-            >
-              {word}
-            </span>
+            <p key={paraIndex}>
+              {words.map((word, index) => {
+                const trimmedWord = word.trim();
+                if (!trimmedWord) return <span key={index}>{word}</span>;
+
+                const isSaved = savedWords.has(trimmedWord);
+
+                return (
+                  <span
+                    key={index}
+                    onClick={handleWordClick}
+                    className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
+                      isSaved ? 'bg-green-50 border-b-2 border-green-400' : ''
+                    }`}
+                  >
+                    {word}
+                  </span>
+                );
+              })}
+            </p>
           );
         })}
       </div>
