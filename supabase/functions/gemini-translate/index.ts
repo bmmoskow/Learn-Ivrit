@@ -211,32 +211,47 @@ FORMS:
       }
 
       const urlToFetch = url.startsWith('http') ? url : `https://${url}`;
+      console.log('Fetching URL:', urlToFetch);
 
       const response = await fetch(urlToFetch, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'he,en-US;q=0.9,en;q=0.8',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1'
         }
       });
 
+      console.log('Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error(`Failed to fetch URL: ${response.statusText}`);
+        throw new Error(`Failed to fetch URL (${response.status}): ${response.statusText}`);
       }
 
       const html = await response.text();
+      console.log('HTML length:', html.length);
+
+      if (html.length < 100) {
+        throw new Error("Received too little content from URL");
+      }
 
       const dom = new JSDOM(html, { url: urlToFetch });
       const reader = new Readability(dom.window.document);
       const article = reader.parse();
 
-      if (!article) {
-        throw new Error("Failed to extract content from URL");
+      console.log('Article parsed:', article ? 'success' : 'failed');
+
+      if (!article || !article.textContent) {
+        throw new Error("Failed to extract readable content from URL. The page might not be an article or is blocking extraction.");
       }
 
       return new Response(
         JSON.stringify({
-          title: article.title,
-          content: article.textContent,
-          excerpt: article.excerpt
+          title: article.title || 'Untitled',
+          content: article.textContent.trim(),
+          excerpt: article.excerpt || ''
         }),
         {
           headers: {
