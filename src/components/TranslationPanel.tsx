@@ -250,18 +250,71 @@ export function TranslationPanel() {
           </div>
         )}
 
-        <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition">
+        <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition relative">
           {hebrewText ? (
             renderHebrewWords()
+          ) : showUrlInput ? (
+            <div className="h-full flex flex-col items-center justify-center space-y-4">
+              <div className="w-full max-w-md space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && loadFromUrl()}
+                    placeholder="Enter URL (e.g., https://www.ynet.co.il/...)"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                  <button
+                    onClick={loadFromUrl}
+                    disabled={!urlInput.trim() || loadingUrl}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {loadingUrl ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon className="w-4 h-4" />
+                        Load
+                      </>
+                    )}
+                  </button>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowUrlInput(false);
+                    setUrlInput('');
+                  }}
+                  className="text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : (
-            <textarea
-              value={hebrewText}
-              onChange={(e) => setHebrewText(e.target.value)}
-              placeholder="Paste Hebrew text here..."
-              className="w-full h-full resize-none outline-none text-xl"
-              dir="rtl"
-              lang="he"
-            />
+            <div className="relative h-full">
+              <textarea
+                value={hebrewText}
+                onChange={(e) => setHebrewText(e.target.value)}
+                placeholder=""
+                className="w-full h-full resize-none outline-none text-xl"
+                dir="rtl"
+                lang="he"
+              />
+              <div className="absolute top-2 left-2 text-gray-400 pointer-events-none">
+                Paste Hebrew text here or{' '}
+                <span
+                  className="text-blue-600 underline cursor-pointer pointer-events-auto"
+                  onClick={() => setShowUrlInput(true)}
+                >
+                  load from URL
+                </span>
+              </div>
+            </div>
           )}
         </div>
 
@@ -281,57 +334,6 @@ export function TranslationPanel() {
                 Try "אני לומד עברית"
               </button>
             </div>
-            <div className="text-center">
-              <span className="text-gray-400 text-sm">or</span>
-            </div>
-            <button
-              onClick={() => setShowUrlInput(true)}
-              className="w-full px-4 py-2.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition flex items-center justify-center gap-2 border border-blue-200"
-            >
-              <LinkIcon className="w-4 h-4" />
-              Load from URL
-            </button>
-          </div>
-        )}
-
-        {showUrlInput && !hebrewText && (
-          <div className="mt-4 space-y-3">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && loadFromUrl()}
-                placeholder="Enter URL (e.g., https://www.ynet.co.il/...)"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={loadFromUrl}
-                disabled={!urlInput.trim() || loadingUrl}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {loadingUrl ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  <>
-                    <LinkIcon className="w-4 h-4" />
-                    Load
-                  </>
-                )}
-              </button>
-            </div>
-            <button
-              onClick={() => {
-                setShowUrlInput(false);
-                setUrlInput('');
-              }}
-              className="text-sm text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
           </div>
         )}
 
