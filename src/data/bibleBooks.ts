@@ -1,0 +1,47 @@
+export interface BibleBook {
+  name: string;
+  hebrewName: string;
+  chapters: number;
+}
+
+export const BIBLE_BOOKS: BibleBook[] = [
+  { name: "Genesis", hebrewName: "בראשית", chapters: 50 },
+  { name: "Exodus", hebrewName: "שמות", chapters: 40 },
+  { name: "Leviticus", hebrewName: "ויקרא", chapters: 27 },
+  { name: "Numbers", hebrewName: "במדבר", chapters: 36 },
+  { name: "Deuteronomy", hebrewName: "דברים", chapters: 34 },
+  { name: "Joshua", hebrewName: "יהושע", chapters: 24 },
+  { name: "Judges", hebrewName: "שופטים", chapters: 21 },
+  { name: "I Samuel", hebrewName: "שמואל א", chapters: 31 },
+  { name: "II Samuel", hebrewName: "שמואל ב", chapters: 24 },
+  { name: "I Kings", hebrewName: "מלכים א", chapters: 22 },
+  { name: "II Kings", hebrewName: "מלכים ב", chapters: 25 },
+  { name: "Isaiah", hebrewName: "ישעיהו", chapters: 66 },
+  { name: "Jeremiah", hebrewName: "ירמיהו", chapters: 52 },
+  { name: "Ezekiel", hebrewName: "יחזקאל", chapters: 48 },
+  { name: "Hosea", hebrewName: "הושע", chapters: 14 },
+  { name: "Joel", hebrewName: "יואל", chapters: 4 },
+  { name: "Amos", hebrewName: "עמוס", chapters: 9 },
+  { name: "Obadiah", hebrewName: "עובדיה", chapters: 1 },
+  { name: "Jonah", hebrewName: "יונה", chapters: 4 },
+  { name: "Micah", hebrewName: "מיכה", chapters: 7 },
+  { name: "Nahum", hebrewName: "נחום", chapters: 3 },
+  { name: "Habakkuk", hebrewName: "חבקוק", chapters: 3 },
+  { name: "Zephaniah", hebrewName: "צפניה", chapters: 3 },
+  { name: "Haggai", hebrewName: "חגי", chapters: 2 },
+  { name: "Zechariah", hebrewName: "זכריה", chapters: 14 },
+  { name: "Malachi", hebrewName: "מלאכי", chapters: 3 },
+  { name: "Psalms", hebrewName: "תהילים", chapters: 150 },
+  { name: "Proverbs", hebrewName: "משלי", chapters: 31 },
+  { name: "Job", hebrewName: "איוב", chapters: 42 },
+  { name: "Song of Songs", hebrewName: "שיר השירים", chapters: 8 },
+  { name: "Ruth", hebrewName: "רות", chapters: 4 },
+  { name: "Lamentations", hebrewName: "איכה", chapters: 5 },
+  { name: "Ecclesiastes", hebrewName: "קהלת", chapters: 12 },
+  { name: "Esther", hebrewName: "אסתר", chapters: 10 },
+  { name: "Daniel", hebrewName: "דניאל", chapters: 12 },
+  { name: "Ezra", hebrewName: "עזרא", chapters: 10 },
+  { name: "Nehemiah", hebrewName: "נחמיה", chapters: 13 },
+  { name: "I Chronicles", hebrewName: "דברי הימים א", chapters: 29 },
+  { name: "II Chronicles", hebrewName: "דברי הימים ב", chapters: 36 },
+];

@@ -1,35 +1,39 @@
-import { useState, useEffect } from 'react';
-import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabase';
-import { WordDefinitionPopup } from './WordDefinitionPopup';
+import { useState, useEffect } from "react";
+import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../lib/supabase";
+import { WordDefinitionPopup } from "./WordDefinitionPopup";
+import { BIBLE_BOOKS } from "../data/bibleBooks";
 
 export function TranslationPanel() {
   const { user, isGuest } = useAuth();
-  const [hebrewText, setHebrewText] = useState('');
-  const [englishText, setEnglishText] = useState('');
+  const [hebrewText, setHebrewText] = useState("");
+  const [englishText, setEnglishText] = useState("");
   const [translating, setTranslating] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [selectedWord, setSelectedWord] = useState<{
     word: string;
     sentence: string;
     position: { x: number; y: number };
   } | null>(null);
   const [savedWords, setSavedWords] = useState<Set<string>>(new Set());
-  const [urlInput, setUrlInput] = useState('');
+  const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [loadingUrl, setLoadingUrl] = useState(false);
+  const [selectedBook, setSelectedBook] = useState("");
+  const [selectedChapter, setSelectedChapter] = useState<number>(1);
+  const [showBibleInput, setShowBibleInput] = useState(false);
+  const [loadingBible, setLoadingBible] = useState(false);
+  const [bibleLoaded, setBibleLoaded] = useState(false);
+  const [currentBibleRef, setCurrentBibleRef] = useState<{ book: string; chapter: number } | null>(null);
 
   const loadSavedWords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from('vocabulary_words')
-      .select('hebrew_word')
-      .eq('user_id', user.id);
+    const { data, error } = await supabase.from("vocabulary_words").select("hebrew_word").eq("user_id", user.id);
 
     if (!error && data) {
-      setSavedWords(new Set(data.map(w => w.hebrew_word)));
+      setSavedWords(new Set(data.map((w) => w.hebrew_word)));
     }
   };
 
@@ -41,7 +45,7 @@ export function TranslationPanel() {
     if (hebrewText.trim()) {
       translateText();
     } else {
-      setEnglishText('');
+      setEnglishText("");
     }
   }, [hebrewText]);
 
@@ -49,69 +53,145 @@ export function TranslationPanel() {
     if (!urlInput.trim()) return;
 
     setLoadingUrl(true);
-    setError('');
+    setError("");
 
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
 
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
         },
-        body: JSON.stringify({ url: urlInput })
+        body: JSON.stringify({ url: urlInput }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to load URL');
+        throw new Error(errorData.error || "Failed to load URL");
       }
 
       const data = await response.json();
       setHebrewText(data.content);
       setShowUrlInput(false);
-      setUrlInput('');
+      setUrlInput("");
+      setBibleLoaded(false);
+      setCurrentBibleRef(null);
     } catch (err) {
-      setError('Failed to load content from URL. Please check the URL and try again.');
-      console.error('URL extraction error:', err);
+      setError("Failed to load content from URL. Please check the URL and try again.");
+      console.error("URL extraction error:", err);
     } finally {
       setLoadingUrl(false);
     }
+  };
+
+  const stripHtml = (text: string): string => {
+    // Create a temporary div to decode HTML entities
+    const temp = document.createElement('div');
+    temp.innerHTML = text;
+    const decoded = temp.textContent || temp.innerText || '';
+
+    // Remove any remaining HTML tags and control characters
+    return decoded.replace(/<[^>]*>/g, '').replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+  };
+
+  const loadFromBible = async (book?: string, chapter?: number) => {
+    const bookToLoad = book || selectedBook;
+    const chapterToLoad = chapter || selectedChapter;
+
+    if (!bookToLoad || !chapterToLoad) return;
+
+    setLoadingBible(true);
+    setError("");
+
+    try {
+      const response = await fetch(`https://www.sefaria.org/api/texts/${bookToLoad}.${chapterToLoad}?context=0`);
+
+      if (!response.ok) {
+        throw new Error("Failed to load Bible chapter");
+      }
+
+      const data = await response.json();
+      const hebrewVerses = data.he || [];
+      const versesWithNumbers = hebrewVerses.map((verse: string, index: number) => {
+        const cleanVerse = stripHtml(verse);
+        return `(${index + 1}) ${cleanVerse}`;
+      });
+      const hebrewText = versesWithNumbers.join("\n\n");
+
+      setHebrewText(hebrewText);
+      setShowBibleInput(false);
+      setBibleLoaded(true);
+      setCurrentBibleRef({ book: bookToLoad, chapter: chapterToLoad });
+    } catch (err) {
+      setError("Failed to load Bible chapter. Please try again.");
+      console.error("Bible loading error:", err);
+    } finally {
+      setLoadingBible(false);
+    }
+  };
+
+  const navigateChapter = (direction: "prev" | "next") => {
+    if (!currentBibleRef) return;
+
+    const currentBook = BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book);
+    if (!currentBook) return;
+
+    let newChapter = currentBibleRef.chapter;
+
+    if (direction === "prev" && newChapter > 1) {
+      newChapter--;
+      loadFromBible(currentBibleRef.book, newChapter);
+    } else if (direction === "next" && newChapter < currentBook.chapters) {
+      newChapter++;
+      loadFromBible(currentBibleRef.book, newChapter);
+    }
+  };
+
+  const canNavigatePrev = () => {
+    if (!currentBibleRef) return false;
+    return currentBibleRef.chapter > 1;
+  };
+
+  const canNavigateNext = () => {
+    if (!currentBibleRef) return false;
+    const currentBook = BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book);
+    return currentBook ? currentBibleRef.chapter < currentBook.chapters : false;
   };
 
   const translateText = async () => {
     if (!hebrewText.trim()) return;
 
     setTranslating(true);
-    setError('');
+    setError("");
 
     try {
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
       const response = await fetch(apiUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           text: hebrewText,
-          targetLanguage: 'English',
-          sourceLanguage: 'Hebrew'
-        })
+          targetLanguage: "English",
+          sourceLanguage: "Hebrew",
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Translation failed');
+        throw new Error(errorData.error || "Translation failed");
       }
 
       const data = await response.json();
       setEnglishText(data.translation);
     } catch (err) {
-      setError('Failed to translate. Please try again.');
-      console.error('Translation error:', err);
+      setError("Failed to translate. Please try again.");
+      console.error("Translation error:", err);
     } finally {
       setTranslating(false);
     }
@@ -120,7 +200,7 @@ export function TranslationPanel() {
   const cleanWord = (word: string): string => {
     let cleaned = word.trim();
     // Remove punctuation but preserve Hebrew marks: geresh (׳) and gershayim (״)
-    cleaned = cleaned.replace(/[.,!?;:"'()\[\]{}،؛؟]/g, '');
+    cleaned = cleaned.replace(/[.,!?;:"'()\[\]{}،؛؟]/g, "");
     return cleaned;
   };
 
@@ -137,7 +217,7 @@ export function TranslationPanel() {
   };
 
   const handleWordClick = (e: React.MouseEvent<HTMLSpanElement>) => {
-    const word = (e.target as HTMLSpanElement).textContent || '';
+    const word = (e.target as HTMLSpanElement).textContent || "";
     const cleanedWord = cleanWord(word);
 
     if (!cleanedWord) return;
@@ -148,7 +228,7 @@ export function TranslationPanel() {
     setSelectedWord({
       word: cleanedWord,
       sentence: sentence,
-      position: { x: rect.left + rect.width / 2, y: rect.bottom + 5 }
+      position: { x: rect.left + rect.width / 2, y: rect.bottom + 5 },
     });
   };
 
@@ -164,7 +244,7 @@ export function TranslationPanel() {
     return (
       <div className="text-xl leading-relaxed space-y-4" dir="rtl" lang="he">
         {paragraphs.map((paragraph, paraIndex) => {
-          const lines = paragraph.split('\n');
+          const lines = paragraph.split("\n");
 
           return (
             <p key={paraIndex} className="whitespace-pre-wrap">
@@ -184,7 +264,7 @@ export function TranslationPanel() {
                           key={index}
                           onClick={handleWordClick}
                           className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                            isSaved ? 'bg-green-50 border-b-2 border-green-400' : ''
+                            isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
                           }`}
                         >
                           {word}
@@ -223,6 +303,8 @@ export function TranslationPanel() {
               onClick={() => {
                 setHebrewText('');
                 setEnglishText('');
+                setBibleLoaded(false);
+                setCurrentBibleRef(null);
               }}
               disabled={!hebrewText}
               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -233,7 +315,38 @@ export function TranslationPanel() {
           </div>
         </div>
 
-        {hebrewText && !isGuest && (
+        {bibleLoaded && currentBibleRef && (
+          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Book className="w-5 h-5 text-purple-600" />
+                <span className="font-semibold text-gray-800">
+                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigateChapter("prev")}
+                  disabled={!canNavigatePrev()}
+                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Previous chapter"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => navigateChapter("next")}
+                  disabled={!canNavigateNext()}
+                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                  title="Next chapter"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {hebrewText && !isGuest && !bibleLoaded && (
           <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 flex items-center gap-2">
               <BookPlus className="w-4 h-4" />
@@ -241,7 +354,7 @@ export function TranslationPanel() {
             </p>
           </div>
         )}
-        {hebrewText && isGuest && (
+        {hebrewText && isGuest && !bibleLoaded && (
           <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <p className="text-sm text-gray-600 flex items-center gap-2">
               <BookPlus className="w-4 h-4" />
@@ -253,6 +366,65 @@ export function TranslationPanel() {
         <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition relative">
           {hebrewText ? (
             renderHebrewWords()
+          ) : showBibleInput ? (
+            <div className="h-full flex flex-col items-center justify-center space-y-4">
+              <div className="w-full max-w-md space-y-3">
+                <div className="flex flex-col gap-3">
+                  <select
+                    value={selectedBook}
+                    onChange={(e) => setSelectedBook(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="">Select Book</option>
+                    {BIBLE_BOOKS.map((book) => (
+                      <option key={book.name} value={book.name}>
+                        {book.hebrewName} ({book.name})
+                      </option>
+                    ))}
+                  </select>
+                  {selectedBook && (
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max={BIBLE_BOOKS.find((b) => b.name === selectedBook)?.chapters || 1}
+                        value={selectedChapter}
+                        onChange={(e) => setSelectedChapter(Number(e.target.value))}
+                        placeholder="Chapter"
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <button
+                        onClick={() => loadFromBible()}
+                        disabled={!selectedBook || !selectedChapter || loadingBible}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {loadingBible ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <Book className="w-4 h-4" />
+                            Load
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setShowBibleInput(false);
+                    setSelectedBook("");
+                    setSelectedChapter(1);
+                  }}
+                  className="text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           ) : showUrlInput ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <div className="w-full max-w-md space-y-3">
@@ -261,7 +433,7 @@ export function TranslationPanel() {
                     type="text"
                     value={urlInput}
                     onChange={(e) => setUrlInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && loadFromUrl()}
+                    onKeyPress={(e) => e.key === "Enter" && loadFromUrl()}
                     placeholder="Enter URL (e.g., https://www.ynet.co.il/...)"
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     autoFocus
@@ -287,7 +459,7 @@ export function TranslationPanel() {
                 <button
                   onClick={() => {
                     setShowUrlInput(false);
-                    setUrlInput('');
+                    setUrlInput("");
                   }}
                   className="text-sm text-gray-600 hover:text-gray-800"
                 >
@@ -305,13 +477,20 @@ export function TranslationPanel() {
                 dir="rtl"
                 lang="he"
               />
-              <div className="absolute top-2 left-2 text-gray-400 pointer-events-none">
-                Paste Hebrew text here or{' '}
+              <div className="absolute top-2 left-2 text-gray-400 pointer-events-none text-sm leading-relaxed">
+                Paste Hebrew text here,{" "}
                 <span
                   className="text-blue-600 underline cursor-pointer pointer-events-auto"
                   onClick={() => setShowUrlInput(true)}
                 >
                   load from URL
+                </span>
+                , or{" "}
+                <span
+                  className="text-purple-600 underline cursor-pointer pointer-events-auto"
+                  onClick={() => setShowBibleInput(true)}
+                >
+                  load from Bible
                 </span>
               </div>
             </div>
@@ -322,13 +501,13 @@ export function TranslationPanel() {
           <div className="mt-4 space-y-3">
             <div className="flex gap-2">
               <button
-                onClick={() => setHebrewText('שלום עולם')}
+                onClick={() => setHebrewText("שלום עולם")}
                 className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
               >
                 Try "שלום עולם"
               </button>
               <button
-                onClick={() => setHebrewText('אני לומד עברית')}
+                onClick={() => setHebrewText("אני לומד עברית")}
                 className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
               >
                 Try "אני לומד עברית"
@@ -347,17 +526,13 @@ export function TranslationPanel() {
         )}
 
         {error && (
-          <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
         )}
       </div>
 
       <div className="flex-1 bg-white rounded-xl shadow-lg p-6 flex flex-col order-2 lg:order-2">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            English Translation
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900">English Translation</h2>
           <button
             onClick={() => handleCopy(englishText)}
             disabled={!englishText}
@@ -377,9 +552,7 @@ export function TranslationPanel() {
           ) : englishText ? (
             <p className="text-xl leading-relaxed text-gray-900 whitespace-pre-wrap">{englishText}</p>
           ) : (
-            <p className="text-gray-400 text-center mt-20">
-              Translation will appear here...
-            </p>
+            <p className="text-gray-400 text-center mt-20">Translation will appear here...</p>
           )}
         </div>
       </div>
