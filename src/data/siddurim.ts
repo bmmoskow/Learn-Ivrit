@@ -193,13 +193,23 @@ export const siddurim: Siddur[] = [
             ]
           },
           {
-            name: 'Tachanun',
-            nameHebrew: 'תחנון',
+            name: 'Post-Amidah',
+            nameHebrew: 'אחרי העמידה',
             prayers: [
               {
                 name: 'Tachanun',
                 nameHebrew: 'תחנון',
-                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Amidah,_Tachanun'
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Amidah,_Tachanun'
+              },
+              {
+                name: 'Vidui',
+                nameHebrew: 'וידוי',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Amidah,_Vidui'
+              },
+              {
+                name: '13 Middot',
+                nameHebrew: 'י"ג מידות',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Amidah,_13_Middot'
               }
             ]
           },
@@ -231,6 +241,32 @@ export const siddurim: Siddur[] = [
                 name: 'Shir Shel Yom',
                 nameHebrew: 'שיר של יום',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Concluding_Prayers,_Shir_Shel_Yom'
+              }
+            ]
+          },
+          {
+            name: 'Post-Service',
+            nameHebrew: 'אחרי התפילה',
+            prayers: [
+              {
+                name: 'Six Remembrances',
+                nameHebrew: 'שש זכירות',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Service,_Six_Remembrances'
+              },
+              {
+                name: 'Pittum HaKetoret',
+                nameHebrew: 'פיטום הקטורת',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Service,_Pittum_HaKetoret'
+              },
+              {
+                name: 'Adon Olam',
+                nameHebrew: 'אדון עולם',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Service,_Adon_Olam'
+              },
+              {
+                name: 'Yigdal',
+                nameHebrew: 'יגדל',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Post_Service,_Yigdal'
               }
             ]
           }
@@ -750,6 +786,93 @@ export const siddurim: Siddur[] = [
                 name: 'Kinot',
                 nameHebrew: 'קינות',
                 reference: 'Siddur_Ashkenaz,_Tisha_BAv,_Kinot'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Berachot (Blessings)',
+        nameHebrew: 'ברכות',
+        sections: [
+          {
+            name: 'Birkat HaMazon',
+            nameHebrew: 'ברכת המזון',
+            prayers: [
+              {
+                name: 'Grace After Meals',
+                nameHebrew: 'ברכת המזון',
+                reference: 'Siddur_Ashkenaz,_Berachot,_Birkat_HaMazon'
+              }
+            ]
+          },
+          {
+            name: 'Food Blessings',
+            nameHebrew: 'ברכות הנהנין',
+            prayers: [
+              {
+                name: 'Blessings on Food',
+                nameHebrew: 'ברכות על המזון',
+                reference: 'Siddur_Ashkenaz,_Berachot,_Birkat_Hanehenin'
+              }
+            ]
+          },
+          {
+            name: 'Mitzvah Blessings',
+            nameHebrew: 'ברכות המצוות',
+            prayers: [
+              {
+                name: 'Blessings on Mitzvot',
+                nameHebrew: 'ברכות המצוות',
+                reference: 'Siddur_Ashkenaz,_Berachot,_Birkhot_Hamitzvot'
+              }
+            ]
+          },
+          {
+            name: 'Special Occasions',
+            nameHebrew: 'ברכות מיוחדות',
+            prayers: [
+              {
+                name: 'Birkat HaLevana',
+                nameHebrew: 'ברכת הלבנה',
+                reference: 'Siddur_Ashkenaz,_Berachot,_Birkat_HaLevana'
+              },
+              {
+                name: 'Traveler\'s Prayer',
+                nameHebrew: 'תפילת הדרך',
+                reference: 'Siddur_Ashkenaz,_Berachot,_Tefilat_HaDerech'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Kaddish',
+        nameHebrew: 'קדיש',
+        sections: [
+          {
+            name: 'Kaddish Variations',
+            nameHebrew: 'נוסחאות הקדיש',
+            prayers: [
+              {
+                name: 'Half Kaddish',
+                nameHebrew: 'חצי קדיש',
+                reference: 'Siddur_Ashkenaz,_Kaddish,_Half_Kaddish'
+              },
+              {
+                name: 'Full Kaddish',
+                nameHebrew: 'קדיש שלם',
+                reference: 'Siddur_Ashkenaz,_Kaddish,_Full_Kaddish'
+              },
+              {
+                name: 'Mourner\'s Kaddish',
+                nameHebrew: 'קדיש יתום',
+                reference: 'Siddur_Ashkenaz,_Kaddish,_Mourners_Kaddish'
+              },
+              {
+                name: 'Kaddish DeRabbanan',
+                nameHebrew: 'קדיש דרבנן',
+                reference: 'Siddur_Ashkenaz,_Kaddish,_Kaddish_DeRabbanan'
               }
             ]
           }
