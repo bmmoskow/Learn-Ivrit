@@ -180,24 +180,24 @@ export function TranslationPanel() {
     setError("");
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch`;
-
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reference }),
-      });
+      const response = await fetch(`https://www.sefaria.org/api/v3/texts/${reference}`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to load prayer");
+        throw new Error("Failed to load prayer from Sefaria");
       }
 
       const data = await response.json();
-      setHebrewText(data.text);
+      const hebrewVersion = data.versions?.find((v: { language: string }) => v.language === "he");
+
+      if (!hebrewVersion || !hebrewVersion.text) {
+        throw new Error("No Hebrew text found");
+      }
+
+      const hebrewText = hebrewVersion.text
+        .map((line: string) => stripHtml(line))
+        .join('\n');
+
+      setHebrewText(hebrewText);
       setShowSiddurModal(false);
       setSiddurLoaded(true);
       setCurrentSiddurRef({ name, nameHebrew });
