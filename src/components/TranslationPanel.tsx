@@ -238,7 +238,14 @@ export function TranslationPanel() {
       setBibleLoaded(false);
       setCurrentBibleRef(null);
     } catch (err) {
-      setError("Failed to load prayer from Siddur. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load prayer from Siddur";
+
+      if (errorMessage.includes("404") || errorMessage.includes("not be available")) {
+        setError(`"${name}" is not available in the Sefaria database. Try another prayer.`);
+      } else {
+        setError("Failed to load prayer from Siddur. Please try again.");
+      }
+
       console.error("Siddur loading error:", err);
     } finally {
       setLoadingSiddur(false);
