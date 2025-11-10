@@ -94,13 +94,33 @@ export function TranslationPanel() {
   };
 
   const stripHtml = (text: string): string => {
+    if (!text) return "";
+
     // Create a temporary div to decode HTML entities
     const temp = document.createElement("div");
     temp.innerHTML = text;
-    const decoded = temp.textContent || temp.innerText || "";
+    let decoded = temp.textContent || temp.innerText || "";
 
-    // Remove any remaining HTML tags and control characters
-    return decoded.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+    // Remove instruction text patterns (text in parentheses that are instructions)
+    // Common patterns: (Recite three times), (Bow here), (Stand), etc.
+    decoded = decoded.replace(/\([^)]*?(recite|say|bow|stand|sit|repeat|continue|skip|omit)[^)]*?\)/gi, '\n\n');
+
+    // Remove bracketed instructions
+    decoded = decoded.replace(/\[[^\]]*?(recite|say|bow|stand|sit|repeat|continue|skip|omit)[^\]]*?\]/gi, '\n\n');
+
+    // Remove angle bracket instructions
+    decoded = decoded.replace(/<[^>]*?(recite|say|bow|stand|sit|repeat|continue|skip|omit)[^>]*?>/gi, '\n\n');
+
+    // Remove any remaining HTML tags
+    decoded = decoded.replace(/<[^>]*>/g, "");
+
+    // Remove control characters
+    decoded = decoded.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+
+    // Clean up multiple consecutive newlines (keep max 2)
+    decoded = decoded.replace(/\n{3,}/g, '\n\n');
+
+    return decoded.trim();
   };
 
   const removeTrope = (text: string): string => {
