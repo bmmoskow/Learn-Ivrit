@@ -208,14 +208,23 @@ export function TranslationPanel() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to load prayer from Sefaria");
+        const errorData = await response.json();
+        console.error("Sefaria fetch error:", errorData);
+        throw new Error(errorData.error || "Failed to load prayer from Sefaria");
       }
 
       const data = await response.json();
+
+      if (data.error) {
+        console.error("Sefaria API error:", data);
+        throw new Error(data.error);
+      }
+
       const hebrewVersion = data.versions?.find((v: { language: string }) => v.language === "he");
 
       if (!hebrewVersion || !hebrewVersion.text) {
-        throw new Error("No Hebrew text found");
+        console.error("No Hebrew text in response:", data);
+        throw new Error(`No Hebrew text found for ${name}. This prayer may not be available in Sefaria.`);
       }
 
       const hebrewText = hebrewVersion.text

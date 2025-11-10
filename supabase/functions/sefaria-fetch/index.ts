@@ -31,6 +31,8 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    console.log(`Fetching from Sefaria: ${reference}`);
+
     const sefariaUrl = `https://www.sefaria.org/api/v3/texts/${reference}`;
     const sefariaResponse = await fetch(sefariaUrl, {
       headers: {
@@ -40,11 +42,48 @@ Deno.serve(async (req: Request) => {
 
     if (!sefariaResponse.ok) {
       const errorText = await sefariaResponse.text();
-      console.error(`Sefaria API error: ${sefariaResponse.status} - ${errorText}`);
-      throw new Error(`Failed to fetch from Sefaria API: ${sefariaResponse.status}`);
+      console.error(`Sefaria API error for ${reference}: ${sefariaResponse.status}`);
+      console.error(`Error details: ${errorText}`);
+
+      return new Response(
+        JSON.stringify({
+          error: `Sefaria API returned ${sefariaResponse.status}`,
+          reference: reference,
+          details: errorText
+        }),
+        {
+          status: sefariaResponse.status,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
     }
 
     const data = await sefariaResponse.json();
+    console.log(`Successfully fetched ${reference}`);
+
+    // Check if we have the expected data structure
+    if (!data.versions || data.versions.length === 0) {
+      console.error(`No versions found for ${reference}`);
+      console.error(`Data structure:`, JSON.stringify(data, null, 2));
+
+      return new Response(
+        JSON.stringify({
+          error: "No text versions available for this prayer",
+          reference: reference,
+          availableData: Object.keys(data)
+        }),
+        {
+          status: 404,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
 
     return new Response(JSON.stringify(data), {
       headers: {
