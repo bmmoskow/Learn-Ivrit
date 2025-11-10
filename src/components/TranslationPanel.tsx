@@ -549,6 +549,17 @@ export function TranslationPanel() {
           </button>
         </div>
 
+        {bibleLoaded && currentBibleRef && (
+          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Book className="w-5 h-5 text-purple-600" />
+              <span className="font-semibold text-gray-800">
+                {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
           {translating ? (
             <p className="text-gray-600 text-center mt-20 flex items-center justify-center gap-2">
