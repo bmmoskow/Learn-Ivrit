@@ -49,6 +49,11 @@ export const siddurim: Siddur[] = [
                 name: 'Elohai Neshama',
                 nameHebrew: 'אלהי נשמה',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Preparatory_Prayers,_Elohai_Neshama'
+              },
+              {
+                name: 'Torah Blessings',
+                nameHebrew: 'ברכות התורה',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Preparatory_Prayers,_Birchot_HaTorah'
               }
             ]
           },
@@ -60,6 +65,11 @@ export const siddurim: Siddur[] = [
                 name: 'Morning Blessings',
                 nameHebrew: 'ברכות השחר',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Morning_Blessings,_Birchot_HaShachar'
+              },
+              {
+                name: 'Akedah',
+                nameHebrew: 'עקדה',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Morning_Blessings,_Akedah'
               }
             ]
           },
@@ -73,9 +83,24 @@ export const siddurim: Siddur[] = [
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Pesukei_Dezimra,_Baruch_SheAmar'
               },
               {
+                name: 'Hodu',
+                nameHebrew: 'הודו',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Pesukei_Dezimra,_Hodu'
+              },
+              {
+                name: 'Mizmor LeTodah',
+                nameHebrew: 'מזמור לתודה',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Pesukei_Dezimra,_Mizmor_LeTodah'
+              },
+              {
                 name: 'Ashrei',
                 nameHebrew: 'אשרי',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Pesukei_Dezimra,_Ashrei'
+              },
+              {
+                name: 'Halleluyah',
+                nameHebrew: 'הללויה',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Pesukei_Dezimra,_Halleluyah'
               },
               {
                 name: 'Yishtabach',
@@ -92,6 +117,11 @@ export const siddurim: Siddur[] = [
                 name: 'Barchu',
                 nameHebrew: 'ברכו',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Blessings_of_the_Shema,_Barchu'
+              },
+              {
+                name: 'Yotzer Or',
+                nameHebrew: 'יוצר אור',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Blessings_of_the_Shema,_Yotzer_Or'
               },
               {
                 name: 'Shema',
@@ -118,6 +148,11 @@ export const siddurim: Siddur[] = [
                 name: 'Weekday Amidah',
                 nameHebrew: 'שמונה עשרה',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Tachanun',
+                nameHebrew: 'תחנון',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Amidah,_Tachanun'
               }
             ]
           },
@@ -129,6 +164,11 @@ export const siddurim: Siddur[] = [
                 name: 'Aleinu',
                 nameHebrew: 'עלינו',
                 reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Concluding_Prayers,_Aleinu'
+              },
+              {
+                name: 'Mourner\'s Kaddish',
+                nameHebrew: 'קדיש יתום',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Concluding_Prayers,_Mourner\'s_Kaddish'
               }
             ]
           }
@@ -223,6 +263,16 @@ export const siddurim: Siddur[] = [
                 name: 'Lecha Dodi',
                 nameHebrew: 'לכה דודי',
                 reference: 'Siddur_Ashkenaz,_Shabbat,_Friday_Night,_Kabbalat_Shabbat,_Lecha_Dodi'
+              },
+              {
+                name: 'Maariv for Shabbat',
+                nameHebrew: 'ערבית לשבת',
+                reference: 'Siddur_Ashkenaz,_Shabbat,_Friday_Night,_Maariv,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Kiddush',
+                nameHebrew: 'קידוש',
+                reference: 'Siddur_Ashkenaz,_Shabbat,_Friday_Night,_Kiddush,_Kiddush'
               }
             ]
           },
@@ -239,6 +289,204 @@ export const siddurim: Siddur[] = [
                 name: 'Shabbat Amidah',
                 nameHebrew: 'עמידה לשבת',
                 reference: 'Siddur_Ashkenaz,_Shabbat,_Shabbat_Day,_Shacharit,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Kedushah',
+                nameHebrew: 'קדושה',
+                reference: 'Siddur_Ashkenaz,_Shabbat,_Shabbat_Day,_Shacharit,_Amidah,_Kedushah'
+              },
+              {
+                name: 'Musaf',
+                nameHebrew: 'מוסף',
+                reference: 'Siddur_Ashkenaz,_Shabbat,_Shabbat_Day,_Musaf,_Amidah,_Patriarchs'
+              }
+            ]
+          },
+          {
+            name: 'Shabbat Afternoon',
+            nameHebrew: 'מנחה לשבת',
+            prayers: [
+              {
+                name: 'Minchah for Shabbat',
+                nameHebrew: 'מנחה לשבת',
+                reference: 'Siddur_Ashkenaz,_Shabbat,_Shabbat_Day,_Minchah,_Amidah,_Patriarchs'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Rosh Hashanah',
+        nameHebrew: 'ראש השנה',
+        sections: [
+          {
+            name: 'Evening Service',
+            nameHebrew: 'ערבית',
+            prayers: [
+              {
+                name: 'Rosh Hashanah Maariv',
+                nameHebrew: 'ערבית לראש השנה',
+                reference: 'Siddur_Ashkenaz,_Rosh_Hashanah,_First_Day,_Maariv,_Amidah,_Patriarchs'
+              }
+            ]
+          },
+          {
+            name: 'Morning Service',
+            nameHebrew: 'שחרית',
+            prayers: [
+              {
+                name: 'Rosh Hashanah Shacharit',
+                nameHebrew: 'שחרית לראש השנה',
+                reference: 'Siddur_Ashkenaz,_Rosh_Hashanah,_First_Day,_Shacharit,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Shofar Blessings',
+                nameHebrew: 'ברכות השופר',
+                reference: 'Siddur_Ashkenaz,_Rosh_Hashanah,_First_Day,_Shofar,_Blessings'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Yom Kippur',
+        nameHebrew: 'יום כיפור',
+        sections: [
+          {
+            name: 'Kol Nidre',
+            nameHebrew: 'כל נדרי',
+            prayers: [
+              {
+                name: 'Kol Nidre',
+                nameHebrew: 'כל נדרי',
+                reference: 'Siddur_Ashkenaz,_Yom_Kippur,_Evening,_Maariv,_Kol_Nidre'
+              }
+            ]
+          },
+          {
+            name: 'Morning Service',
+            nameHebrew: 'שחרית',
+            prayers: [
+              {
+                name: 'Yom Kippur Shacharit',
+                nameHebrew: 'שחרית ליום כיפור',
+                reference: 'Siddur_Ashkenaz,_Yom_Kippur,_Day,_Shacharit,_Amidah,_Patriarchs'
+              }
+            ]
+          },
+          {
+            name: 'Neilah',
+            nameHebrew: 'נעילה',
+            prayers: [
+              {
+                name: 'Neilah Service',
+                nameHebrew: 'תפילת נעילה',
+                reference: 'Siddur_Ashkenaz,_Yom_Kippur,_Day,_Neilah,_Amidah,_Patriarchs'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Sukkot',
+        nameHebrew: 'סוכות',
+        sections: [
+          {
+            name: 'Festival Prayers',
+            nameHebrew: 'תפילות החג',
+            prayers: [
+              {
+                name: 'Sukkot Amidah',
+                nameHebrew: 'עמידה לסוכות',
+                reference: 'Siddur_Ashkenaz,_Sukkot,_First_Day,_Shacharit,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Hallel',
+                nameHebrew: 'הלל',
+                reference: 'Siddur_Ashkenaz,_Sukkot,_First_Day,_Hallel,_Hallel'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Chanukah',
+        nameHebrew: 'חנוכה',
+        sections: [
+          {
+            name: 'Chanukah Prayers',
+            nameHebrew: 'תפילות חנוכה',
+            prayers: [
+              {
+                name: 'Al HaNissim',
+                nameHebrew: 'על הניסים',
+                reference: 'Siddur_Ashkenaz,_Weekday,_Shacharit,_Amidah,_Thanksgiving'
+              },
+              {
+                name: 'Chanukah Candle Blessings',
+                nameHebrew: 'ברכות נר חנוכה',
+                reference: 'Siddur_Ashkenaz,_Chanukah,_Candle_Lighting,_Blessings'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Purim',
+        nameHebrew: 'פורים',
+        sections: [
+          {
+            name: 'Megillah Reading',
+            nameHebrew: 'קריאת המגילה',
+            prayers: [
+              {
+                name: 'Megillat Esther Blessings',
+                nameHebrew: 'ברכות מגילת אסתר',
+                reference: 'Siddur_Ashkenaz,_Purim,_Megillah_Reading,_Blessings'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Passover',
+        nameHebrew: 'פסח',
+        sections: [
+          {
+            name: 'Festival Prayers',
+            nameHebrew: 'תפילות החג',
+            prayers: [
+              {
+                name: 'Passover Amidah',
+                nameHebrew: 'עמידה לפסח',
+                reference: 'Siddur_Ashkenaz,_Passover,_First_Day,_Shacharit,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Hallel',
+                nameHebrew: 'הלל',
+                reference: 'Siddur_Ashkenaz,_Passover,_First_Day,_Hallel,_Hallel'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        name: 'Shavuot',
+        nameHebrew: 'שבועות',
+        sections: [
+          {
+            name: 'Festival Prayers',
+            nameHebrew: 'תפילות החג',
+            prayers: [
+              {
+                name: 'Shavuot Amidah',
+                nameHebrew: 'עמידה לשבועות',
+                reference: 'Siddur_Ashkenaz,_Shavuot,_First_Day,_Shacharit,_Amidah,_Patriarchs'
+              },
+              {
+                name: 'Hallel',
+                nameHebrew: 'הלל',
+                reference: 'Siddur_Ashkenaz,_Shavuot,_First_Day,_Hallel,_Hallel'
               }
             ]
           }

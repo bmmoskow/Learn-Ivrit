@@ -31,12 +31,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const sefariaResponse = await fetch(
-      `https://www.sefaria.org/api/v3/texts/${reference}`
-    );
+    const sefariaUrl = `https://www.sefaria.org/api/v3/texts/${reference}`;
+    const sefariaResponse = await fetch(sefariaUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+      },
+    });
 
     if (!sefariaResponse.ok) {
-      throw new Error("Failed to fetch from Sefaria API");
+      const errorText = await sefariaResponse.text();
+      console.error(`Sefaria API error: ${sefariaResponse.status} - ${errorText}`);
+      throw new Error(`Failed to fetch from Sefaria API: ${sefariaResponse.status}`);
     }
 
     const data = await sefariaResponse.json();
@@ -48,6 +53,7 @@ Deno.serve(async (req: Request) => {
       },
     });
   } catch (error) {
+    console.error("Edge function error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
