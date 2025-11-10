@@ -195,16 +195,6 @@ export function TranslationPanel() {
 
       const hebrewText = hebrewVersion.text
         .map((line: string) => stripHtml(line))
-        .filter((line: string) => {
-          const trimmed = line.trim();
-          // Filter out instructions (typically in parentheses or brackets)
-          if (trimmed.startsWith('(') && trimmed.endsWith(')')) return false;
-          if (trimmed.startsWith('[') && trimmed.endsWith(']')) return false;
-          // Filter out common instruction patterns
-          if (trimmed.includes('חזן') || trimmed.includes('קהל')) return false; // Chazan/Congregation markers
-          if (trimmed.startsWith('<') || trimmed.endsWith('>')) return false;
-          return trimmed.length > 0;
-        })
         .join('\n');
 
       setHebrewText(hebrewText);
