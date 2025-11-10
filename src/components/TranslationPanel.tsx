@@ -96,6 +96,12 @@ export function TranslationPanel() {
     return decoded.replace(/<[^>]*>/g, '').replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
   };
 
+  const removeTrope = (text: string): string => {
+    // Remove Hebrew cantillation marks (trope/ta'amim)
+    // Unicode ranges: U+0591-U+05AF, U+05BD, U+05BF, U+05C0, U+05C3-U+05C5
+    return text.replace(/[\u0591-\u05AF\u05BD\u05BF\u05C0\u05C3-\u05C5]/g, '');
+  };
+
   const loadFromBible = async (book?: string, chapter?: number) => {
     const bookToLoad = book || selectedBook;
     const chapterToLoad = chapter || selectedChapter;
@@ -115,7 +121,7 @@ export function TranslationPanel() {
       const data = await response.json();
       const hebrewVerses = data.he || [];
       const versesWithNumbers = hebrewVerses.map((verse: string, index: number) => {
-        const cleanVerse = stripHtml(verse);
+        const cleanVerse = removeTrope(stripHtml(verse));
         return `(${index + 1}) ${cleanVerse}`;
       });
       const hebrewText = versesWithNumbers.join("\n\n");
