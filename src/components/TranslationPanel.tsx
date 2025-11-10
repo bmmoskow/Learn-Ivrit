@@ -180,7 +180,12 @@ export function TranslationPanel() {
     setError("");
 
     try {
-      const response = await fetch(`https://www.sefaria.org/api/v3/texts/${reference}`);
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch?reference=${encodeURIComponent(reference)}`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to load prayer from Sefaria");
