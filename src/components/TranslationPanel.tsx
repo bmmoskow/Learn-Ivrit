@@ -88,18 +88,18 @@ export function TranslationPanel() {
 
   const stripHtml = (text: string): string => {
     // Create a temporary div to decode HTML entities
-    const temp = document.createElement('div');
+    const temp = document.createElement("div");
     temp.innerHTML = text;
-    const decoded = temp.textContent || temp.innerText || '';
+    const decoded = temp.textContent || temp.innerText || "";
 
     // Remove any remaining HTML tags and control characters
-    return decoded.replace(/<[^>]*>/g, '').replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+    return decoded.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
   };
 
   const removeTrope = (text: string): string => {
     // Remove Hebrew cantillation marks (trope/ta'amim)
     // Unicode ranges: U+0591-U+05AF, U+05BD, U+05BF, U+05C0, U+05C3-U+05C5
-    return text.replace(/[\u0591-\u05AF\u05BD\u05BF\u05C0\u05C3-\u05C5]/g, '');
+    return text.replace(/[\u0591-\u05AF\u05BD\u05BF\u05C0\u05C3-\u05C5]/g, "");
   };
 
   const loadFromBible = async (book?: string, chapter?: number) => {
@@ -242,46 +242,59 @@ export function TranslationPanel() {
     navigator.clipboard.writeText(text);
   };
 
-  const renderHebrewWords = () => {
+  const renderSyncedText = () => {
     if (!hebrewText) return null;
 
-    const paragraphs = hebrewText.split(/\n\n+/);
+    const hebrewParagraphs = hebrewText.split(/\n\n+/);
+    const englishParagraphs = englishText ? englishText.split(/\n\n+/) : [];
 
     return (
-      <div className="text-xl leading-relaxed space-y-4" dir="rtl" lang="he">
-        {paragraphs.map((paragraph, paraIndex) => {
-          const lines = paragraph.split("\n");
+      <div className="space-y-6">
+        {hebrewParagraphs.map((hebrewPara, paraIndex) => {
+          const words = hebrewPara.split(/(\s+|\n)/);
+          const englishPara = englishParagraphs[paraIndex] || "";
 
           return (
-            <p key={paraIndex} className="whitespace-pre-wrap">
-              {lines.map((line, lineIndex) => {
-                const words = line.split(/(\s+)/);
+            <div key={paraIndex} className="grid grid-cols-2 gap-6">
+              {/* Hebrew side */}
+              <div className="text-xl leading-relaxed" dir="rtl" lang="he">
+                <p className="whitespace-pre-wrap">
+                  {words.map((word, index) => {
+                    if (word === '\n') return <br key={index} />;
 
-                return (
-                  <span key={lineIndex}>
-                    {words.map((word, index) => {
-                      const trimmedWord = word.trim();
-                      if (!trimmedWord) return <span key={index}>{word}</span>;
+                    const trimmedWord = word.trim();
+                    if (!trimmedWord) return <span key={index}>{word}</span>;
 
-                      const isSaved = savedWords.has(trimmedWord);
+                    const isSaved = savedWords.has(trimmedWord);
 
-                      return (
-                        <span
-                          key={index}
-                          onClick={handleWordClick}
-                          className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                            isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
-                          }`}
-                        >
-                          {word}
-                        </span>
-                      );
-                    })}
-                    {lineIndex < lines.length - 1 && <br />}
-                  </span>
-                );
-              })}
-            </p>
+                    return (
+                      <span
+                        key={index}
+                        onClick={handleWordClick}
+                        className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
+                          isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
+                        }`}
+                      >
+                        {word}
+                      </span>
+                    );
+                  })}
+                </p>
+              </div>
+
+              {/* English side */}
+              <div className="text-xl leading-relaxed">
+                <p className="whitespace-pre-wrap">
+                  {translating ? (
+                    <span className="text-gray-400">Translating...</span>
+                  ) : englishPara ? (
+                    englishPara
+                  ) : (
+                    <span className="text-gray-400">Translation will appear here...</span>
+                  )}
+                </p>
+              </div>
+            </div>
           );
         })}
       </div>
@@ -289,13 +302,15 @@ export function TranslationPanel() {
   };
 
   return (
-    <div className="flex-1 flex flex-col lg:flex-row gap-6 p-6">
-      <div className="flex-1 bg-white rounded-xl shadow-lg p-6 flex flex-col order-1 lg:order-1">
+    <div className="flex-1 flex flex-col p-6">
+      <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Languages className="w-5 h-5 text-blue-600" />
-            Hebrew Text
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Languages className="w-5 h-5 text-blue-600" />
+              Translation Panel
+            </h2>
+          </div>
           <div className="flex gap-2">
             <button
               onClick={() => handleCopy(hebrewText)}
@@ -307,8 +322,8 @@ export function TranslationPanel() {
             </button>
             <button
               onClick={() => {
-                setHebrewText('');
-                setEnglishText('');
+                setHebrewText("");
+                setEnglishText("");
                 setBibleLoaded(false);
                 setCurrentBibleRef(null);
               }}
@@ -327,7 +342,7 @@ export function TranslationPanel() {
               <div className="flex items-center gap-3">
                 <Book className="w-5 h-5 text-purple-600" />
                 <span className="font-semibold text-gray-800">
-                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter}
+                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter} / {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -369,9 +384,9 @@ export function TranslationPanel() {
           </div>
         )}
 
-        <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition relative">
+        <div className="flex-1 min-h-[500px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition">
           {hebrewText ? (
-            renderHebrewWords()
+            renderSyncedText()
           ) : showBibleInput ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <div className="w-full max-w-md space-y-3">
@@ -534,44 +549,6 @@ export function TranslationPanel() {
         {error && (
           <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
         )}
-      </div>
-
-      <div className="flex-1 bg-white rounded-xl shadow-lg p-6 flex flex-col order-2 lg:order-2">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">English Translation</h2>
-          <button
-            onClick={() => handleCopy(englishText)}
-            disabled={!englishText}
-            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Copy English text"
-          >
-            <Copy className="w-5 h-5" />
-          </button>
-        </div>
-
-        {bibleLoaded && currentBibleRef && (
-          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <Book className="w-5 h-5 text-purple-600" />
-              <span className="font-semibold text-gray-800">
-                {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div className="flex-1 min-h-[300px] border-2 border-gray-200 rounded-lg p-4 bg-gray-50">
-          {translating ? (
-            <p className="text-gray-600 text-center mt-20 flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Translation in progress...
-            </p>
-          ) : englishText ? (
-            <p className="text-xl leading-relaxed text-gray-900 whitespace-pre-wrap">{englishText}</p>
-          ) : (
-            <p className="text-gray-400 text-center mt-20">Translation will appear here...</p>
-          )}
-        </div>
       </div>
 
       {selectedWord && (
