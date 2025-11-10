@@ -126,6 +126,8 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
+    console.log('GEMINI_API_KEY check:', Deno.env.get("GEMINI_API_KEY")?.substring(0, 20) + '...');
+
     if (path.includes("/translate")) {
       const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
@@ -351,8 +353,7 @@ FORMS:
         throw new Error(`Failed to fetch URL (${response.status}): ${response.statusText}`);
       }
 
-      const html = await response.text();
-      console.log('HTML length:', html.length);
+      const html = await response.text();      console.log('HTML length:', html.length);
 
       if (html.length < 100) {
         throw new Error("Received too little content from URL");
