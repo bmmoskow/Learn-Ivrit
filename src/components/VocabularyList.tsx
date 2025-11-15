@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, VocabularyWord, WordStatistics } from '../lib/supabase';
-import { Loader2, Search, Trash2, Edit2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Loader2, Search, Trash2, Edit2, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { defaultVocabulary } from '../data/defaultVocabulary';
 
 type VocabWithStats = VocabularyWord & {
@@ -21,6 +21,8 @@ export function VocabularyList() {
     definition: '',
     transliteration: ''
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
 
   useEffect(() => {
     loadVocabulary();
@@ -101,6 +103,17 @@ export function VocabularyList() {
     word.hebrew_word.toLowerCase().includes(searchQuery.toLowerCase()) ||
     word.english_translation.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredWords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedWords = filteredWords.slice(startIndex, endIndex);
+
+  // Reset to page 1 when search or sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortBy]);
 
   const deleteWord = async (id: string) => {
     if (!confirm('Are you sure you want to delete this word?')) return;
@@ -225,7 +238,7 @@ export function VocabularyList() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredWords.map((word) => (
+                  {paginatedWords.map((word) => (
                     <tr key={word.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
                       {editingId === word.id ? (
                         <>
@@ -341,6 +354,36 @@ export function VocabularyList() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
+                  <div className="text-sm text-gray-600">
+                    Showing {startIndex + 1}-{Math.min(endIndex, filteredWords.length)} of {filteredWords.length} words
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-sm font-medium text-gray-700">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Next page"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

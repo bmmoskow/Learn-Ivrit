@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, BookOpen } from "lucide-react";
+import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
 import { WordDefinitionPopup } from "./WordDefinitionPopup";
-import { SiddurSelectionModal } from "./SiddurSelectionModal";
 import { BIBLE_BOOKS } from "../data/bibleBooks";
 
 export function TranslationPanel() {
@@ -27,10 +26,6 @@ export function TranslationPanel() {
   const [loadingBible, setLoadingBible] = useState(false);
   const [bibleLoaded, setBibleLoaded] = useState(false);
   const [currentBibleRef, setCurrentBibleRef] = useState<{ book: string; chapter: number } | null>(null);
-  const [showSiddurModal, setShowSiddurModal] = useState(false);
-  const [loadingSiddur, setLoadingSiddur] = useState(false);
-  const [siddurLoaded, setSiddurLoaded] = useState(false);
-  const [currentSiddurRef, setCurrentSiddurRef] = useState<{ name: string; nameHebrew: string } | null>(null);
 
   const loadSavedWords = async () => {
     if (!user) return;
@@ -83,8 +78,6 @@ export function TranslationPanel() {
       setUrlInput("");
       setBibleLoaded(false);
       setCurrentBibleRef(null);
-      setSiddurLoaded(false);
-      setCurrentSiddurRef(null);
     } catch (err) {
       setError("Failed to load content from URL. Please check the URL and try again.");
       console.error("URL extraction error:", err);
@@ -94,33 +87,13 @@ export function TranslationPanel() {
   };
 
   const stripHtml = (text: string): string => {
-    if (!text) return "";
-
     // Create a temporary div to decode HTML entities
     const temp = document.createElement("div");
     temp.innerHTML = text;
-    let decoded = temp.textContent || temp.innerText || "";
+    const decoded = temp.textContent || temp.innerText || "";
 
-    // Remove instruction text patterns (text in parentheses that are instructions)
-    // Common patterns: (Recite three times), (Bow here), (Stand), etc.
-    decoded = decoded.replace(/\([^)]*?(recite|say|bow|stand|sit|repeat|continue|skip|omit)[^)]*?\)/gi, '\n\n');
-
-    // Remove bracketed instructions
-    decoded = decoded.replace(/\[[^\]]*?(recite|say|bow|stand|sit|repeat|continue|skip|omit)[^\]]*?\]/gi, '\n\n');
-
-    // Remove angle bracket instructions
-    decoded = decoded.replace(/<[^>]*?(recite|say|bow|stand|sit|repeat|continue|skip|omit)[^>]*?>/gi, '\n\n');
-
-    // Remove any remaining HTML tags
-    decoded = decoded.replace(/<[^>]*>/g, "");
-
-    // Remove control characters
-    decoded = decoded.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
-
-    // Clean up multiple consecutive newlines (keep max 2)
-    decoded = decoded.replace(/\n{3,}/g, '\n\n');
-
-    return decoded.trim();
+    // Remove any remaining HTML tags and control characters
+    return decoded.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
   };
 
   const removeTrope = (text: string): string => {
@@ -157,8 +130,6 @@ export function TranslationPanel() {
       setShowBibleInput(false);
       setBibleLoaded(true);
       setCurrentBibleRef({ book: bookToLoad, chapter: chapterToLoad });
-      setSiddurLoaded(false);
-      setCurrentSiddurRef(null);
     } catch (err) {
       setError("Failed to load Bible chapter. Please try again.");
       console.error("Bible loading error:", err);
@@ -193,63 +164,6 @@ export function TranslationPanel() {
     if (!currentBibleRef) return false;
     const currentBook = BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book);
     return currentBook ? currentBibleRef.chapter < currentBook.chapters : false;
-  };
-
-  const loadFromSiddur = async (reference: string, name: string, nameHebrew: string) => {
-    setLoadingSiddur(true);
-    setError("");
-
-    try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch?reference=${encodeURIComponent(reference)}`;
-      const response = await fetch(apiUrl, {
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Sefaria fetch error:", errorData);
-        throw new Error(errorData.error || "Failed to load prayer from Sefaria");
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
-        console.error("Sefaria API error:", data);
-        throw new Error(data.error);
-      }
-
-      const hebrewVersion = data.versions?.find((v: { language: string }) => v.language === "he");
-
-      if (!hebrewVersion || !hebrewVersion.text) {
-        console.error("No Hebrew text in response:", data);
-        throw new Error(`No Hebrew text found for ${name}. This prayer may not be available in Sefaria.`);
-      }
-
-      const hebrewText = hebrewVersion.text
-        .map((line: string) => stripHtml(line))
-        .join('\n');
-
-      setHebrewText(hebrewText);
-      setShowSiddurModal(false);
-      setSiddurLoaded(true);
-      setCurrentSiddurRef({ name, nameHebrew });
-      setBibleLoaded(false);
-      setCurrentBibleRef(null);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to load prayer from Siddur";
-
-      if (errorMessage.includes("404") || errorMessage.includes("not be available")) {
-        setError(`"${name}" is not available in the Sefaria database. Try another prayer.`);
-      } else {
-        setError("Failed to load prayer from Siddur. Please try again.");
-      }
-
-      console.error("Siddur loading error:", err);
-    } finally {
-      setLoadingSiddur(false);
-    }
   };
 
   const translateText = async () => {
@@ -412,8 +326,6 @@ export function TranslationPanel() {
                 setEnglishText("");
                 setBibleLoaded(false);
                 setCurrentBibleRef(null);
-                setSiddurLoaded(false);
-                setCurrentSiddurRef(null);
               }}
               disabled={!hebrewText}
               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -455,18 +367,7 @@ export function TranslationPanel() {
           </div>
         )}
 
-        {siddurLoaded && currentSiddurRef && (
-          <div className="mb-3 p-3 bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <BookOpen className="w-5 h-5 text-teal-600" />
-              <span className="font-semibold text-gray-800">
-                <span dir="rtl">{currentSiddurRef.nameHebrew}</span> / {currentSiddurRef.name}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {hebrewText && !isGuest && !bibleLoaded && !siddurLoaded && (
+        {hebrewText && !isGuest && !bibleLoaded && (
           <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 flex items-center gap-2">
               <BookPlus className="w-4 h-4" />
@@ -474,7 +375,7 @@ export function TranslationPanel() {
             </p>
           </div>
         )}
-        {hebrewText && isGuest && !bibleLoaded && !siddurLoaded && (
+        {hebrewText && isGuest && !bibleLoaded && (
           <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <p className="text-sm text-gray-600 flex items-center gap-2">
               <BookPlus className="w-4 h-4" />
@@ -605,19 +506,12 @@ export function TranslationPanel() {
                 >
                   load from URL
                 </span>
-                ,{" "}
+                , or{" "}
                 <span
                   className="text-purple-600 underline cursor-pointer pointer-events-auto"
                   onClick={() => setShowBibleInput(true)}
                 >
                   load from Bible
-                </span>
-                , or{" "}
-                <span
-                  className="text-teal-600 underline cursor-pointer pointer-events-auto"
-                  onClick={() => setShowSiddurModal(true)}
-                >
-                  load from Siddur
                 </span>
               </div>
             </div>
@@ -664,14 +558,6 @@ export function TranslationPanel() {
           position={selectedWord.position}
           onClose={() => setSelectedWord(null)}
           onWordSaved={loadSavedWords}
-        />
-      )}
-
-      {showSiddurModal && (
-        <SiddurSelectionModal
-          onClose={() => setShowSiddurModal(false)}
-          onLoad={loadFromSiddur}
-          loading={loadingSiddur}
         />
       )}
     </div>
