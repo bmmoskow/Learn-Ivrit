@@ -30,9 +30,13 @@ export function Dashboard() {
         .select('*')
         .eq('user_id', user.id);
 
-      const { data: statsData } = await supabase
+      // Fetch weak words with JOIN to avoid N+1 queries
+      const { data: weakWordsData } = await supabase
         .from('word_statistics')
-        .select('*')
+        .select(`
+          *,
+          vocabulary_words (*)
+        `)
         .eq('user_id', user.id)
         .order('confidence_score', { ascending: true })
         .limit(5);
@@ -44,17 +48,28 @@ export function Dashboard() {
         .order('completed_at', { ascending: false })
         .limit(5);
 
-      const weakWords = statsData
-        ? await Promise.all(
-            statsData.map(async (stat) => {
-              const { data: word } = await supabase
-                .from('vocabulary_words')
-                .select('*')
-                .eq('id', stat.word_id)
-                .maybeSingle();
-              return word ? { ...word, statistics: stat } : null;
-            })
-          ).then(words => words.filter(Boolean) as Array<VocabularyWord & { statistics: WordStatistics }>)
+      // Transform the joined data to match expected structure
+      const weakWords = weakWordsData
+        ? weakWordsData
+            .filter(item => item.vocabulary_words)
+            .map(item => ({
+              ...(Array.isArray(item.vocabulary_words)
+                ? item.vocabulary_words[0]
+                : item.vocabulary_words),
+              statistics: {
+                id: item.id,
+                user_id: item.user_id,
+                word_id: item.word_id,
+                correct_count: item.correct_count,
+                incorrect_count: item.incorrect_count,
+                total_attempts: item.total_attempts,
+                consecutive_correct: item.consecutive_correct,
+                last_tested: item.last_tested,
+                confidence_score: item.confidence_score,
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+              }
+            })) as Array<VocabularyWord & { statistics: WordStatistics }>
         : [];
 
       const averageScore = testsData && testsData.length > 0
