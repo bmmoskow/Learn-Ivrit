@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, VocabularyWord, WordStatistics } from '../lib/supabase';
+import { supabase } from '../../supabase/client';
+import type { Tables } from '../../supabase/types';
 import { selectTestWords, calculateConfidenceScore, shuffleArray, WordWithStats } from '../utils/adaptiveAlgorithm';
 import { FlashcardTest } from './tests/FlashcardTest';
 import { MultipleChoiceTest } from './tests/MultipleChoiceTest';
@@ -73,14 +74,16 @@ export function TestPanel() {
       const { data: vocabData, error: vocabError } = await supabase
         .from('vocabulary_words')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .limit(1000);
 
       if (vocabError) throw vocabError;
 
       const { data: statsData, error: statsError } = await supabase
         .from('word_statistics')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .limit(1000);
 
       if (statsError) throw statsError;
 
