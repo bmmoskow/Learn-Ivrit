@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, VocabularyWord, WordStatistics, UserTest } from '../lib/supabase';
+import { supabase } from '../../supabase/client';
+import type { Tables } from '../../supabase/types';
+
+type VocabularyWord = Tables<'vocabulary_words'>;
+type WordStatistics = Tables<'word_statistics'>;
+type UserTest = Tables<'user_tests'>;
 import { BookOpen, Target, TrendingUp, Award, Clock, Flame } from 'lucide-react';
 
 export function Dashboard() {
@@ -28,7 +33,8 @@ export function Dashboard() {
       const { data: wordsData } = await supabase
         .from('vocabulary_words')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .limit(1000);
 
       // Fetch weak words with JOIN to avoid N+1 queries
       const { data: weakWordsData } = await supabase
