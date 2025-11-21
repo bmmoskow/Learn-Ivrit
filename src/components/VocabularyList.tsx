@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, VocabularyWord, WordStatistics } from '../lib/supabase';
+import { supabase } from '../../supabase/client';
+import type { Tables } from '../../supabase/types';
 import { Loader2, Search, Trash2, Edit2, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { defaultVocabulary } from '../data/defaultVocabulary';
+
+type VocabularyWord = Tables<'vocabulary_words'>;
+type WordStatistics = Tables<'word_statistics'>;
 
 type VocabWithStats = VocabularyWord & {
   statistics?: WordStatistics;
@@ -54,14 +58,16 @@ export function VocabularyList() {
         .from('vocabulary_words')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1000);
 
       if (vocabError) throw vocabError;
 
       const { data: statsData, error: statsError } = await supabase
         .from('word_statistics')
         .select('*')
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .limit(1000);
 
       if (statsError) throw statsError;
 
