@@ -113,19 +113,54 @@ export function TranslationPanel() {
 
     try {
       const reference = `${bookToLoad}.${chapterToLoad}`;
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch?reference=${encodeURIComponent(reference)}`;
 
-      const response = await fetch(apiUrl, {
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-      });
+      let data = null;
 
-      if (!response.ok) {
-        throw new Error("Failed to load Bible chapter");
+      if (!isGuest && user) {
+        const { data: cachedData } = await supabase
+          .from('sefaria_cache')
+          .select('*')
+          .eq('reference', reference)
+          .maybeSingle();
+
+        if (cachedData) {
+          data = cachedData.content;
+
+          await supabase
+            .from('sefaria_cache')
+            .update({
+              last_accessed: new Date().toISOString(),
+              access_count: (cachedData.access_count || 0) + 1
+            })
+            .eq('reference', reference);
+        }
       }
 
-      const data = await response.json();
+      if (!data) {
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch?reference=${encodeURIComponent(reference)}`;
+
+        const response = await fetch(apiUrl, {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load Bible chapter");
+        }
+
+        data = await response.json();
+
+        if (!isGuest && user) {
+          await supabase
+            .from('sefaria_cache')
+            .insert({
+              reference,
+              content: data
+            });
+        }
+      }
+
       const hebrewVerses = data.he || [];
       const versesWithNumbers = hebrewVerses.map((verse: string, index: number) => {
         const cleanVerse = removeTrope(stripHtml(verse));
