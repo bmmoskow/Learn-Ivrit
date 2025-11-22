@@ -113,6 +113,7 @@ export function TranslationPanel() {
 
     setLoadingBible(true);
     setError("");
+    setEnglishText("");
 
     try {
       const reference = `${bookToLoad}.${chapterToLoad}`;
