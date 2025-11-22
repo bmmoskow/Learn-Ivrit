@@ -45,9 +45,9 @@ export function TranslationPanel() {
   });
 
   useEffect(() => {
-    if (hebrewText.trim()) {
+    if (hebrewText.trim() && !englishText) {
       translateText();
-    } else {
+    } else if (!hebrewText.trim()) {
       setEnglishText("");
     }
   }, [hebrewText]);
