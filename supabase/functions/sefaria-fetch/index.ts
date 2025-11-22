@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Cache miss for ${normalizedRef}, fetching from Sefaria`);
 
-    const sefariaUrl = `https://www.sefaria.org/api/v3/texts/${normalizedRef}`;
+    const sefariaUrl = `https://www.sefaria.org/api/texts/${normalizedRef}?context=0`;
     const sefariaResponse = await fetch(sefariaUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0',
@@ -96,26 +96,6 @@ Deno.serve(async (req: Request) => {
 
     const data = await sefariaResponse.json();
     console.log(`Successfully fetched ${normalizedRef}`);
-
-    if (!data.versions || data.versions.length === 0) {
-      console.error(`No versions found for ${normalizedRef}`);
-      console.error(`Data structure:`, JSON.stringify(data, null, 2));
-
-      return new Response(
-        JSON.stringify({
-          error: "No text versions available for this reference",
-          reference: normalizedRef,
-          availableData: Object.keys(data)
-        }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
 
     const { error: insertError } = await supabase
       .from("sefaria_cache")
