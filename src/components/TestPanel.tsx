@@ -73,23 +73,24 @@ export function TestPanel() {
     try {
       const { data: vocabData, error: vocabError } = await supabase
         .from('vocabulary_words')
-        .select('*')
+        .select(`
+          *,
+          word_statistics (*)
+        `)
         .eq('user_id', user.id)
         .limit(1000);
 
       if (vocabError) throw vocabError;
 
-      const { data: statsData, error: statsError } = await supabase
-        .from('word_statistics')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(1000);
-
-      if (statsError) throw statsError;
-
       const wordsWithStats = vocabData.map(word => {
-        const stats = statsData.find(s => s.word_id === word.id);
-        return { ...word, statistics: stats };
+        const stats = Array.isArray(word.word_statistics)
+          ? word.word_statistics[0]
+          : word.word_statistics;
+        return {
+          ...word,
+          statistics: stats,
+          word_statistics: undefined
+        };
       });
 
       setWords(wordsWithStats);
@@ -115,42 +116,46 @@ export function TestPanel() {
     setShowResults(false);
   };
 
-  const saveQuestionResult = async (question: TestQuestion) => {
+  const batchSaveQuestionResults = async (questions: TestQuestion[]) => {
     if (isGuest || !user) return;
 
     try {
-      // Update word statistics immediately
-      const stats = question.word.statistics;
-      const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
-      const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
-      const newTotalAttempts = (stats?.total_attempts || 0) + 1;
-      const newConsecutiveCorrect = question.isCorrect
-        ? (stats?.consecutive_correct || 0) + 1
-        : 0;
+      const timestamp = new Date().toISOString();
+      const statsUpdates = questions.map(question => {
+        const stats = question.word.statistics;
+        const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
+        const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
+        const newTotalAttempts = (stats?.total_attempts || 0) + 1;
+        const newConsecutiveCorrect = question.isCorrect
+          ? (stats?.consecutive_correct || 0) + 1
+          : 0;
 
-      const newConfidenceScore = calculateConfidenceScore({
-        correct_count: newCorrectCount,
-        incorrect_count: newIncorrectCount,
-        total_attempts: newTotalAttempts,
-        consecutive_correct: newConsecutiveCorrect
-      });
+        const newConfidenceScore = calculateConfidenceScore({
+          correct_count: newCorrectCount,
+          incorrect_count: newIncorrectCount,
+          total_attempts: newTotalAttempts,
+          consecutive_correct: newConsecutiveCorrect
+        });
 
-      await supabase
-        .from('word_statistics')
-        .upsert({
+        return {
           user_id: user.id,
           word_id: question.word.id,
           correct_count: newCorrectCount,
           incorrect_count: newIncorrectCount,
           total_attempts: newTotalAttempts,
           consecutive_correct: newConsecutiveCorrect,
-          last_tested: new Date().toISOString(),
+          last_tested: timestamp,
           confidence_score: newConfidenceScore
-        }, {
+        };
+      });
+
+      await supabase
+        .from('word_statistics')
+        .upsert(statsUpdates, {
           onConflict: 'user_id,word_id'
         });
     } catch (err) {
-      console.error('Error saving question result:', err);
+      console.error('Error saving question results:', err);
     }
   };
 
@@ -166,9 +171,6 @@ export function TestPanel() {
     };
 
     setCurrentTest(updatedQuestions);
-
-    // Save result asynchronously without blocking
-    saveQuestionResult(updatedQuestions[currentQuestionIndex]);
 
     if (currentQuestionIndex < currentTest.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -196,7 +198,6 @@ export function TestPanel() {
 
     try {
       const saveTestSummary = async () => {
-        // Save overall test summary
         const { data: testData, error: testError } = await supabase
           .from('user_tests')
           .insert({
@@ -214,26 +215,20 @@ export function TestPanel() {
 
         setTestId(testData.id);
 
-        // Save individual test responses in the background
-        for (const question of completedTest) {
-          void (async () => {
-            try {
-              await supabase
-                .from('test_responses')
-                .insert({
-                  test_id: testData.id,
-                  user_id: user.id,
-                  word_id: question.word.id,
-                  user_answer: question.userAnswer || '',
-                  correct_answer: question.word.english_translation,
-                  is_correct: question.isCorrect || false,
-                  response_time_seconds: question.responseTime
-                });
-            } catch (err) {
-              console.error('Error saving test response:', err);
-            }
-          })();
-        }
+        const testResponses = completedTest.map(question => ({
+          test_id: testData.id,
+          user_id: user.id,
+          word_id: question.word.id,
+          user_answer: question.userAnswer || '',
+          correct_answer: question.word.english_translation,
+          is_correct: question.isCorrect || false,
+          response_time_seconds: question.responseTime
+        }));
+
+        await Promise.all([
+          supabase.from('test_responses').insert(testResponses),
+          batchSaveQuestionResults(completedTest)
+        ]);
       };
 
       await Promise.all([minDisplayTime, saveTestSummary()]);

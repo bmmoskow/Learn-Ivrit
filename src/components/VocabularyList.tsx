@@ -56,24 +56,25 @@ export function VocabularyList() {
     try {
       const { data: vocabData, error: vocabError } = await supabase
         .from('vocabulary_words')
-        .select('*')
+        .select(`
+          *,
+          word_statistics (*)
+        `)
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1000);
 
       if (vocabError) throw vocabError;
 
-      const { data: statsData, error: statsError } = await supabase
-        .from('word_statistics')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(1000);
-
-      if (statsError) throw statsError;
-
       const wordsWithStats = vocabData.map(word => {
-        const stats = statsData.find(s => s.word_id === word.id);
-        return { ...word, statistics: stats };
+        const stats = Array.isArray(word.word_statistics)
+          ? word.word_statistics[0]
+          : word.word_statistics;
+        return {
+          ...word,
+          statistics: stats,
+          word_statistics: undefined
+        };
       });
 
       const sorted = sortWords(wordsWithStats);
