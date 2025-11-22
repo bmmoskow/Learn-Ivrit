@@ -78,7 +78,7 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
       if (!forceRefresh) {
         const { data: cachedData } = await supabase
           .from('word_definitions')
-          .select('*')
+          .select('word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count')
           .eq('word', currentWord)
           .maybeSingle();
 

@@ -74,8 +74,27 @@ export function TestPanel() {
       const { data: vocabData, error: vocabError } = await supabase
         .from('vocabulary_words')
         .select(`
-          *,
-          word_statistics (*)
+          id,
+          user_id,
+          hebrew_word,
+          english_translation,
+          definition,
+          transliteration,
+          created_at,
+          updated_at,
+          word_statistics (
+            id,
+            user_id,
+            word_id,
+            correct_count,
+            incorrect_count,
+            total_attempts,
+            consecutive_correct,
+            last_tested,
+            confidence_score,
+            created_at,
+            updated_at
+          )
         `)
         .eq('user_id', user.id)
         .limit(1000);

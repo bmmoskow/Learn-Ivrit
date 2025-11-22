@@ -32,7 +32,7 @@ export function Dashboard() {
     try {
       const { data: wordsData } = await supabase
         .from('vocabulary_words')
-        .select('*')
+        .select('id')
         .eq('user_id', user.id)
         .limit(1000);
 
@@ -40,8 +40,27 @@ export function Dashboard() {
       const { data: weakWordsData } = await supabase
         .from('word_statistics')
         .select(`
-          *,
-          vocabulary_words (*)
+          id,
+          user_id,
+          word_id,
+          correct_count,
+          incorrect_count,
+          total_attempts,
+          consecutive_correct,
+          last_tested,
+          confidence_score,
+          created_at,
+          updated_at,
+          vocabulary_words (
+            id,
+            user_id,
+            hebrew_word,
+            english_translation,
+            definition,
+            transliteration,
+            created_at,
+            updated_at
+          )
         `)
         .eq('user_id', user.id)
         .order('confidence_score', { ascending: true })
@@ -49,7 +68,7 @@ export function Dashboard() {
 
       const { data: testsData } = await supabase
         .from('user_tests')
-        .select('*')
+        .select('id, user_id, test_type, total_questions, correct_answers, score_percentage, duration_seconds, completed_at, created_at')
         .eq('user_id', user.id)
         .order('completed_at', { ascending: false })
         .limit(5);

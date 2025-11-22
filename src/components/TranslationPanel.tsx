@@ -30,7 +30,10 @@ export function TranslationPanel() {
   const loadSavedWords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase.from("vocabulary_words").select("hebrew_word").eq("user_id", user.id);
+    const { data, error } = await supabase
+      .from("vocabulary_words")
+      .select("hebrew_word")
+      .eq("user_id", user.id);
 
     if (!error && data) {
       setSavedWords(new Set(data.map((w) => w.hebrew_word)));
@@ -119,7 +122,7 @@ export function TranslationPanel() {
       if (!isGuest && user) {
         const { data: cachedData } = await supabase
           .from('sefaria_cache')
-          .select('*')
+          .select('content, access_count')
           .eq('reference', reference)
           .maybeSingle();
 

@@ -26,11 +26,12 @@ export function VocabularyList() {
     transliteration: ''
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
+  const [totalCount, setTotalCount] = useState(0);
+  const itemsPerPage = 50;
 
   useEffect(() => {
     loadVocabulary();
-  }, [user, isGuest, sortBy]);
+  }, [user, isGuest, sortBy, currentPage]);
 
   const loadVocabulary = async () => {
     if (isGuest) {
@@ -54,17 +55,49 @@ export function VocabularyList() {
     setLoading(true);
 
     try {
-      const { data: vocabData, error: vocabError } = await supabase
+      const from = (currentPage - 1) * itemsPerPage;
+      const to = from + itemsPerPage - 1;
+
+      let query = supabase
         .from('vocabulary_words')
         .select(`
-          *,
-          word_statistics (*)
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1000);
+          id,
+          user_id,
+          hebrew_word,
+          english_translation,
+          definition,
+          transliteration,
+          created_at,
+          updated_at,
+          word_statistics (
+            id,
+            user_id,
+            word_id,
+            correct_count,
+            incorrect_count,
+            total_attempts,
+            consecutive_correct,
+            last_tested,
+            confidence_score,
+            created_at,
+            updated_at
+          )
+        `, { count: 'exact' })
+        .eq('user_id', user.id);
+
+      if (sortBy === 'date') {
+        query = query.order('created_at', { ascending: false });
+      } else if (sortBy === 'alphabetical') {
+        query = query.order('hebrew_word', { ascending: true });
+      }
+
+      query = query.range(from, to);
+
+      const { data: vocabData, error: vocabError, count } = await query;
 
       if (vocabError) throw vocabError;
+
+      setTotalCount(count || 0);
 
       const wordsWithStats = vocabData.map(word => {
         const stats = Array.isArray(word.word_statistics)
@@ -77,8 +110,12 @@ export function VocabularyList() {
         };
       });
 
-      const sorted = sortWords(wordsWithStats);
-      setWords(sorted);
+      if (sortBy === 'performance') {
+        const sorted = sortWordsByPerformance(wordsWithStats);
+        setWords(sorted);
+      } else {
+        setWords(wordsWithStats);
+      }
     } catch (err) {
       console.error('Error loading vocabulary:', err);
     } finally {
@@ -86,24 +123,12 @@ export function VocabularyList() {
     }
   };
 
-  const sortWords = (wordsToSort: VocabWithStats[]) => {
-    const sorted = [...wordsToSort];
-
-    switch (sortBy) {
-      case 'alphabetical':
-        return sorted.sort((a, b) => a.hebrew_word.localeCompare(b.hebrew_word));
-      case 'performance':
-        return sorted.sort((a, b) => {
-          const aScore = a.statistics?.confidence_score || 0;
-          const bScore = b.statistics?.confidence_score || 0;
-          return aScore - bScore;
-        });
-      case 'date':
-      default:
-        return sorted.sort((a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-    }
+  const sortWordsByPerformance = (wordsToSort: VocabWithStats[]) => {
+    return [...wordsToSort].sort((a, b) => {
+      const scoreA = a.statistics?.confidence_score || 0;
+      const scoreB = b.statistics?.confidence_score || 0;
+      return scoreA - scoreB;
+    });
   };
 
   const filteredWords = words.filter(word =>
@@ -111,11 +136,8 @@ export function VocabularyList() {
     word.english_translation.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Pagination calculations
-  const totalPages = Math.ceil(filteredWords.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const paginatedWords = filteredWords.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const paginatedWords = filteredWords;
 
   // Reset to page 1 when search or sort changes
   useEffect(() => {
@@ -366,7 +388,7 @@ export function VocabularyList() {
               {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
                   <div className="text-sm text-gray-600">
-                    Showing {startIndex + 1}-{Math.min(endIndex, filteredWords.length)} of {filteredWords.length} words
+                    Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} words
                   </div>
                   <div className="flex items-center gap-2">
                     <button
