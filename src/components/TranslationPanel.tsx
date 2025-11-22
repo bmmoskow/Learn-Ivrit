@@ -119,15 +119,18 @@ export function TranslationPanel() {
 
       let data = null;
 
+      let cachedTranslation = null;
+
       if (!isGuest && user) {
         const { data: cachedData } = await supabase
           .from('sefaria_cache')
-          .select('content, access_count')
+          .select('content, access_count, translation')
           .eq('reference', reference)
           .maybeSingle();
 
         if (cachedData) {
           data = cachedData.content;
+          cachedTranslation = cachedData.translation;
 
           await supabase
             .from('sefaria_cache')
@@ -172,6 +175,11 @@ export function TranslationPanel() {
       const hebrewText = versesWithNumbers.join("\n\n");
 
       setHebrewText(hebrewText);
+
+      if (cachedTranslation) {
+        setEnglishText(cachedTranslation);
+      }
+
       setShowBibleInput(false);
       setBibleLoaded(true);
       setCurrentBibleRef({ book: bookToLoad, chapter: chapterToLoad });
@@ -240,6 +248,14 @@ export function TranslationPanel() {
 
       const data = await response.json();
       setEnglishText(data.translation);
+
+      if (bibleLoaded && currentBibleRef && !isGuest && user) {
+        const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
+        await supabase
+          .from('sefaria_cache')
+          .update({ translation: data.translation })
+          .eq('reference', reference);
+      }
     } catch (err) {
       setError("Failed to translate. Please try again.");
       console.error("Translation error:", err);
