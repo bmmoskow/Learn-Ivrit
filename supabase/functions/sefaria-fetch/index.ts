@@ -36,6 +36,21 @@ Deno.serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const { error: deleteError } = await supabase
+      .from("sefaria_cache")
+      .delete()
+      .lt("cached_at", thirtyDaysAgo.toISOString())
+      .lt("last_accessed", sevenDaysAgo.toISOString());
+
+    if (deleteError) {
+      console.error("Cache cleanup error:", deleteError);
+    }
+
     const normalizedRef = reference.trim();
 
     const { data: cached, error: cacheError } = await supabase
