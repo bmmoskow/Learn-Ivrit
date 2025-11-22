@@ -93,6 +93,22 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
             shortEnglish: cachedData.short_english
           };
           shortEnglish = cachedData.short_english;
+
+          // Update access tracking
+          await supabase
+            .from('word_definitions')
+            .update({
+              last_accessed: new Date().toISOString(),
+              access_count: (cachedData.access_count || 0) + 1
+            })
+            .eq('word', currentWord);
+
+          // Run cleanup occasionally (1% of cache hits)
+          if (Math.random() < 0.01) {
+            supabase.rpc('cleanup_word_definitions_cache').then(() => {
+              console.log('Word definitions cache cleanup completed');
+            });
+          }
         }
       }
 
@@ -143,7 +159,9 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
             examples: data.examples || [],
             notes: data.notes || '',
             forms: data.forms || [],
-            short_english: shortEnglish
+            short_english: shortEnglish,
+            last_accessed: new Date().toISOString(),
+            access_count: 1
           }, {
             onConflict: 'word'
           });
