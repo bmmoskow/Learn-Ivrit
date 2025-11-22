@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,9 +32,41 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    console.log(`Fetching from Sefaria: ${reference}`);
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const sefariaUrl = `https://www.sefaria.org/api/v3/texts/${reference}`;
+    const normalizedRef = reference.trim();
+
+    const { data: cached, error: cacheError } = await supabase
+      .from("sefaria_cache")
+      .select("*")
+      .eq("reference", normalizedRef)
+      .maybeSingle();
+
+    if (cached && !cacheError) {
+      console.log(`Cache hit for ${normalizedRef}`);
+
+      await supabase
+        .from("sefaria_cache")
+        .update({
+          last_accessed: new Date().toISOString(),
+          access_count: cached.access_count + 1,
+        })
+        .eq("id", cached.id);
+
+      return new Response(JSON.stringify(cached.content), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+          "X-Cache": "HIT",
+        },
+      });
+    }
+
+    console.log(`Cache miss for ${normalizedRef}, fetching from Sefaria`);
+
+    const sefariaUrl = `https://www.sefaria.org/api/v3/texts/${normalizedRef}`;
     const sefariaResponse = await fetch(sefariaUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0',
@@ -42,13 +75,13 @@ Deno.serve(async (req: Request) => {
 
     if (!sefariaResponse.ok) {
       const errorText = await sefariaResponse.text();
-      console.error(`Sefaria API error for ${reference}: ${sefariaResponse.status}`);
+      console.error(`Sefaria API error for ${normalizedRef}: ${sefariaResponse.status}`);
       console.error(`Error details: ${errorText}`);
 
       return new Response(
         JSON.stringify({
           error: `Sefaria API returned ${sefariaResponse.status}`,
-          reference: reference,
+          reference: normalizedRef,
           details: errorText
         }),
         {
@@ -62,17 +95,16 @@ Deno.serve(async (req: Request) => {
     }
 
     const data = await sefariaResponse.json();
-    console.log(`Successfully fetched ${reference}`);
+    console.log(`Successfully fetched ${normalizedRef}`);
 
-    // Check if we have the expected data structure
     if (!data.versions || data.versions.length === 0) {
-      console.error(`No versions found for ${reference}`);
+      console.error(`No versions found for ${normalizedRef}`);
       console.error(`Data structure:`, JSON.stringify(data, null, 2));
 
       return new Response(
         JSON.stringify({
-          error: "No text versions available for this prayer",
-          reference: reference,
+          error: "No text versions available for this reference",
+          reference: normalizedRef,
           availableData: Object.keys(data)
         }),
         {
@@ -85,10 +117,27 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    const { error: insertError } = await supabase
+      .from("sefaria_cache")
+      .insert({
+        reference: normalizedRef,
+        content: data,
+        cached_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
+        access_count: 1,
+      });
+
+    if (insertError) {
+      console.error(`Failed to cache ${normalizedRef}:`, insertError);
+    } else {
+      console.log(`Cached ${normalizedRef}`);
+    }
+
     return new Response(JSON.stringify(data), {
       headers: {
         ...corsHeaders,
         "Content-Type": "application/json",
+        "X-Cache": "MISS",
       },
     });
   } catch (error) {
