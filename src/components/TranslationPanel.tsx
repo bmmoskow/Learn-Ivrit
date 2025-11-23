@@ -76,6 +76,9 @@ export function TranslationPanel() {
       }
 
       const data = await response.json();
+      console.log('Hebrew text loaded from URL, length:', data.content?.length);
+      console.log('First 200 chars:', data.content?.substring(0, 200));
+      console.log('Last 200 chars:', data.content?.substring(data.content?.length - 200));
       setHebrewText(data.content);
       setShowUrlInput(false);
       setUrlInput("");
@@ -248,6 +251,9 @@ export function TranslationPanel() {
       }
 
       const data = await response.json();
+      console.log('Translation received, length:', data.translation?.length);
+      console.log('First 100 chars:', data.translation?.substring(0, 100));
+      console.log('Last 100 chars:', data.translation?.substring(data.translation?.length - 100));
       setEnglishText(data.translation);
 
       if (bibleLoaded && currentBibleRef && !isGuest && user) {
