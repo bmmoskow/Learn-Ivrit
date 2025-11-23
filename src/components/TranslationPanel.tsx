@@ -313,8 +313,17 @@ export function TranslationPanel() {
   const renderSyncedText = () => {
     if (!hebrewText) return null;
 
-    const hebrewParagraphs = hebrewText.split(/\n\n+/);
-    const englishParagraphs = englishText ? englishText.split(/\n\n+/) : [];
+    const hebrewParagraphs = hebrewText
+      .split(/\n\s*\n/)
+      .map(p => p.trim())
+      .filter(p => p.length > 0);
+
+    const englishParagraphs = englishText
+      ? englishText
+          .split(/\n\s*\n/)
+          .map(p => p.trim())
+          .filter(p => p.length > 0)
+      : [];
 
     console.log('Hebrew paragraphs:', hebrewParagraphs.length);
     console.log('English paragraphs:', englishParagraphs.length);
@@ -331,7 +340,7 @@ export function TranslationPanel() {
     return (
       <div className="space-y-6">
         {hebrewParagraphs.map((hebrewPara, paraIndex) => {
-          const words = hebrewPara.split(/(\s+|\n)/);
+          const words = hebrewPara.split(/(\s+)/);
           const englishPara = englishParagraphs[paraIndex] || "";
 
           return (
