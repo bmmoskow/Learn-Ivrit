@@ -101,7 +101,7 @@ function extractTextFromHtml(html: string): string {
   const filteredLines = lines.filter(line => {
     const trimmed = line.trim();
     if (trimmed.length === 0) return false;
-    if (trimmed.length < 15) return false;
+    if (trimmed.length < 10) return false;
     if (/^(תמונה|צילום|photo|credit|image):/i.test(trimmed)) return false;
     if (/\.(jpg|jpeg|png|gif|webp)$/i.test(trimmed)) return false;
     return true;
@@ -366,7 +366,9 @@ FORMS:
       let title = structuredData.title || '';
       let content = '';
 
-      if (structuredData.articleBody) {
+      const htmlExtracted = extractTextFromHtml(html);
+
+      if (structuredData.articleBody && structuredData.articleBody.length > htmlExtracted.length * 0.7) {
         const parts = [];
         if (title) parts.push(title);
         if (structuredData.description && !structuredData.articleBody.includes(structuredData.description)) {
@@ -375,7 +377,7 @@ FORMS:
         parts.push(structuredData.articleBody);
         content = parts.join('\n\n\n\n');
       } else {
-        content = extractTextFromHtml(html);
+        content = htmlExtracted;
       }
 
       if (!title) {
