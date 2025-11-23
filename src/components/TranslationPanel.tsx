@@ -313,61 +313,33 @@ export function TranslationPanel() {
   const renderSyncedText = () => {
     if (!hebrewText) return null;
 
-    console.log('Hebrew text length:', hebrewText.length);
-    console.log('Hebrew text sample (first 500 chars):', hebrewText.substring(0, 500));
-    console.log('Newline count in Hebrew:', (hebrewText.match(/\n/g) || []).length);
-    console.log('Hebrew text contains \\n\\n:', hebrewText.includes('\n\n'));
-
-    const hebrewParagraphs = hebrewText
-      .split(/\n\n+/)
-      .map(p => p.trim())
-      .filter(p => p.length > 0);
-
-    const englishParagraphs = englishText
-      ? englishText
-          .split(/\n\n+/)
-          .map(p => p.trim())
-          .filter(p => p.length > 0)
+    const hebrewLines = hebrewText.split("\n").filter((line) => line.trim());
+    const englishLines = englishText
+      ? englishText.split("\n").filter((line) => line.trim())
       : [];
 
-    console.log('Hebrew paragraphs:', hebrewParagraphs.length);
-    console.log('English paragraphs:', englishParagraphs.length);
-    if (hebrewParagraphs.length > 0) {
-      console.log('First Hebrew paragraph:', hebrewParagraphs[0]);
-      if (hebrewParagraphs.length > 1) {
-        console.log('Second Hebrew paragraph:', hebrewParagraphs[1]);
-      }
-    }
-
-    if (englishParagraphs.length > hebrewParagraphs.length) {
-      const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join('\n\n');
-      if (hebrewParagraphs.length > 0 && extraEnglish.trim()) {
-        englishParagraphs[hebrewParagraphs.length - 1] =
-          englishParagraphs[hebrewParagraphs.length - 1] + '\n\n' + extraEnglish;
-        englishParagraphs.length = hebrewParagraphs.length;
-      }
-    }
+    const maxLines = Math.max(hebrewLines.length, englishLines.length);
 
     return (
-      <div className="space-y-12">
-        {hebrewParagraphs.map((hebrewPara, paraIndex) => {
-          const words = hebrewPara.split(/(\s+)/);
-          const englishPara = englishParagraphs[paraIndex] || "";
+      <div className="space-y-4">
+        {Array.from({ length: maxLines }).map((_, index) => {
+          const hebrewLine = hebrewLines[index] || "";
+          const englishLine = englishLines[index] || "";
+          const words = hebrewLine.split(/(\s+)/);
 
           return (
-            <div key={paraIndex} className="grid grid-cols-2 gap-6 pb-8 border-b border-gray-200 last:border-b-0 last:pb-0">
-              {/* Hebrew side */}
+            <div key={index} className="grid grid-cols-2 gap-6">
               <div className="text-xl leading-relaxed" dir="rtl" lang="he">
                 <p>
-                  {words.map((word, index) => {
+                  {words.map((word, wordIndex) => {
                     const trimmedWord = word.trim();
-                    if (!trimmedWord) return <span key={index}>{word}</span>;
+                    if (!trimmedWord) return <span key={wordIndex}>{word}</span>;
 
                     const isSaved = savedWords.has(trimmedWord);
 
                     return (
                       <span
-                        key={index}
+                        key={wordIndex}
                         onClick={handleWordClick}
                         className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
                           isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
@@ -379,14 +351,12 @@ export function TranslationPanel() {
                   })}
                 </p>
               </div>
-
-              {/* English side */}
               <div className="text-xl leading-relaxed">
                 <p>
                   {translating ? (
                     <span className="text-gray-400">Translating...</span>
-                  ) : englishPara ? (
-                    englishPara
+                  ) : englishLine ? (
+                    englishLine
                   ) : (
                     <span className="text-gray-400">Translation will appear here...</span>
                   )}
