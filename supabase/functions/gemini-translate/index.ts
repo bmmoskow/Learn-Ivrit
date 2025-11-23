@@ -161,13 +161,19 @@ Deno.serve(async (req: Request) => {
       }
 
       console.log(`Total chunks: ${chunks.length}`);
+      console.log(`Total paragraphs in source: ${paragraphs.length}`);
       chunks.forEach((chunk, i) => {
-        console.log(`Chunk ${i + 1} length: ${chunk.length} chars`);
+        const chunkParas = chunk.split(/\n\n+/).length;
+        console.log(`Chunk ${i + 1} length: ${chunk.length} chars, paragraphs: ${chunkParas}`);
       });
 
       const translations: string[] = [];
+      const chunkParagraphCounts: number[] = [];
 
       for (const chunk of chunks) {
+        const chunkParaCount = chunk.split(/\n\n+/).length;
+        chunkParagraphCounts.push(chunkParaCount);
+
         const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
         const response = await fetch(
@@ -201,19 +207,23 @@ Deno.serve(async (req: Request) => {
         const chunkTranslation = candidate?.content?.parts?.[0]?.text || "";
         const finishReason = candidate?.finishReason;
 
+        const translatedParaCount = chunkTranslation.trim().split(/\n\n+/).length;
         console.log(`Chunk ${translations.length + 1} finish reason:`, finishReason);
         console.log(`Chunk ${translations.length + 1} translation length:`, chunkTranslation.length);
+        console.log(`Chunk ${translations.length + 1} expected paragraphs: ${chunkParaCount}, got: ${translatedParaCount}`);
 
         if (finishReason === 'MAX_TOKENS') {
           console.warn('Translation was truncated due to MAX_TOKENS');
         }
 
         if (chunkTranslation) {
-          translations.push(chunkTranslation);
+          translations.push(chunkTranslation.trim());
         }
       }
 
       const translation = translations.join("\n\n");
+      const finalParaCount = translation.split(/\n\n+/).length;
+      console.log(`Final translation paragraphs: ${finalParaCount}, expected: ${paragraphs.length}`);
 
       return new Response(
         JSON.stringify({ translation }),
