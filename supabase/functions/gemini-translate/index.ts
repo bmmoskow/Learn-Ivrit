@@ -160,6 +160,11 @@ Deno.serve(async (req: Request) => {
         chunks.push(currentChunk.trim());
       }
 
+      console.log(`Total chunks: ${chunks.length}`);
+      chunks.forEach((chunk, i) => {
+        console.log(`Chunk ${i + 1} length: ${chunk.length} chars`);
+      });
+
       const translations: string[] = [];
 
       for (const chunk of chunks) {
@@ -192,7 +197,17 @@ Deno.serve(async (req: Request) => {
         }
 
         const data = await response.json();
-        const chunkTranslation = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const candidate = data.candidates?.[0];
+        const chunkTranslation = candidate?.content?.parts?.[0]?.text || "";
+        const finishReason = candidate?.finishReason;
+
+        console.log(`Chunk ${translations.length + 1} finish reason:`, finishReason);
+        console.log(`Chunk ${translations.length + 1} translation length:`, chunkTranslation.length);
+
+        if (finishReason === 'MAX_TOKENS') {
+          console.warn('Translation was truncated due to MAX_TOKENS');
+        }
+
         if (chunkTranslation) {
           translations.push(chunkTranslation);
         }
