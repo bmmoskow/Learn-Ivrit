@@ -313,33 +313,43 @@ export function TranslationPanel() {
   const renderSyncedText = () => {
     if (!hebrewText) return null;
 
-    const hebrewLines = hebrewText.split("\n").filter((line) => line.trim());
-    const englishLines = englishText
-      ? englishText.split("\n").filter((line) => line.trim())
-      : [];
+    const hebrewParagraphs = hebrewText.split(/\n\n+/);
+    const englishParagraphs = englishText ? englishText.split(/\n\n+/) : [];
 
-    const maxLines = Math.max(hebrewLines.length, englishLines.length);
+    console.log('Hebrew paragraphs:', hebrewParagraphs.length);
+    console.log('English paragraphs:', englishParagraphs.length);
+
+    if (englishParagraphs.length > hebrewParagraphs.length) {
+      const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join('\n\n');
+      if (hebrewParagraphs.length > 0 && extraEnglish.trim()) {
+        englishParagraphs[hebrewParagraphs.length - 1] =
+          englishParagraphs[hebrewParagraphs.length - 1] + '\n\n' + extraEnglish;
+        englishParagraphs.length = hebrewParagraphs.length;
+      }
+    }
 
     return (
-      <div className="space-y-4">
-        {Array.from({ length: maxLines }).map((_, index) => {
-          const hebrewLine = hebrewLines[index] || "";
-          const englishLine = englishLines[index] || "";
-          const words = hebrewLine.split(/(\s+)/);
+      <div className="space-y-6">
+        {hebrewParagraphs.map((hebrewPara, paraIndex) => {
+          const words = hebrewPara.split(/(\s+|\n)/);
+          const englishPara = englishParagraphs[paraIndex] || "";
 
           return (
-            <div key={index} className="grid grid-cols-2 gap-6">
+            <div key={paraIndex} className="grid grid-cols-2 gap-6">
+              {/* Hebrew side */}
               <div className="text-xl leading-relaxed" dir="rtl" lang="he">
-                <p>
-                  {words.map((word, wordIndex) => {
+                <p className="whitespace-pre-wrap">
+                  {words.map((word, index) => {
+                    if (word === '\n') return <br key={index} />;
+
                     const trimmedWord = word.trim();
-                    if (!trimmedWord) return <span key={wordIndex}>{word}</span>;
+                    if (!trimmedWord) return <span key={index}>{word}</span>;
 
                     const isSaved = savedWords.has(trimmedWord);
 
                     return (
                       <span
-                        key={wordIndex}
+                        key={index}
                         onClick={handleWordClick}
                         className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
                           isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
@@ -351,12 +361,14 @@ export function TranslationPanel() {
                   })}
                 </p>
               </div>
+
+              {/* English side */}
               <div className="text-xl leading-relaxed">
-                <p>
+                <p className="whitespace-pre-wrap">
                   {translating ? (
                     <span className="text-gray-400">Translating...</span>
-                  ) : englishLine ? (
-                    englishLine
+                  ) : englishPara ? (
+                    englishPara
                   ) : (
                     <span className="text-gray-400">Translation will appear here...</span>
                   )}
