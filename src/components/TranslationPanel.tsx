@@ -314,13 +314,13 @@ export function TranslationPanel() {
     if (!hebrewText) return null;
 
     const hebrewParagraphs = hebrewText
-      .split(/\n\s*\n/)
+      .split(/\n+/)
       .map(p => p.trim())
       .filter(p => p.length > 0);
 
     const englishParagraphs = englishText
       ? englishText
-          .split(/\n\s*\n/)
+          .split(/\n+/)
           .map(p => p.trim())
           .filter(p => p.length > 0)
       : [];
@@ -347,10 +347,8 @@ export function TranslationPanel() {
             <div key={paraIndex} className="grid grid-cols-2 gap-6">
               {/* Hebrew side */}
               <div className="text-xl leading-relaxed" dir="rtl" lang="he">
-                <p className="whitespace-pre-wrap">
+                <p>
                   {words.map((word, index) => {
-                    if (word === '\n') return <br key={index} />;
-
                     const trimmedWord = word.trim();
                     if (!trimmedWord) return <span key={index}>{word}</span>;
 
@@ -373,7 +371,7 @@ export function TranslationPanel() {
 
               {/* English side */}
               <div className="text-xl leading-relaxed">
-                <p className="whitespace-pre-wrap">
+                <p>
                   {translating ? (
                     <span className="text-gray-400">Translating...</span>
                   ) : englishPara ? (
