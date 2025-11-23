@@ -162,11 +162,17 @@ Deno.serve(async (req: Request) => {
       if (cachedTranslation && !cacheError) {
         console.log('Using cached translation for hash:', contentHash);
 
+        const { data: currentData } = await supabase
+          .from('translation_cache')
+          .select('access_count')
+          .eq('id', cachedTranslation.id)
+          .single();
+
         await supabase
           .from('translation_cache')
           .update({
             last_accessed: new Date().toISOString(),
-            access_count: supabase.sql`access_count + 1`
+            access_count: (currentData?.access_count || 0) + 1
           })
           .eq('id', cachedTranslation.id);
 
