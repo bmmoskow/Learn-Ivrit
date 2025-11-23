@@ -319,12 +319,18 @@ export function TranslationPanel() {
     console.log('Hebrew paragraphs:', hebrewParagraphs.length);
     console.log('English paragraphs:', englishParagraphs.length);
 
-    const maxParagraphs = Math.max(hebrewParagraphs.length, englishParagraphs.length);
+    if (englishParagraphs.length > hebrewParagraphs.length) {
+      const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join('\n\n');
+      if (hebrewParagraphs.length > 0 && extraEnglish.trim()) {
+        englishParagraphs[hebrewParagraphs.length - 1] =
+          englishParagraphs[hebrewParagraphs.length - 1] + '\n\n' + extraEnglish;
+        englishParagraphs.length = hebrewParagraphs.length;
+      }
+    }
 
     return (
       <div className="space-y-6">
-        {Array.from({ length: maxParagraphs }).map((_, paraIndex) => {
-          const hebrewPara = hebrewParagraphs[paraIndex] || "";
+        {hebrewParagraphs.map((hebrewPara, paraIndex) => {
           const words = hebrewPara.split(/(\s+|\n)/);
           const englishPara = englishParagraphs[paraIndex] || "";
 
@@ -333,7 +339,7 @@ export function TranslationPanel() {
               {/* Hebrew side */}
               <div className="text-xl leading-relaxed" dir="rtl" lang="he">
                 <p className="whitespace-pre-wrap">
-                  {hebrewPara ? words.map((word, index) => {
+                  {words.map((word, index) => {
                     if (word === '\n') return <br key={index} />;
 
                     const trimmedWord = word.trim();
@@ -352,7 +358,7 @@ export function TranslationPanel() {
                         {word}
                       </span>
                     );
-                  }) : null}
+                  })}
                 </p>
               </div>
 
