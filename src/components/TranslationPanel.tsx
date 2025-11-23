@@ -319,13 +319,13 @@ export function TranslationPanel() {
     console.log('Hebrew text contains \\n\\n:', hebrewText.includes('\n\n'));
 
     const hebrewParagraphs = hebrewText
-      .split(/\n+/)
+      .split(/\n\n+/)
       .map(p => p.trim())
       .filter(p => p.length > 0);
 
     const englishParagraphs = englishText
       ? englishText
-          .split(/\n+/)
+          .split(/\n\n+/)
           .map(p => p.trim())
           .filter(p => p.length > 0)
       : [];
