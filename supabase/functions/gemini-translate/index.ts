@@ -143,16 +143,17 @@ Deno.serve(async (req: Request) => {
       const lineBreakInstruction = " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
 
       const MAX_CHUNK_LENGTH = 3000;
-      const sentences = text.split(/(?<=[.!?؟،])\s+/);
+      const paragraphs = text.split(/\n\n+/);
       const chunks: string[] = [];
       let currentChunk = "";
 
-      for (const sentence of sentences) {
-        if ((currentChunk + sentence).length > MAX_CHUNK_LENGTH && currentChunk) {
+      for (const paragraph of paragraphs) {
+        const paragraphWithBreak = currentChunk ? "\n\n" + paragraph : paragraph;
+        if ((currentChunk + paragraphWithBreak).length > MAX_CHUNK_LENGTH && currentChunk) {
           chunks.push(currentChunk.trim());
-          currentChunk = sentence;
+          currentChunk = paragraph;
         } else {
-          currentChunk += (currentChunk ? " " : "") + sentence;
+          currentChunk += paragraphWithBreak;
         }
       }
       if (currentChunk) {
@@ -197,7 +198,7 @@ Deno.serve(async (req: Request) => {
         }
       }
 
-      const translation = translations.join(" ");
+      const translation = translations.join("\n\n");
 
       return new Response(
         JSON.stringify({ translation }),
@@ -372,7 +373,7 @@ FORMS:
           parts.push(structuredData.description);
         }
         parts.push(structuredData.articleBody);
-        content = parts.join('\n\n');
+        content = parts.join('\n\n\n\n');
       } else {
         content = extractTextFromHtml(html);
       }
