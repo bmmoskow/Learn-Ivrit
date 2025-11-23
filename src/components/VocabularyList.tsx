@@ -1,9 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../../supabase/client';
 import type { Tables } from '../../supabase/types';
 import { Loader2, Search, Trash2, Edit2, TrendingUp, TrendingDown, Minus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { defaultVocabulary } from '../data/defaultVocabulary';
+import * as ReactWindow from 'react-window';
+const { FixedSizeList } = ReactWindow as any;
 
 type VocabularyWord = Tables<'vocabulary_words'>;
 type WordStatistics = Tables<'word_statistics'>;
@@ -28,10 +30,26 @@ export function VocabularyList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const itemsPerPage = 50;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(600);
 
   useEffect(() => {
     loadVocabulary();
   }, [user, isGuest, sortBy, currentPage]);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const availableHeight = window.innerHeight - rect.top - 100;
+        setContainerHeight(Math.max(400, availableHeight));
+      }
+    };
+
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
 
   const loadVocabulary = async () => {
     if (isGuest) {
@@ -246,173 +264,182 @@ export function VocabularyList() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-right px-4 py-3 text-sm font-semibold text-gray-700">Hebrew</th>
-                    <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">English</th>
+            <div ref={containerRef}>
+              <div className="overflow-x-auto">
+                <div className="min-w-full">
+                  <div className="border-b border-gray-200 bg-gray-50 flex">
+                    <div className="text-right px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '200px'}}>Hebrew</div>
+                    <div className="text-left px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '180px'}}>English</div>
                     {!isGuest && (
-                      <th className="text-left px-4 py-3 text-sm font-semibold text-gray-700">Definition</th>
+                      <div className="text-left px-4 py-3 text-sm font-semibold text-gray-700 flex-1 min-w-[200px]">Definition</div>
                     )}
                     {!isGuest && (
                       <>
-                        <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Stats</th>
-                        <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Performance</th>
+                        <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '120px'}}>Stats</div>
+                        <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '140px'}}>Performance</div>
                       </>
                     )}
                     {!isGuest && (
-                      <th className="text-center px-4 py-3 text-sm font-semibold text-gray-700">Actions</th>
+                      <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '120px'}}>Actions</div>
                     )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedWords.map((word) => (
-                    <tr key={word.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                      {editingId === word.id ? (
-                        <>
-                          <td className="px-4 py-4">
-                            <input
-                              type="text"
-                              value={editForm.hebrew_word}
-                              onChange={(e) => setEditForm({ ...editForm, hebrew_word: e.target.value })}
-                              className="w-full px-2 py-1 border border-gray-300 rounded text-right"
-                              dir="rtl"
-                            />
-                          </td>
-                          <td className="px-4 py-4">
-                            <input
-                              type="text"
-                              value={editForm.english_translation}
-                              onChange={(e) => setEditForm({ ...editForm, english_translation: e.target.value })}
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                            />
-                          </td>
-                          <td className="px-4 py-4">
-                            <input
-                              type="text"
-                              value={editForm.definition}
-                              onChange={(e) => setEditForm({ ...editForm, definition: e.target.value })}
-                              className="w-full px-2 py-1 border border-gray-300 rounded"
-                            />
-                          </td>
-                          <td colSpan={3} className="px-4 py-4 text-center">
-                            <button
-                              onClick={saveEdit}
-                              className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              className="px-4 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                            >
-                              Cancel
-                            </button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-4 py-4 text-right">
-                            <div className="font-semibold text-lg" dir="rtl">{word.hebrew_word}</div>
-                            {word.transliteration && (
-                              <div className="text-sm text-gray-500">{word.transliteration}</div>
-                            )}
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="font-medium text-gray-900">{word.english_translation}</div>
-                          </td>
-                          {!isGuest && (
-                            <td className="px-4 py-4">
-                              <div className="text-sm text-gray-600 max-w-md">{word.definition}</div>
-                            </td>
-                          )}
-                          {!isGuest && (
+                  </div>
+
+                  <FixedSizeList
+                    height={containerHeight}
+                    itemCount={paginatedWords.length}
+                    itemSize={editingId ? 100 : 80}
+                    width="100%"
+                  >
+                    {({ index, style }) => {
+                      const word = paginatedWords[index];
+                      return (
+                        <div key={word.id} style={style} className="border-b border-gray-100 hover:bg-gray-50 transition flex items-center">
+                          {editingId === word.id ? (
                             <>
-                              <td className="px-4 py-4 text-center">
-                                {word.statistics && word.statistics.total_attempts > 0 ? (
-                                  <div className="text-sm">
-                                    <div className="font-medium text-gray-900">
-                                      {word.statistics.correct_count}/{word.statistics.total_attempts}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                      {word.statistics.consecutive_correct} streak
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-gray-400">Not tested</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 text-center">
-                                {word.statistics && word.statistics.total_attempts > 0 ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    {getPerformanceIcon(word.statistics.confidence_score)}
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getPerformanceColor(word.statistics.confidence_score)}`}>
-                                      {Math.round(word.statistics.confidence_score)}%
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-sm text-gray-400">-</span>
-                                )}
-                              </td>
-                            </>
-                          )}
-                          {!isGuest && (
-                            <td className="px-4 py-4 text-center">
-                              <div className="flex items-center justify-center gap-2">
+                              <div className="px-4 py-4 flex-shrink-0" style={{width: '200px'}}>
+                                <input
+                                  type="text"
+                                  value={editForm.hebrew_word}
+                                  onChange={(e) => setEditForm({ ...editForm, hebrew_word: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded text-right"
+                                  dir="rtl"
+                                />
+                              </div>
+                              <div className="px-4 py-4 flex-shrink-0" style={{width: '180px'}}>
+                                <input
+                                  type="text"
+                                  value={editForm.english_translation}
+                                  onChange={(e) => setEditForm({ ...editForm, english_translation: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="px-4 py-4 flex-1 min-w-[200px]">
+                                <input
+                                  type="text"
+                                  value={editForm.definition}
+                                  onChange={(e) => setEditForm({ ...editForm, definition: e.target.value })}
+                                  className="w-full px-2 py-1 border border-gray-300 rounded"
+                                />
+                              </div>
+                              <div className="px-4 py-4 text-center flex-shrink-0" style={{width: '380px'}}>
                                 <button
-                                  onClick={() => startEdit(word)}
-                                  className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                                  title="Edit word"
+                                  onClick={saveEdit}
+                                  className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2"
                                 >
-                                  <Edit2 className="w-4 h-4" />
+                                  Save
                                 </button>
                                 <button
-                                  onClick={() => deleteWord(word.id)}
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                                  title="Delete word"
+                                  onClick={() => setEditingId(null)}
+                                  className="px-4 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  Cancel
                                 </button>
                               </div>
-                            </td>
+                            </>
+                          ) : (
+                            <>
+                              <div className="px-4 py-4 text-right flex-shrink-0" style={{width: '200px'}}>
+                                <div className="font-semibold text-lg" dir="rtl">{word.hebrew_word}</div>
+                                {word.transliteration && (
+                                  <div className="text-sm text-gray-500">{word.transliteration}</div>
+                                )}
+                              </div>
+                              <div className="px-4 py-4 flex-shrink-0" style={{width: '180px'}}>
+                                <div className="font-medium text-gray-900">{word.english_translation}</div>
+                              </div>
+                              {!isGuest && (
+                                <div className="px-4 py-4 flex-1 min-w-[200px]">
+                                  <div className="text-sm text-gray-600 truncate">{word.definition}</div>
+                                </div>
+                              )}
+                              {!isGuest && (
+                                <>
+                                  <div className="px-4 py-4 text-center flex-shrink-0" style={{width: '120px'}}>
+                                    {word.statistics && word.statistics.total_attempts > 0 ? (
+                                      <div className="text-sm">
+                                        <div className="font-medium text-gray-900">
+                                          {word.statistics.correct_count}/{word.statistics.total_attempts}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          {word.statistics.consecutive_correct} streak
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-gray-400">Not tested</span>
+                                    )}
+                                  </div>
+                                  <div className="px-4 py-4 text-center flex-shrink-0" style={{width: '140px'}}>
+                                    {word.statistics && word.statistics.total_attempts > 0 ? (
+                                      <div className="flex items-center justify-center gap-2">
+                                        {getPerformanceIcon(word.statistics.confidence_score)}
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getPerformanceColor(word.statistics.confidence_score)}`}>
+                                          {Math.round(word.statistics.confidence_score)}%
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-gray-400">-</span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                              {!isGuest && (
+                                <div className="px-4 py-4 text-center flex-shrink-0" style={{width: '120px'}}>
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => startEdit(word)}
+                                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                      title="Edit word"
+                                    >
+                                      <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteWord(word.id)}
+                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                      title="Delete word"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
-                  <div className="text-sm text-gray-600">
-                    Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} words
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <span className="text-sm font-medium text-gray-700">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      aria-label="Next page"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-                  </div>
+                        </div>
+                      );
+                    }}
+                  </FixedSizeList>
                 </div>
-              )}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-200">
+                    <div className="text-sm text-gray-600">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} words
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Previous page"
+                      >
+                        <ChevronLeft className="w-5 h-5" />
+                      </button>
+                      <span className="text-sm font-medium text-gray-700">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Next page"
+                      >
+                        <ChevronRight className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

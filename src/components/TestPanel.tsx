@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../../supabase/client';
 import type { Tables } from '../../supabase/types';
 import { selectTestWords, calculateConfidenceScore, shuffleArray, WordWithStats } from '../utils/adaptiveAlgorithm';
-import { FlashcardTest } from './tests/FlashcardTest';
-import { MultipleChoiceTest } from './tests/MultipleChoiceTest';
-import { FillInBlankTest } from './tests/FillInBlankTest';
 import { TestResults } from './tests/TestResults';
 import { BookOpen, Loader2 } from 'lucide-react';
 import { defaultVocabulary } from '../data/defaultVocabulary';
+
+const FlashcardTest = lazy(() => import('./tests/FlashcardTest').then(m => ({ default: m.FlashcardTest })));
+const MultipleChoiceTest = lazy(() => import('./tests/MultipleChoiceTest').then(m => ({ default: m.MultipleChoiceTest })));
+const FillInBlankTest = lazy(() => import('./tests/FillInBlankTest').then(m => ({ default: m.FillInBlankTest })));
 
 export type TestType = 'flashcard' | 'multiple_choice' | 'fill_in_blank';
 
@@ -303,39 +304,41 @@ export function TestPanel() {
   if (testType && currentTest.length > 0) {
     const currentQuestion = currentTest[currentQuestionIndex];
 
-    if (testType === 'flashcard') {
-      return (
-        <FlashcardTest
-          question={currentQuestion}
-          questionNumber={currentQuestionIndex + 1}
-          totalQuestions={currentTest.length}
-          onAnswer={handleAnswer}
-        />
-      );
-    }
+    return (
+      <Suspense fallback={
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      }>
+        {testType === 'flashcard' && (
+          <FlashcardTest
+            question={currentQuestion}
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={currentTest.length}
+            onAnswer={handleAnswer}
+          />
+        )}
 
-    if (testType === 'multiple_choice') {
-      return (
-        <MultipleChoiceTest
-          question={currentQuestion}
-          questionNumber={currentQuestionIndex + 1}
-          totalQuestions={currentTest.length}
-          allWords={words}
-          onAnswer={handleAnswer}
-        />
-      );
-    }
+        {testType === 'multiple_choice' && (
+          <MultipleChoiceTest
+            question={currentQuestion}
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={currentTest.length}
+            allWords={words}
+            onAnswer={handleAnswer}
+          />
+        )}
 
-    if (testType === 'fill_in_blank') {
-      return (
-        <FillInBlankTest
-          question={currentQuestion}
-          questionNumber={currentQuestionIndex + 1}
-          totalQuestions={currentTest.length}
-          onAnswer={handleAnswer}
-        />
-      );
-    }
+        {testType === 'fill_in_blank' && (
+          <FillInBlankTest
+            question={currentQuestion}
+            questionNumber={currentQuestionIndex + 1}
+            totalQuestions={currentTest.length}
+            onAnswer={handleAnswer}
+          />
+        )}
+      </Suspense>
+    );
   }
 
   return (
