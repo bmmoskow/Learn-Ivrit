@@ -313,6 +313,11 @@ export function TranslationPanel() {
   const renderSyncedText = () => {
     if (!hebrewText) return null;
 
+    console.log('Hebrew text length:', hebrewText.length);
+    console.log('Hebrew text sample (first 500 chars):', hebrewText.substring(0, 500));
+    console.log('Newline count in Hebrew:', (hebrewText.match(/\n/g) || []).length);
+    console.log('Hebrew text contains \\n\\n:', hebrewText.includes('\n\n'));
+
     const hebrewParagraphs = hebrewText
       .split(/\n+/)
       .map(p => p.trim())
@@ -327,6 +332,12 @@ export function TranslationPanel() {
 
     console.log('Hebrew paragraphs:', hebrewParagraphs.length);
     console.log('English paragraphs:', englishParagraphs.length);
+    if (hebrewParagraphs.length > 0) {
+      console.log('First Hebrew paragraph:', hebrewParagraphs[0]);
+      if (hebrewParagraphs.length > 1) {
+        console.log('Second Hebrew paragraph:', hebrewParagraphs[1]);
+      }
+    }
 
     if (englishParagraphs.length > hebrewParagraphs.length) {
       const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join('\n\n');
