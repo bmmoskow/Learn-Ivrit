@@ -1,10 +1,19 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+async function hashText(text: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 interface TranslateRequest {
   text: string;
@@ -136,6 +145,42 @@ Deno.serve(async (req: Request) => {
       }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const contentHash = await hashText(text);
+      const textLength = text.length;
+
+      const { data: cachedTranslation, error: cacheError } = await supabase
+        .from('translation_cache')
+        .select('translation, id')
+        .eq('content_hash', contentHash)
+        .eq('text_length', textLength)
+        .maybeSingle();
+
+      if (cachedTranslation && !cacheError) {
+        console.log('Using cached translation for hash:', contentHash);
+
+        await supabase
+          .from('translation_cache')
+          .update({
+            last_accessed: new Date().toISOString(),
+            access_count: supabase.sql`access_count + 1`
+          })
+          .eq('id', cachedTranslation.id);
+
+        return new Response(
+          JSON.stringify({ translation: cachedTranslation.translation }),
+          {
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
       const vowelInstruction = targetLanguage === "Hebrew"
         ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
         : "";
@@ -224,6 +269,20 @@ Deno.serve(async (req: Request) => {
       const translation = translations.join("\n\n");
       const finalParaCount = translation.split(/\n\n+/).length;
       console.log(`Final translation paragraphs: ${finalParaCount}, expected: ${paragraphs.length}`);
+
+      await supabase
+        .from('translation_cache')
+        .insert({
+          content_hash: contentHash,
+          hebrew_text: text.substring(0, 5000),
+          translation: translation,
+          text_length: textLength,
+          cached_at: new Date().toISOString(),
+          last_accessed: new Date().toISOString(),
+          access_count: 0
+        });
+
+      console.log('Cached translation with hash:', contentHash);
 
       return new Response(
         JSON.stringify({ translation }),
