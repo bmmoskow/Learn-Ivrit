@@ -349,13 +349,13 @@ export function TranslationPanel() {
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-12">
         {hebrewParagraphs.map((hebrewPara, paraIndex) => {
           const words = hebrewPara.split(/(\s+)/);
           const englishPara = englishParagraphs[paraIndex] || "";
 
           return (
-            <div key={paraIndex} className="grid grid-cols-2 gap-6">
+            <div key={paraIndex} className="grid grid-cols-2 gap-6 pb-8 border-b border-gray-200 last:border-b-0 last:pb-0">
               {/* Hebrew side */}
               <div className="text-xl leading-relaxed" dir="rtl" lang="he">
                 <p>
