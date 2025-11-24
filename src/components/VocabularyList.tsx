@@ -107,6 +107,12 @@ export function VocabularyList() {
         query = query.order('created_at', { ascending: false });
       } else if (sortBy === 'alphabetical') {
         query = query.order('hebrew_word', { ascending: true });
+      } else if (sortBy === 'performance') {
+        query = query.order('confidence_score', {
+          ascending: true,
+          referencedTable: 'word_statistics',
+          nullsFirst: false
+        });
       }
 
       query = query.range(from, to);
@@ -128,25 +134,12 @@ export function VocabularyList() {
         };
       });
 
-      if (sortBy === 'performance') {
-        const sorted = sortWordsByPerformance(wordsWithStats);
-        setWords(sorted);
-      } else {
-        setWords(wordsWithStats);
-      }
+      setWords(wordsWithStats);
     } catch (err) {
       console.error('Error loading vocabulary:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const sortWordsByPerformance = (wordsToSort: VocabWithStats[]) => {
-    return [...wordsToSort].sort((a, b) => {
-      const scoreA = a.statistics?.confidence_score || 0;
-      const scoreB = b.statistics?.confidence_score || 0;
-      return scoreA - scoreB;
-    });
   };
 
   const filteredWords = words.filter(word =>

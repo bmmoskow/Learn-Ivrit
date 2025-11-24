@@ -97,8 +97,7 @@ export function TestPanel() {
             updated_at
           )
         `)
-        .eq('user_id', user.id)
-        .limit(1000);
+        .eq('user_id', user.id);
 
       if (vocabError) throw vocabError;
 
