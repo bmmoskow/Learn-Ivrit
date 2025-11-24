@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../../supabase/client';
 import type { Tables } from '../../supabase/types';
 import { Edit2, Trash2, Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { List } from 'react-window';
 
 type VocabularyWord = Tables<'vocabulary_words'>;
 type WordStatistics = Tables<'word_statistics'>;
@@ -24,25 +23,9 @@ export function VocabularyList() {
   const [newWord, setNewWord] = useState({ hebrew_word: '', english_translation: '', definition: '', transliteration: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerHeight, setContainerHeight] = useState(600);
 
   const itemsPerPage = 50;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
-
-  useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const availableHeight = window.innerHeight - rect.top - 100;
-        setContainerHeight(Math.max(400, Math.min(800, availableHeight)));
-      }
-    };
-
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   useEffect(() => {
     loadVocabulary();
@@ -349,7 +332,7 @@ export function VocabularyList() {
           {searchQuery ? 'No words match your search' : 'No vocabulary words yet. Add some to get started!'}
         </div>
       ) : (
-        <div ref={containerRef}>
+        <div>
           <div className="bg-gray-50 border-b border-gray-200 flex items-center font-semibold text-gray-700">
             <div className="px-4 py-3 text-right text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '200px'}}>Hebrew</div>
             <div className="px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{width: '180px'}}>English</div>
@@ -367,14 +350,9 @@ export function VocabularyList() {
             )}
           </div>
 
-          <List
-            defaultHeight={containerHeight}
-            rowCount={paginatedWords.length}
-            rowHeight={editingId ? 100 : 80}
-            rowComponent={({ index, style }) => {
-              const word = paginatedWords[index];
-              return (
-                <div key={word.id} style={style} className="border-b border-gray-100 hover:bg-gray-50 transition flex items-center">
+          <div>
+            {paginatedWords.map((word) => (
+              <div key={word.id} className="border-b border-gray-100 hover:bg-gray-50 transition flex items-center">
                   {editingId === word.id ? (
                     <>
                       <div className="px-4 py-4 flex-shrink-0" style={{width: '200px'}}>
@@ -486,9 +464,8 @@ export function VocabularyList() {
                     </>
                   )}
                 </div>
-              );
-            }}
-          />
+            ))}
+          </div>
         </div>
       )}
 
