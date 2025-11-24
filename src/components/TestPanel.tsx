@@ -72,59 +72,51 @@ export function TestPanel() {
     setLoading(true);
 
     try {
-      const { data: vocabData, error: vocabError } = await supabase
+      const { count } = await supabase
         .from('vocabulary_words')
-        .select(`
-          id,
-          user_id,
-          hebrew_word,
-          english_translation,
-          definition,
-          transliteration,
-          created_at,
-          updated_at,
-          word_statistics (
-            id,
-            user_id,
-            word_id,
-            correct_count,
-            incorrect_count,
-            total_attempts,
-            consecutive_correct,
-            last_tested,
-            confidence_score,
-            created_at,
-            updated_at
-          )
-        `)
+        .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
-      if (vocabError) throw vocabError;
-
-      const wordsWithStats = vocabData.map(word => {
-        const stats = Array.isArray(word.word_statistics)
-          ? word.word_statistics[0]
-          : word.word_statistics;
-        return {
-          ...word,
-          statistics: stats,
-          word_statistics: undefined
-        };
-      });
-
-      setWords(wordsWithStats);
+      setWords(new Array(count || 0).fill(null) as WordWithStats[]);
     } catch (err) {
-      console.error('Error loading vocabulary:', err);
+      console.error('Error loading vocabulary count:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const startTest = (type: TestType) => {
+  const startTest = async (type: TestType) => {
     if (words.length === 0) return;
 
     const count = Math.min(questionCount, words.length);
-    const selectedWords = selectTestWords(words, count);
+    let selectedWords: WordWithStats[];
+
+    if (isGuest) {
+      selectedWords = selectTestWords(words, count);
+    } else {
+      if (!user) return;
+
+      try {
+        const { data: vocabData, error } = await supabase.rpc('select_test_words', {
+          p_user_id: user.id,
+          p_limit: count
+        });
+
+        if (error) {
+          console.error('Error fetching test words:', error);
+          selectedWords = selectTestWords(words.filter(w => w !== null), count);
+        } else {
+          selectedWords = vocabData.map((word: any) => ({
+            ...word,
+            statistics: word.stats
+          }));
+        }
+      } catch (err) {
+        console.error('Error in startTest:', err);
+        return;
+      }
+    }
+
     const questions: TestQuestion[] = selectedWords.map(word => ({ word }));
 
     setTestType(type);
