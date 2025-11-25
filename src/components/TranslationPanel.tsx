@@ -230,6 +230,39 @@ export function TranslationPanel() {
     setError("");
 
     try {
+      const textToTranslate = hebrewText.trim();
+      const textLength = textToTranslate.length;
+
+      const encoder = new TextEncoder();
+      const data = encoder.encode(textToTranslate);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      if (!isGuest && user) {
+        const { data: cachedData, error: cacheError } = await supabase
+          .from('translation_cache')
+          .select('translation, id')
+          .eq('content_hash', contentHash)
+          .maybeSingle();
+
+        if (!cacheError && cachedData) {
+          console.log('Translation found in cache');
+          setEnglishText(cachedData.translation);
+
+          await supabase
+            .from('translation_cache')
+            .update({
+              last_accessed: new Date().toISOString(),
+              access_count: supabase.sql`access_count + 1`
+            })
+            .eq('id', cachedData.id);
+
+          setTranslating(false);
+          return;
+        }
+      }
+
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
       const response = await fetch(apiUrl, {
@@ -239,7 +272,7 @@ export function TranslationPanel() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: hebrewText,
+          text: textToTranslate,
           targetLanguage: "English",
           sourceLanguage: "Hebrew",
         }),
@@ -250,17 +283,31 @@ export function TranslationPanel() {
         throw new Error(errorData.error || "Translation failed");
       }
 
-      const data = await response.json();
-      console.log('Translation received, length:', data.translation?.length);
-      console.log('First 100 chars:', data.translation?.substring(0, 100));
-      console.log('Last 100 chars:', data.translation?.substring(data.translation?.length - 100));
-      setEnglishText(data.translation);
+      const responseData = await response.json();
+      console.log('Translation received, length:', responseData.translation?.length);
+      console.log('First 100 chars:', responseData.translation?.substring(0, 100));
+      console.log('Last 100 chars:', responseData.translation?.substring(responseData.translation?.length - 100));
+      setEnglishText(responseData.translation);
+
+      if (!isGuest && user) {
+        await supabase
+          .from('translation_cache')
+          .insert({
+            content_hash: contentHash,
+            hebrew_text: textToTranslate,
+            translation: responseData.translation,
+            text_length: textLength,
+            cached_at: new Date().toISOString(),
+            last_accessed: new Date().toISOString(),
+            access_count: 1
+          });
+      }
 
       if (bibleLoaded && currentBibleRef && !isGuest && user) {
         const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
         await supabase
           .from('sefaria_cache')
-          .update({ translation: data.translation })
+          .update({ translation: responseData.translation })
           .eq('reference', reference);
       }
     } catch (err) {
