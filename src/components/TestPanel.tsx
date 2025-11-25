@@ -90,43 +90,34 @@ export function TestPanel() {
 
     const count = Math.min(questionCount, words.length);
     let selectedWords: WordWithStats[];
-    let distractorPool: WordWithStats[] = [];
 
     if (isGuest) {
       selectedWords = selectTestWords(words, count);
-      distractorPool = words;
     } else {
       if (!user) return;
 
       try {
-        const poolSize = Math.min(count * 4, words.length);
-
         const { data: vocabData, error } = await supabase.rpc('select_test_words', {
           p_user_id: user.id,
-          p_limit: poolSize
+          p_limit: count
         });
 
         if (error) {
           console.error('Error fetching test words:', error);
           selectedWords = selectTestWords(words.filter(w => w !== null), count);
-          distractorPool = words.filter(w => w !== null);
         } else {
-          const lowConfidencePool = vocabData.map((word: any) => ({
+          const lowConfidenceWords = vocabData.map((word: any) => ({
             ...word,
             statistics: word.stats
           }));
 
-          const shuffled = shuffleArray([...lowConfidencePool]);
-          selectedWords = shuffled.slice(0, count);
-          distractorPool = lowConfidencePool;
+          selectedWords = shuffleArray([...lowConfidenceWords]);
         }
       } catch (err) {
         console.error('Error in startTest:', err);
         return;
       }
     }
-
-    setWords(distractorPool);
 
     const questions: TestQuestion[] = selectedWords.map(word => ({ word }));
 
@@ -297,7 +288,6 @@ export function TestPanel() {
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
             totalQuestions={currentTest.length}
-            allWords={words}
             onAnswer={handleAnswer}
           />
         )}

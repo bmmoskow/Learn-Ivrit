@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { TestQuestion } from '../TestPanel';
 import { WordWithStats, shuffleArray } from '../../utils/adaptiveAlgorithm';
-import { Check, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { supabase } from '../../../supabase/client';
+import { Check, X, Loader2 } from 'lucide-react';
 
 type MultipleChoiceTestProps = {
   question: TestQuestion;
   questionNumber: number;
   totalQuestions: number;
-  allWords: WordWithStats[];
   onAnswer: (answer: string, isCorrect: boolean) => void;
 };
 
@@ -15,26 +16,65 @@ export function MultipleChoiceTest({
   question,
   questionNumber,
   totalQuestions,
-  allWords,
   onAnswer
 }: MultipleChoiceTestProps) {
+  const { user, isGuest } = useAuth();
   const [options, setOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const correctAnswer = question.word.english_translation;
-    const otherWords = allWords
-      .filter(w => w && w.id && w.id !== question.word.id)
-      .map(w => w.english_translation);
+    const fetchDistractorPool = async () => {
+      setLoading(true);
 
-    const wrongAnswers = shuffleArray(otherWords).slice(0, 3);
-    const allOptions = shuffleArray([correctAnswer, ...wrongAnswers]);
+      const correctAnswer = question.word.english_translation;
+      let distractorPool: string[] = [];
 
-    setOptions(allOptions);
-    setSelectedAnswer(null);
-    setShowFeedback(false);
-  }, [question, allWords]);
+      if (isGuest) {
+        setOptions([correctAnswer]);
+        setSelectedAnswer(null);
+        setShowFeedback(false);
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const poolSize = totalQuestions * 4;
+        const { data: vocabData, error } = await supabase.rpc('select_test_words', {
+          p_user_id: user.id,
+          p_limit: poolSize
+        });
+
+        if (error) {
+          console.error('Error fetching distractor pool:', error);
+          setOptions([correctAnswer]);
+        } else {
+          const allWords = vocabData.map((word: any) => word.english_translation);
+          const otherWords = allWords.filter((w: string) => w !== correctAnswer);
+
+          const wrongAnswers = shuffleArray(otherWords).slice(0, 3);
+          const allOptions = shuffleArray([correctAnswer, ...wrongAnswers]);
+
+          setOptions(allOptions);
+        }
+      } catch (err) {
+        console.error('Error in fetchDistractorPool:', err);
+        setOptions([correctAnswer]);
+      }
+
+      setSelectedAnswer(null);
+      setShowFeedback(false);
+      setLoading(false);
+    };
+
+    fetchDistractorPool();
+  }, [question, user, isGuest, totalQuestions]);
 
   const handleSelect = (answer: string) => {
     if (showFeedback) return;
@@ -48,6 +88,14 @@ export function MultipleChoiceTest({
       onAnswer(answer, isCorrect);
     }, 1500);
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-green-50 to-green-100">
+        <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-green-50 to-green-100">
