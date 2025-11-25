@@ -72,14 +72,36 @@ export function TestPanel() {
     setLoading(true);
 
     try {
-      const { count } = await supabase
+      const { data: vocabData, error } = await supabase
         .from('vocabulary_words')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('user_id', user.id);
 
-      setWords(new Array(count || 0).fill(null) as WordWithStats[]);
+      if (error) {
+        console.error('Error loading vocabulary:', error);
+        setWords([]);
+      } else {
+        const wordsWithStats: WordWithStats[] = vocabData.map(word => ({
+          ...word,
+          statistics: {
+            id: '',
+            user_id: word.user_id,
+            word_id: word.id,
+            correct_count: 0,
+            incorrect_count: 0,
+            total_attempts: 0,
+            consecutive_correct: 0,
+            last_tested: null,
+            confidence_score: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        }));
+        setWords(wordsWithStats);
+      }
     } catch (err) {
-      console.error('Error loading vocabulary count:', err);
+      console.error('Error loading vocabulary:', err);
+      setWords([]);
     } finally {
       setLoading(false);
     }
