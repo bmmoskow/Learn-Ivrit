@@ -47,8 +47,10 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
   useEffect(() => {
     const loadData = async () => {
-      await fetchDefinition();
-      await checkIfSaved();
+      await Promise.all([
+        fetchDefinition(),
+        checkIfSaved()
+      ]);
     };
     loadData();
   }, [currentWord, forceRefresh]);
@@ -94,14 +96,14 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
           };
           shortEnglish = cachedData.short_english;
 
-          // Update access tracking
-          await supabase
+          supabase
             .from('word_definitions')
             .update({
               last_accessed: new Date().toISOString(),
               access_count: (cachedData.access_count || 0) + 1
             })
-            .eq('word', currentWord);
+            .eq('word', currentWord)
+            .then(() => {});
         }
       }
 
@@ -141,8 +143,7 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
         data.shortEnglish = shortEnglish;
 
-        // Cache the result
-        await supabase
+        supabase
           .from('word_definitions')
           .upsert({
             word: currentWord,
@@ -157,7 +158,8 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
             access_count: 1
           }, {
             onConflict: 'word'
-          });
+          })
+          .then(() => {});
 
         // Reset forceRefresh flag after successful refresh
         if (forceRefresh) {
@@ -233,7 +235,7 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
       if (insertError) throw insertError;
 
-      await supabase
+      supabase
         .from('word_statistics')
         .insert({
           user_id: user.id,
@@ -243,7 +245,8 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
           total_attempts: 0,
           consecutive_correct: 0,
           confidence_score: 0
-        });
+        })
+        .then(() => {});
 
       setSaved(true);
       onWordSaved();

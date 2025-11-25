@@ -30,48 +30,51 @@ export function Dashboard() {
     setLoading(true);
 
     try {
-      const { data: wordsData } = await supabase
-        .from('vocabulary_words')
-        .select('id')
-        .eq('user_id', user.id)
-        .limit(1000);
-
-      // Fetch weak words with JOIN to avoid N+1 queries
-      const { data: weakWordsData } = await supabase
-        .from('word_statistics')
-        .select(`
-          id,
-          user_id,
-          word_id,
-          correct_count,
-          incorrect_count,
-          total_attempts,
-          consecutive_correct,
-          last_tested,
-          confidence_score,
-          created_at,
-          updated_at,
-          vocabulary_words (
+      const [wordsResult, weakWordsResult, testsResult] = await Promise.all([
+        supabase
+          .from('vocabulary_words')
+          .select('id')
+          .eq('user_id', user.id)
+          .limit(1000),
+        supabase
+          .from('word_statistics')
+          .select(`
             id,
             user_id,
-            hebrew_word,
-            english_translation,
-            definition,
-            transliteration,
+            word_id,
+            correct_count,
+            incorrect_count,
+            total_attempts,
+            consecutive_correct,
+            last_tested,
+            confidence_score,
             created_at,
-            updated_at
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('confidence_score', { ascending: true })
-        .limit(5);
+            updated_at,
+            vocabulary_words (
+              id,
+              user_id,
+              hebrew_word,
+              english_translation,
+              definition,
+              transliteration,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('confidence_score', { ascending: true })
+          .limit(5),
+        supabase
+          .from('user_tests')
+          .select('id, user_id, test_type, total_questions, correct_answers, score_percentage, duration_seconds, completed_at, created_at')
+          .eq('user_id', user.id)
+          .order('completed_at', { ascending: false })
+          .limit(5)
+      ]);
 
-      const { data: testsData } = await supabase
-        .from('user_tests')
-        .select('id, user_id, test_type, total_questions, correct_answers, score_percentage, duration_seconds, completed_at, created_at')
-        .eq('user_id', user.id)
-        .order('completed_at', { ascending: false })
-        .limit(5);
+      const { data: wordsData } = wordsResult;
+      const { data: weakWordsData } = weakWordsResult;
+      const { data: testsData } = testsResult;
 
       // Transform the joined data to match expected structure
       const weakWords = weakWordsData

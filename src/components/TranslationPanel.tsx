@@ -73,13 +73,14 @@ export function TranslationPanel() {
           console.log('URL content found in cache');
           content = cachedData.content;
 
-          await supabase
+          supabase
             .from('sefaria_cache')
             .update({
               last_accessed: new Date().toISOString(),
               access_count: supabase.rpc('increment', { x: 1 })
             })
-            .eq('reference', url);
+            .eq('reference', url)
+            .then(() => {});
         }
       }
 
@@ -105,14 +106,15 @@ export function TranslationPanel() {
         content = data.content;
 
         if (!isGuest && user) {
-          await supabase
+          supabase
             .from('sefaria_cache')
             .insert({
               reference: url,
               content,
               last_accessed: new Date().toISOString(),
               access_count: 1
-            });
+            })
+            .then(() => {});
         }
       }
 
@@ -176,13 +178,14 @@ export function TranslationPanel() {
           data = cachedData.content;
           cachedTranslation = cachedData.translation;
 
-          await supabase
+          supabase
             .from('sefaria_cache')
             .update({
               last_accessed: new Date().toISOString(),
               access_count: (cachedData.access_count || 0) + 1
             })
-            .eq('reference', reference);
+            .eq('reference', reference)
+            .then(() => {});
         }
       }
 
@@ -202,12 +205,13 @@ export function TranslationPanel() {
         data = await response.json();
 
         if (!isGuest && user) {
-          await supabase
+          supabase
             .from('sefaria_cache')
             .insert({
               reference,
               content: data
-            });
+            })
+            .then(() => {});
         }
       }
 
@@ -300,9 +304,9 @@ export function TranslationPanel() {
           console.log('✓ Translation found in cache, returning early');
           setEnglishText(cachedData.translation);
 
-          await supabase.rpc('increment_translation_access', {
+          supabase.rpc('increment_translation_access', {
             cache_id: cachedData.id
-          });
+          }).then(() => {});
 
           setTranslating(false);
           return;
@@ -339,7 +343,7 @@ export function TranslationPanel() {
       setEnglishText(responseData.translation);
 
       if (!isGuest && user) {
-        await supabase
+        supabase
           .from('translation_cache')
           .upsert({
             content_hash: contentHash,
@@ -351,15 +355,17 @@ export function TranslationPanel() {
           }, {
             onConflict: 'content_hash',
             ignoreDuplicates: true
-          });
+          })
+          .then(() => {});
       }
 
       if (bibleLoaded && currentBibleRef && !isGuest && user) {
         const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
-        await supabase
+        supabase
           .from('sefaria_cache')
           .update({ translation: responseData.translation })
-          .eq('reference', reference);
+          .eq('reference', reference)
+          .then(() => {});
       }
     } catch (err) {
       setError("Failed to translate. Please try again.");
