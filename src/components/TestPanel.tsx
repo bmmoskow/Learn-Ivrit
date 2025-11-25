@@ -90,63 +90,35 @@ export function TestPanel() {
 
     const count = Math.min(questionCount, words.length);
     let selectedWords: WordWithStats[];
-    let allWordsForOptions: WordWithStats[] = [];
+    let distractorPool: WordWithStats[] = [];
 
     if (isGuest) {
       selectedWords = selectTestWords(words, count);
-      allWordsForOptions = words;
+      distractorPool = words;
     } else {
       if (!user) return;
 
       try {
+        const poolSize = Math.min(count * 4, words.length);
+
         const { data: vocabData, error } = await supabase.rpc('select_test_words', {
           p_user_id: user.id,
-          p_limit: count
+          p_limit: poolSize
         });
 
         if (error) {
           console.error('Error fetching test words:', error);
           selectedWords = selectTestWords(words.filter(w => w !== null), count);
-          allWordsForOptions = words.filter(w => w !== null);
+          distractorPool = words.filter(w => w !== null);
         } else {
-          selectedWords = vocabData.map((word: any) => ({
+          const lowConfidencePool = vocabData.map((word: any) => ({
             ...word,
             statistics: word.stats
           }));
 
-          const { data: allVocabData, error: allVocabError } = await supabase
-            .from('vocabulary_with_stats')
-            .select('*')
-            .eq('user_id', user.id);
-
-          if (allVocabError) {
-            console.error('Error fetching all vocab:', allVocabError);
-            allWordsForOptions = selectedWords;
-          } else {
-            allWordsForOptions = allVocabData.map((row: any) => ({
-              id: row.id,
-              user_id: row.user_id,
-              hebrew_word: row.hebrew_word,
-              english_translation: row.english_translation,
-              definition: row.definition,
-              transliteration: row.transliteration,
-              created_at: row.created_at,
-              updated_at: row.updated_at,
-              statistics: row.stats_id ? {
-                id: row.stats_id,
-                user_id: row.user_id,
-                word_id: row.id,
-                correct_count: row.correct_count,
-                incorrect_count: row.incorrect_count,
-                total_attempts: row.total_attempts,
-                consecutive_correct: row.consecutive_correct,
-                last_tested: row.last_tested,
-                confidence_score: row.confidence_score,
-                created_at: row.stats_created_at,
-                updated_at: row.stats_updated_at
-              } : undefined
-            }));
-          }
+          const shuffled = shuffleArray([...lowConfidencePool]);
+          selectedWords = shuffled.slice(0, count);
+          distractorPool = lowConfidencePool;
         }
       } catch (err) {
         console.error('Error in startTest:', err);
@@ -154,7 +126,7 @@ export function TestPanel() {
       }
     }
 
-    setWords(allWordsForOptions);
+    setWords(distractorPool);
 
     const questions: TestQuestion[] = selectedWords.map(word => ({ word }));
 
