@@ -59,27 +59,67 @@ export function TranslationPanel() {
     setError("");
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
+      const url = urlInput.trim();
+      let content = null;
 
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ url: urlInput }),
-      });
+      if (!isGuest && user) {
+        const { data: cachedData } = await supabase
+          .from('sefaria_cache')
+          .select('content')
+          .eq('reference', url)
+          .maybeSingle();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to load URL");
+        if (cachedData) {
+          console.log('URL content found in cache');
+          content = cachedData.content;
+
+          await supabase
+            .from('sefaria_cache')
+            .update({
+              last_accessed: new Date().toISOString(),
+              access_count: supabase.rpc('increment', { x: 1 })
+            })
+            .eq('reference', url);
+        }
       }
 
-      const data = await response.json();
-      console.log('Hebrew text loaded from URL, length:', data.content?.length);
-      console.log('First 200 chars:', data.content?.substring(0, 200));
-      console.log('Last 200 chars:', data.content?.substring(data.content?.length - 200));
-      setHebrewText(data.content);
+      if (!content) {
+        console.log('Fetching URL content from API');
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
+
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ url }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to load URL");
+        }
+
+        const data = await response.json();
+        content = data.content;
+
+        if (!isGuest && user) {
+          await supabase
+            .from('sefaria_cache')
+            .insert({
+              reference: url,
+              content,
+              last_accessed: new Date().toISOString(),
+              access_count: 1
+            });
+        }
+      }
+
+      console.log('Hebrew text loaded, length:', content?.length);
+      console.log('First 200 chars:', content?.substring(0, 200));
+      console.log('Last 200 chars:', content?.substring(content?.length - 200));
+      setHebrewText(content);
       setShowUrlInput(false);
       setUrlInput("");
       setBibleLoaded(false);
