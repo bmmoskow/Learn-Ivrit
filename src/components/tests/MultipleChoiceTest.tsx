@@ -25,7 +25,7 @@ export function MultipleChoiceTest({
   useEffect(() => {
     const correctAnswer = question.word.english_translation;
     const otherWords = allWords
-      .filter(w => w.id !== question.word.id)
+      .filter(w => w && w.id && w.id !== question.word.id)
       .map(w => w.english_translation);
 
     const wrongAnswers = shuffleArray(otherWords).slice(0, 3);
