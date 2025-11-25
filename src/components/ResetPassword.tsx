@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../supabase/client';
 import { Lock, Eye, EyeOff } from 'lucide-react';
 
 interface ResetPasswordProps {

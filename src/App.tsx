@@ -7,7 +7,7 @@ import { TranslationPanel } from './components/TranslationPanel';
 import { VocabularyList } from './components/VocabularyList';
 import { TestPanel } from './components/TestPanel';
 import { ResetPassword } from './components/ResetPassword';
-import { supabase } from './lib/supabase';
+import { supabase } from '../supabase/client';
 
 function AppContent() {
   const { isGuest, loading } = useAuth();

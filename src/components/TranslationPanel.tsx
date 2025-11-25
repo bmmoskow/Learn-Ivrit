@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../supabase/client";
 import { WordDefinitionPopup } from "./WordDefinitionPopup";
 import { BIBLE_BOOKS } from "../data/bibleBooks";
 
