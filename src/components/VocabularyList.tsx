@@ -56,55 +56,84 @@ export function VocabularyList() {
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
 
-      let query = supabase
-        .from('vocabulary_with_stats')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user.id);
+      if (sortBy === 'performance') {
+        let query = supabase
+          .from('vocabulary_with_stats')
+          .select('*', { count: 'exact' })
+          .eq('user_id', user.id)
+          .order('confidence_score', {
+            ascending: true,
+            nullsFirst: false
+          })
+          .range(from, to);
 
-      if (sortBy === 'date') {
-        query = query.order('created_at', { ascending: false });
-      } else if (sortBy === 'alphabetical') {
-        query = query.order('hebrew_word', { ascending: true });
-      } else if (sortBy === 'performance') {
-        query = query.order('confidence_score', {
-          ascending: true,
-          nullsFirst: false
-        });
-      }
+        const { data: vocabData, error: vocabError, count } = await query;
 
-      query = query.range(from, to);
+        if (vocabError) throw vocabError;
 
-      const { data: vocabData, error: vocabError, count } = await query;
+        setTotalCount(count || 0);
 
-      if (vocabError) throw vocabError;
-
-      setTotalCount(count || 0);
-
-      const wordsWithStats = vocabData.map(row => ({
-        id: row.id,
-        user_id: row.user_id,
-        hebrew_word: row.hebrew_word,
-        english_translation: row.english_translation,
-        definition: row.definition,
-        transliteration: row.transliteration,
-        created_at: row.created_at,
-        updated_at: row.updated_at,
-        statistics: row.stats_id ? {
-          id: row.stats_id,
+        const wordsWithStats = vocabData.map(row => ({
+          id: row.id,
           user_id: row.user_id,
-          word_id: row.id,
-          correct_count: row.correct_count,
-          incorrect_count: row.incorrect_count,
-          total_attempts: row.total_attempts,
-          consecutive_correct: row.consecutive_correct,
-          last_tested: row.last_tested,
-          confidence_score: row.confidence_score,
-          created_at: row.stats_created_at,
-          updated_at: row.stats_updated_at
-        } : undefined
-      }));
+          hebrew_word: row.hebrew_word,
+          english_translation: row.english_translation,
+          definition: row.definition,
+          transliteration: row.transliteration,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+          statistics: row.stats_id ? {
+            id: row.stats_id,
+            user_id: row.user_id,
+            word_id: row.id,
+            correct_count: row.correct_count,
+            incorrect_count: row.incorrect_count,
+            total_attempts: row.total_attempts,
+            consecutive_correct: row.consecutive_correct,
+            last_tested: row.last_tested,
+            confidence_score: row.confidence_score,
+            created_at: row.stats_created_at,
+            updated_at: row.stats_updated_at
+          } : undefined
+        }));
 
-      setWords(wordsWithStats);
+        setWords(wordsWithStats);
+      } else {
+        let query = supabase
+          .from('vocabulary_words')
+          .select('id, hebrew_word, english_translation, definition, transliteration, created_at, updated_at, user_id', { count: 'exact' })
+          .eq('user_id', user.id);
+
+        if (sortBy === 'date') {
+          query = query.order('created_at', { ascending: false });
+        } else if (sortBy === 'alphabetical') {
+          query = query.order('hebrew_word', { ascending: true });
+        }
+
+        query = query.range(from, to);
+
+        const { data: vocabData, error: vocabError, count } = await query;
+
+        if (vocabError) throw vocabError;
+
+        setTotalCount(count || 0);
+
+        const wordIds = vocabData.map(w => w.id);
+
+        const { data: statsData } = await supabase
+          .from('word_statistics')
+          .select('*')
+          .in('word_id', wordIds);
+
+        const statsMap = new Map(statsData?.map(s => [s.word_id, s]) || []);
+
+        const wordsWithStats = vocabData.map(word => ({
+          ...word,
+          statistics: statsMap.get(word.id)
+        }));
+
+        setWords(wordsWithStats);
+      }
     } catch (err) {
       console.error('Error loading vocabulary:', err);
     } finally {
