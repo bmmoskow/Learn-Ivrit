@@ -122,7 +122,7 @@ export function VocabularyList() {
 
         const { data: statsData } = await supabase
           .from('word_statistics')
-          .select('*')
+          .select('id, user_id, word_id, correct_count, incorrect_count, total_attempts, consecutive_correct, last_tested, confidence_score, created_at, updated_at')
           .in('word_id', wordIds);
 
         const statsMap = new Map(statsData?.map(s => [s.word_id, s]) || []);

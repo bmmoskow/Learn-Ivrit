@@ -74,7 +74,7 @@ export function TestPanel() {
     try {
       const { data: vocabData, error } = await supabase
         .from('vocabulary_words')
-        .select('*')
+        .select('id, user_id, hebrew_word, english_translation, definition, transliteration, created_at, updated_at')
         .eq('user_id', user.id);
 
       if (error) {
