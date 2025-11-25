@@ -102,13 +102,6 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
               access_count: (cachedData.access_count || 0) + 1
             })
             .eq('word', currentWord);
-
-          // Run cleanup occasionally (1% of cache hits)
-          if (Math.random() < 0.01) {
-            supabase.rpc('cleanup_word_definitions_cache').then(() => {
-              console.log('Word definitions cache cleanup completed');
-            });
-          }
         }
       }
 
