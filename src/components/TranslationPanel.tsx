@@ -240,14 +240,19 @@ export function TranslationPanel() {
       const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
       if (!isGuest && user) {
+        console.log('Checking cache for content_hash:', contentHash);
         const { data: cachedData, error: cacheError } = await supabase
           .from('translation_cache')
           .select('translation, id')
           .eq('content_hash', contentHash)
           .maybeSingle();
 
+        if (cacheError) {
+          console.log('Cache lookup error:', cacheError);
+        }
+
         if (!cacheError && cachedData) {
-          console.log('Translation found in cache');
+          console.log('✓ Translation found in cache, returning early');
           setEnglishText(cachedData.translation);
 
           await supabase.rpc('increment_translation_access', {
@@ -256,9 +261,12 @@ export function TranslationPanel() {
 
           setTranslating(false);
           return;
+        } else {
+          console.log('Cache miss - will call API');
         }
       }
 
+      console.log('Calling Gemini API for translation');
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
       const response = await fetch(apiUrl, {
