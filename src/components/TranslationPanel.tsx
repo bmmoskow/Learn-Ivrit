@@ -297,7 +297,7 @@ export function TranslationPanel() {
             access_count: 1
           }, {
             onConflict: 'content_hash',
-            ignoreDuplicates: false
+            ignoreDuplicates: true
           });
       }
 
