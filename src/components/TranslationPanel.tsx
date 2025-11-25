@@ -288,14 +288,16 @@ export function TranslationPanel() {
       if (!isGuest && user) {
         await supabase
           .from('translation_cache')
-          .insert({
+          .upsert({
             content_hash: contentHash,
             hebrew_text: textToTranslate,
             translation: responseData.translation,
             text_length: textLength,
-            cached_at: new Date().toISOString(),
             last_accessed: new Date().toISOString(),
             access_count: 1
+          }, {
+            onConflict: 'content_hash',
+            ignoreDuplicates: false
           });
       }
 
