@@ -57,30 +57,8 @@ export function VocabularyList() {
       const to = from + itemsPerPage - 1;
 
       let query = supabase
-        .from('vocabulary_words')
-        .select(`
-          id,
-          user_id,
-          hebrew_word,
-          english_translation,
-          definition,
-          transliteration,
-          created_at,
-          updated_at,
-          word_statistics (
-            id,
-            user_id,
-            word_id,
-            correct_count,
-            incorrect_count,
-            total_attempts,
-            consecutive_correct,
-            last_tested,
-            confidence_score,
-            created_at,
-            updated_at
-          )
-        `, { count: 'exact' })
+        .from('vocabulary_with_stats')
+        .select('*', { count: 'exact' })
         .eq('user_id', user.id);
 
       if (sortBy === 'date') {
@@ -90,7 +68,6 @@ export function VocabularyList() {
       } else if (sortBy === 'performance') {
         query = query.order('confidence_score', {
           ascending: true,
-          referencedTable: 'word_statistics',
           nullsFirst: false
         });
       }
@@ -103,16 +80,29 @@ export function VocabularyList() {
 
       setTotalCount(count || 0);
 
-      const wordsWithStats = vocabData.map(word => {
-        const stats = Array.isArray(word.word_statistics)
-          ? word.word_statistics[0]
-          : word.word_statistics;
-        return {
-          ...word,
-          statistics: stats,
-          word_statistics: undefined
-        };
-      });
+      const wordsWithStats = vocabData.map(row => ({
+        id: row.id,
+        user_id: row.user_id,
+        hebrew_word: row.hebrew_word,
+        english_translation: row.english_translation,
+        definition: row.definition,
+        transliteration: row.transliteration,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        statistics: row.stats_id ? {
+          id: row.stats_id,
+          user_id: row.user_id,
+          word_id: row.id,
+          correct_count: row.correct_count,
+          incorrect_count: row.incorrect_count,
+          total_attempts: row.total_attempts,
+          consecutive_correct: row.consecutive_correct,
+          last_tested: row.last_tested,
+          confidence_score: row.confidence_score,
+          created_at: row.stats_created_at,
+          updated_at: row.stats_updated_at
+        } : undefined
+      }));
 
       setWords(wordsWithStats);
     } catch (err) {
