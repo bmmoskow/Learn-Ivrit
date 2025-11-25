@@ -233,11 +233,16 @@ export function TranslationPanel() {
       const textToTranslate = hebrewText.trim();
       const textLength = textToTranslate.length;
 
+      console.log('Text to translate (first 200 chars):', textToTranslate.substring(0, 200));
+      console.log('Text length:', textLength);
+
       const encoder = new TextEncoder();
       const data = encoder.encode(textToTranslate);
       const hashBuffer = await crypto.subtle.digest('SHA-256', data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      console.log('Generated content_hash:', contentHash);
 
       if (!isGuest && user) {
         console.log('Checking cache for content_hash:', contentHash);
