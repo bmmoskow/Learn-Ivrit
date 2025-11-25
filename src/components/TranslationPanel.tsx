@@ -250,13 +250,9 @@ export function TranslationPanel() {
           console.log('Translation found in cache');
           setEnglishText(cachedData.translation);
 
-          await supabase
-            .from('translation_cache')
-            .update({
-              last_accessed: new Date().toISOString(),
-              access_count: supabase.sql`access_count + 1`
-            })
-            .eq('id', cachedData.id);
+          await supabase.rpc('increment_translation_access', {
+            cache_id: cachedData.id
+          });
 
           setTranslating(false);
           return;
