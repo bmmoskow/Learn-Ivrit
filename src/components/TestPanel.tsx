@@ -166,47 +166,66 @@ export function TestPanel() {
     setShowResults(false);
   };
 
-  const batchSaveQuestionResults = async (questions: TestQuestion[]) => {
+  const saveTestResultsAsync = (completedTest: TestQuestion[]) => {
     if (isGuest || !user) return;
 
-    try {
-      const timestamp = new Date().toISOString();
-      const statsUpdates = questions.map(question => {
-        const stats = question.word.statistics;
-        const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
-        const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
-        const newTotalAttempts = (stats?.total_attempts || 0) + 1;
-        const newConsecutiveCorrect = question.isCorrect
-          ? (stats?.consecutive_correct || 0) + 1
-          : 0;
+    const correctCount = completedTest.filter(q => q.isCorrect).length;
+    const totalQuestions = completedTest.length;
+    const scorePercentage = (correctCount / totalQuestions) * 100;
+    const durationSeconds = Math.floor((Date.now() - testStartTime) / 1000);
+    const timestamp = new Date().toISOString();
 
-        const newConfidenceScore = calculateConfidenceScore({
-          correct_count: newCorrectCount,
-          incorrect_count: newIncorrectCount,
-          total_attempts: newTotalAttempts,
-          consecutive_correct: newConsecutiveCorrect
-        });
+    const responses = completedTest.map(question => ({
+      word_id: question.word.id,
+      user_answer: question.userAnswer || '',
+      correct_answer: question.word.english_translation,
+      is_correct: question.isCorrect || false,
+      response_time_seconds: question.responseTime
+    }));
 
-        return {
-          user_id: user.id,
-          word_id: question.word.id,
-          correct_count: newCorrectCount,
-          incorrect_count: newIncorrectCount,
-          total_attempts: newTotalAttempts,
-          consecutive_correct: newConsecutiveCorrect,
-          last_tested: timestamp,
-          confidence_score: newConfidenceScore
-        };
+    const statistics = completedTest.map(question => {
+      const stats = question.word.statistics;
+      const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
+      const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
+      const newTotalAttempts = (stats?.total_attempts || 0) + 1;
+      const newConsecutiveCorrect = question.isCorrect
+        ? (stats?.consecutive_correct || 0) + 1
+        : 0;
+
+      const newConfidenceScore = calculateConfidenceScore({
+        correct_count: newCorrectCount,
+        incorrect_count: newIncorrectCount,
+        total_attempts: newTotalAttempts,
+        consecutive_correct: newConsecutiveCorrect
       });
 
-      await supabase
-        .from('word_statistics')
-        .upsert(statsUpdates, {
-          onConflict: 'user_id,word_id'
-        });
-    } catch (err) {
-      console.error('Error saving question results:', err);
-    }
+      return {
+        word_id: question.word.id,
+        correct_count: newCorrectCount,
+        incorrect_count: newIncorrectCount,
+        total_attempts: newTotalAttempts,
+        consecutive_correct: newConsecutiveCorrect,
+        last_tested: timestamp,
+        confidence_score: newConfidenceScore
+      };
+    });
+
+    supabase.rpc('save_complete_test_results', {
+      p_user_id: user.id,
+      p_test_type: testType!,
+      p_total_questions: totalQuestions,
+      p_correct_answers: correctCount,
+      p_score_percentage: scorePercentage,
+      p_duration_seconds: durationSeconds,
+      p_responses: responses,
+      p_statistics: statistics
+    }).then(({ data: savedTestId, error }) => {
+      if (error) {
+        console.error('Error saving test results:', error);
+      } else {
+        setTestId(savedTestId);
+      }
+    });
   };
 
   const handleAnswer = (answer: string, isCorrect: boolean) => {
@@ -233,59 +252,11 @@ export function TestPanel() {
   const finishTest = async (completedTest: TestQuestion[]) => {
     const minDisplayTime = new Promise(resolve => setTimeout(resolve, 2000));
 
-    if (isGuest) {
-      await minDisplayTime;
-      setShowResults(true);
-      return;
-    }
+    await minDisplayTime;
+    setShowResults(true);
 
-    if (!user) return;
-
-    const correctCount = completedTest.filter(q => q.isCorrect).length;
-    const totalQuestions = completedTest.length;
-    const scorePercentage = (correctCount / totalQuestions) * 100;
-    const durationSeconds = Math.floor((Date.now() - testStartTime) / 1000);
-
-    try {
-      const saveTestSummary = async () => {
-        const { data: testData, error: testError } = await supabase
-          .from('user_tests')
-          .insert({
-            user_id: user.id,
-            test_type: testType!,
-            total_questions: totalQuestions,
-            correct_answers: correctCount,
-            score_percentage: scorePercentage,
-            duration_seconds: durationSeconds
-          })
-          .select()
-          .single();
-
-        if (testError) throw testError;
-
-        setTestId(testData.id);
-
-        const testResponses = completedTest.map(question => ({
-          test_id: testData.id,
-          user_id: user.id,
-          word_id: question.word.id,
-          user_answer: question.userAnswer || '',
-          correct_answer: question.word.english_translation,
-          is_correct: question.isCorrect || false,
-          response_time_seconds: question.responseTime
-        }));
-
-        await Promise.all([
-          supabase.from('test_responses').insert(testResponses),
-          batchSaveQuestionResults(completedTest)
-        ]);
-      };
-
-      await Promise.all([minDisplayTime, saveTestSummary()]);
-      setShowResults(true);
-    } catch (err) {
-      console.error('Error saving test results:', err);
-      setShowResults(true);
+    if (!isGuest && user) {
+      saveTestResultsAsync(completedTest);
     }
   };
 
