@@ -23,17 +23,26 @@ export function VocabularyList() {
   const [newWord, setNewWord] = useState({ hebrew_word: '', english_translation: '', definition: '', transliteration: '' });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   const itemsPerPage = 50;
   const totalPages = Math.ceil(totalCount / itemsPerPage);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     loadVocabulary();
-  }, [user, sortBy, currentPage]);
+  }, [user, sortBy, currentPage, debouncedSearchQuery]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [sortBy]);
+  }, [sortBy, debouncedSearchQuery]);
 
   const getPerformanceColor = (score: number) => {
     if (score >= 80) return 'bg-green-50 text-green-700 border-green-200';
@@ -60,7 +69,13 @@ export function VocabularyList() {
         let query = supabase
           .from('vocabulary_with_stats')
           .select('*', { count: 'exact' })
-          .eq('user_id', user.id)
+          .eq('user_id', user.id);
+
+        if (debouncedSearchQuery) {
+          query = query.or(`hebrew_word.ilike.%${debouncedSearchQuery}%,english_translation.ilike.%${debouncedSearchQuery}%`);
+        }
+
+        query = query
           .order('confidence_score', {
             ascending: true,
             nullsFirst: false
@@ -104,6 +119,10 @@ export function VocabularyList() {
           .select('id, hebrew_word, english_translation, definition, transliteration, created_at, updated_at, user_id', { count: 'exact' })
           .eq('user_id', user.id);
 
+        if (debouncedSearchQuery) {
+          query = query.or(`hebrew_word.ilike.%${debouncedSearchQuery}%,english_translation.ilike.%${debouncedSearchQuery}%`);
+        }
+
         if (sortBy === 'date') {
           query = query.order('created_at', { ascending: false });
         } else if (sortBy === 'alphabetical') {
@@ -141,12 +160,7 @@ export function VocabularyList() {
     }
   };
 
-  const filteredWords = words.filter(word =>
-    word.hebrew_word.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    word.english_translation.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const paginatedWords = filteredWords;
+  const paginatedWords = words;
 
   const addWord = async () => {
     if (!user || !newWord.hebrew_word || !newWord.english_translation) return;
