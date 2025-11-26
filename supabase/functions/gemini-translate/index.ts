@@ -135,8 +135,6 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    console.log('GEMINI_API_KEY check:', Deno.env.get("GEMINI_API_KEY")?.substring(0, 20) + '...');
-
     if (path.includes("/translate")) {
       const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
