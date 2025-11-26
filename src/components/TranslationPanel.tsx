@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../../supabase/client";
 import { WordDefinitionPopup } from "./WordDefinitionPopup";
 import { BIBLE_BOOKS } from "../data/bibleBooks";
+import { requestDeduplicator, createRequestKey } from "../utils/requestDeduplicator";
 
 export function TranslationPanel() {
   const { user, isGuest } = useAuth();
@@ -60,63 +61,69 @@ export function TranslationPanel() {
 
     try {
       const url = urlInput.trim();
-      let content = null;
+      const requestKey = createRequestKey('load-url', { url });
 
-      if (!isGuest && user) {
-        const { data: cachedData } = await supabase
-          .from('sefaria_cache')
-          .select('content')
-          .eq('reference', url)
-          .maybeSingle();
-
-        if (cachedData) {
-          console.log('URL content found in cache');
-          content = cachedData.content;
-
-          supabase
-            .from('sefaria_cache')
-            .update({
-              last_accessed: new Date().toISOString(),
-              access_count: supabase.rpc('increment', { x: 1 })
-            })
-            .eq('reference', url)
-            .then(() => {});
-        }
-      }
-
-      if (!content) {
-        console.log('Fetching URL content from API');
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
-
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ url }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Failed to load URL");
-        }
-
-        const data = await response.json();
-        content = data.content;
+      const content = await requestDeduplicator.dedupe(requestKey, async () => {
+        let content = null;
 
         if (!isGuest && user) {
-          supabase
+          const { data: cachedData } = await supabase
             .from('sefaria_cache')
-            .insert({
-              reference: url,
-              content,
-              last_accessed: new Date().toISOString(),
-              access_count: 1
-            })
-            .then(() => {});
+            .select('content')
+            .eq('reference', url)
+            .maybeSingle();
+
+          if (cachedData) {
+            console.log('URL content found in cache');
+            content = cachedData.content;
+
+            supabase
+              .from('sefaria_cache')
+              .update({
+                last_accessed: new Date().toISOString(),
+                access_count: supabase.rpc('increment', { x: 1 })
+              })
+              .eq('reference', url)
+              .then(() => {});
+          }
         }
-      }
+
+        if (!content) {
+          console.log('Fetching URL content from API');
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
+
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to load URL");
+          }
+
+          const data = await response.json();
+          content = data.content;
+
+          if (!isGuest && user) {
+            supabase
+              .from('sefaria_cache')
+              .insert({
+                reference: url,
+                content,
+                last_accessed: new Date().toISOString(),
+                access_count: 1
+              })
+              .then(() => {});
+          }
+        }
+
+        return content;
+      });
 
       console.log('Hebrew text loaded, length:', content?.length);
       console.log('First 200 chars:', content?.substring(0, 200));
@@ -162,58 +169,62 @@ export function TranslationPanel() {
 
     try {
       const reference = `${bookToLoad}.${chapterToLoad}`;
+      const requestKey = createRequestKey('load-bible', { reference });
 
-      let data = null;
-
-      let cachedTranslation = null;
-
-      if (!isGuest && user) {
-        const { data: cachedData } = await supabase
-          .from('sefaria_cache')
-          .select('content, access_count, translation')
-          .eq('reference', reference)
-          .maybeSingle();
-
-        if (cachedData) {
-          data = cachedData.content;
-          cachedTranslation = cachedData.translation;
-
-          supabase
-            .from('sefaria_cache')
-            .update({
-              last_accessed: new Date().toISOString(),
-              access_count: (cachedData.access_count || 0) + 1
-            })
-            .eq('reference', reference)
-            .then(() => {});
-        }
-      }
-
-      if (!data) {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch?reference=${encodeURIComponent(reference)}`;
-
-        const response = await fetch(apiUrl, {
-          headers: {
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to load Bible chapter");
-        }
-
-        data = await response.json();
+      const { data, cachedTranslation } = await requestDeduplicator.dedupe(requestKey, async () => {
+        let data = null;
+        let cachedTranslation = null;
 
         if (!isGuest && user) {
-          supabase
+          const { data: cachedData } = await supabase
             .from('sefaria_cache')
-            .insert({
-              reference,
-              content: data
-            })
-            .then(() => {});
+            .select('content, access_count, translation')
+            .eq('reference', reference)
+            .maybeSingle();
+
+          if (cachedData) {
+            data = cachedData.content;
+            cachedTranslation = cachedData.translation;
+
+            supabase
+              .from('sefaria_cache')
+              .update({
+                last_accessed: new Date().toISOString(),
+                access_count: (cachedData.access_count || 0) + 1
+              })
+              .eq('reference', reference)
+              .then(() => {});
+          }
         }
-      }
+
+        if (!data) {
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sefaria-fetch?reference=${encodeURIComponent(reference)}`;
+
+          const response = await fetch(apiUrl, {
+            headers: {
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to load Bible chapter");
+          }
+
+          data = await response.json();
+
+          if (!isGuest && user) {
+            supabase
+              .from('sefaria_cache')
+              .insert({
+                reference,
+                content: data
+              })
+              .then(() => {});
+          }
+        }
+
+        return { data, cachedTranslation };
+      });
 
       const hebrewVerses = data.he || [];
       const versesWithNumbers = hebrewVerses.map((verse: string, index: number) => {
@@ -288,85 +299,90 @@ export function TranslationPanel() {
 
       console.log('Generated content_hash:', contentHash);
 
-      if (!isGuest && user) {
-        console.log('Checking cache for content_hash:', contentHash);
-        const { data: cachedData, error: cacheError } = await supabase
-          .from('translation_cache')
-          .select('translation, id')
-          .eq('content_hash', contentHash)
-          .maybeSingle();
+      const requestKey = createRequestKey('translate', { contentHash });
 
-        if (cacheError) {
-          console.log('Cache lookup error:', cacheError);
+      const translation = await requestDeduplicator.dedupe(requestKey, async () => {
+        if (!isGuest && user) {
+          console.log('Checking cache for content_hash:', contentHash);
+          const { data: cachedData, error: cacheError } = await supabase
+            .from('translation_cache')
+            .select('translation, id')
+            .eq('content_hash', contentHash)
+            .maybeSingle();
+
+          if (cacheError) {
+            console.log('Cache lookup error:', cacheError);
+          }
+
+          if (!cacheError && cachedData) {
+            console.log('✓ Translation found in cache, returning early');
+
+            supabase.rpc('increment_translation_access', {
+              cache_id: cachedData.id
+            }).then(() => {});
+
+            return cachedData.translation;
+          } else {
+            console.log('Cache miss - will call API');
+          }
         }
 
-        if (!cacheError && cachedData) {
-          console.log('✓ Translation found in cache, returning early');
-          setEnglishText(cachedData.translation);
+        console.log('Calling Gemini API for translation');
+        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
-          supabase.rpc('increment_translation_access', {
-            cache_id: cachedData.id
-          }).then(() => {});
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: textToTranslate,
+            targetLanguage: "English",
+            sourceLanguage: "Hebrew",
+          }),
+        });
 
-          setTranslating(false);
-          return;
-        } else {
-          console.log('Cache miss - will call API');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Translation failed");
         }
-      }
 
-      console.log('Calling Gemini API for translation');
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
+        const responseData = await response.json();
+        console.log('Translation received, length:', responseData.translation?.length);
+        console.log('First 100 chars:', responseData.translation?.substring(0, 100));
+        console.log('Last 100 chars:', responseData.translation?.substring(responseData.translation?.length - 100));
 
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text: textToTranslate,
-          targetLanguage: "English",
-          sourceLanguage: "Hebrew",
-        }),
+        if (!isGuest && user) {
+          supabase
+            .from('translation_cache')
+            .upsert({
+              content_hash: contentHash,
+              hebrew_text: textToTranslate,
+              translation: responseData.translation,
+              text_length: textLength,
+              last_accessed: new Date().toISOString(),
+              access_count: 1
+            }, {
+              onConflict: 'content_hash',
+              ignoreDuplicates: true
+            })
+            .then(() => {});
+        }
+
+        if (bibleLoaded && currentBibleRef && !isGuest && user) {
+          const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
+          supabase
+            .from('sefaria_cache')
+            .update({ translation: responseData.translation })
+            .eq('reference', reference)
+            .then(() => {});
+        }
+
+        return responseData.translation;
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Translation failed");
-      }
-
-      const responseData = await response.json();
-      console.log('Translation received, length:', responseData.translation?.length);
-      console.log('First 100 chars:', responseData.translation?.substring(0, 100));
-      console.log('Last 100 chars:', responseData.translation?.substring(responseData.translation?.length - 100));
-      setEnglishText(responseData.translation);
-
-      if (!isGuest && user) {
-        supabase
-          .from('translation_cache')
-          .upsert({
-            content_hash: contentHash,
-            hebrew_text: textToTranslate,
-            translation: responseData.translation,
-            text_length: textLength,
-            last_accessed: new Date().toISOString(),
-            access_count: 1
-          }, {
-            onConflict: 'content_hash',
-            ignoreDuplicates: true
-          })
-          .then(() => {});
-      }
-
-      if (bibleLoaded && currentBibleRef && !isGuest && user) {
-        const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
-        supabase
-          .from('sefaria_cache')
-          .update({ translation: responseData.translation })
-          .eq('reference', reference)
-          .then(() => {});
-      }
+      setEnglishText(translation);
     } catch (err) {
       setError("Failed to translate. Please try again.");
       console.error("Translation error:", err);

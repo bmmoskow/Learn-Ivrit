@@ -3,6 +3,7 @@ import { X, Loader2, BookmarkPlus, Check, RefreshCw } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../../supabase/client';
 import { generateBasicHebrewForms } from '../utils/hebrewForms';
+import { requestDeduplicator, createRequestKey } from '../utils/requestDeduplicator';
 
 type WordDefinitionPopupProps = {
   word: string;
@@ -73,99 +74,99 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
     setError('');
 
     try {
-      let data;
-      let shortEnglish = 'No translation';
+      const requestKey = createRequestKey('define-word', { word: currentWord, forceRefresh });
 
-      // Check cache first if not forcing refresh
-      if (!forceRefresh) {
-        const { data: cachedData } = await supabase
-          .from('word_definitions')
-          .select('word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count')
-          .eq('word', currentWord)
-          .maybeSingle();
+      const { data, shortEnglish } = await requestDeduplicator.dedupe(requestKey, async () => {
+        let data;
+        let shortEnglish = 'No translation';
 
-        if (cachedData) {
-          data = {
-            wordWithVowels: cachedData.word_with_vowels,
-            definition: cachedData.definition,
-            transliteration: cachedData.transliteration,
-            examples: cachedData.examples || [],
-            notes: cachedData.notes || '',
-            forms: cachedData.forms || [],
-            shortEnglish: cachedData.short_english
-          };
-          shortEnglish = cachedData.short_english;
+        if (!forceRefresh) {
+          const { data: cachedData } = await supabase
+            .from('word_definitions')
+            .select('word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count')
+            .eq('word', currentWord)
+            .maybeSingle();
+
+          if (cachedData) {
+            data = {
+              wordWithVowels: cachedData.word_with_vowels,
+              definition: cachedData.definition,
+              transliteration: cachedData.transliteration,
+              examples: cachedData.examples || [],
+              notes: cachedData.notes || '',
+              forms: cachedData.forms || [],
+              shortEnglish: cachedData.short_english
+            };
+            shortEnglish = cachedData.short_english;
+
+            supabase
+              .from('word_definitions')
+              .update({
+                last_accessed: new Date().toISOString(),
+                access_count: (cachedData.access_count || 0) + 1
+              })
+              .eq('word', currentWord)
+              .then(() => {});
+          }
+        }
+
+        if (!data) {
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/define`;
+
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              word: currentWord,
+              targetLanguage: 'Hebrew'
+            })
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch definition');
+          }
+
+          data = await response.json();
+
+          shortEnglish = data.definition && data.definition.trim() !== ''
+            ? data.definition.trim()
+            : 'Translation unavailable';
+
+          if (shortEnglish.length > 40) {
+            shortEnglish = shortEnglish.substring(0, 40).trim() + '...';
+          }
+
+          data.shortEnglish = shortEnglish;
 
           supabase
             .from('word_definitions')
-            .update({
+            .upsert({
+              word: currentWord,
+              word_with_vowels: data.wordWithVowels || currentWord,
+              definition: data.definition || '',
+              transliteration: data.transliteration || '',
+              examples: data.examples || [],
+              notes: data.notes || '',
+              forms: data.forms || [],
+              short_english: shortEnglish,
               last_accessed: new Date().toISOString(),
-              access_count: (cachedData.access_count || 0) + 1
+              access_count: 1
+            }, {
+              onConflict: 'word'
             })
-            .eq('word', currentWord)
             .then(() => {});
-        }
-      }
 
-      // Fetch from API if not cached or forcing refresh
-      if (!data) {
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/define`;
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            word: currentWord,
-            targetLanguage: 'Hebrew'
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch definition');
+          if (forceRefresh) {
+            setForceRefresh(false);
+          }
         }
 
-        data = await response.json();
-
-
-        // Use definition directly as the translation
-        shortEnglish = data.definition && data.definition.trim() !== ''
-          ? data.definition.trim()
-          : 'Translation unavailable';
-
-        // Limit length if needed
-        if (shortEnglish.length > 40) {
-          shortEnglish = shortEnglish.substring(0, 40).trim() + '...';
-        }
-
-        data.shortEnglish = shortEnglish;
-
-        supabase
-          .from('word_definitions')
-          .upsert({
-            word: currentWord,
-            word_with_vowels: data.wordWithVowels || currentWord,
-            definition: data.definition || '',
-            transliteration: data.transliteration || '',
-            examples: data.examples || [],
-            notes: data.notes || '',
-            forms: data.forms || [],
-            short_english: shortEnglish,
-            last_accessed: new Date().toISOString(),
-            access_count: 1
-          }, {
-            onConflict: 'word'
-          })
-          .then(() => {});
-
-        // Reset forceRefresh flag after successful refresh
-        if (forceRefresh) {
-          setForceRefresh(false);
-        }
-      }
+        return { data, shortEnglish };
+      });
 
       let relatedWords = (data.forms || []).map((form: any) => ({
         hebrew: form.hebrew,
