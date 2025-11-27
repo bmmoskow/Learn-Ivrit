@@ -73,6 +73,7 @@ async function checkRateLimit(
     const hoursUntilReset = Math.ceil((resetTime.getTime() - now.getTime()) / (60 * 60 * 1000));
 
     return {
+      
       allowed: false,
       error: `Daily rate limit exceeded for ${limits.name} translations. You can make ${limits.daily} requests per day. Try again in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
     };
