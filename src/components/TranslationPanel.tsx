@@ -386,8 +386,8 @@ export function TranslationPanel() {
       });
 
       setEnglishText(translation);
-    } catch (err) {
-      setError("Failed to translate. Please try again.");
+    } catch (err: any) {
+      setError(err.message || "Failed to translate. Please try again.");
       console.error("Translation error:", err);
     } finally {
       setTranslating(false);

@@ -196,8 +196,8 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
         relatedWords,
         shortEnglish
       });
-    } catch (err) {
-      setError('Failed to load definition');
+    } catch (err: any) {
+      setError(err.message || 'Failed to load definition');
       console.error('Definition error:', err);
     } finally {
       setLoading(false);
