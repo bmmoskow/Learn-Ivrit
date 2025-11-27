@@ -30,41 +30,51 @@ async function checkRateLimit(
   const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  const { data: hourlyCount, error: hourlyError } = await supabase
+  const { data: hourlyRequests, error: hourlyError } = await supabase
     .from('gemini_api_rate_limits')
-    .select('id', { count: 'exact', head: true })
+    .select('created_at')
     .eq('user_id', userId)
     .eq('request_type', requestType)
-    .gte('created_at', oneHourAgo.toISOString());
+    .gte('created_at', oneHourAgo.toISOString())
+    .order('created_at', { ascending: true });
 
   if (hourlyError) {
     console.error('Error checking hourly rate limit:', hourlyError);
     return { allowed: true };
   }
 
-  if ((hourlyCount || 0) >= limits.hourly) {
+  if ((hourlyRequests?.length || 0) >= limits.hourly) {
+    const oldestRequest = new Date(hourlyRequests[0].created_at);
+    const resetTime = new Date(oldestRequest.getTime() + 60 * 60 * 1000);
+    const minutesUntilReset = Math.ceil((resetTime.getTime() - now.getTime()) / (60 * 1000));
+
     return {
       allowed: false,
-      error: `Rate limit exceeded for ${limits.name} translations. You can make ${limits.hourly} requests per hour. Please try again later.`,
+      error: `Rate limit exceeded for ${limits.name} translations. You can make ${limits.hourly} requests per hour. Try again in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''}.`,
     };
   }
 
-  const { data: dailyCount, error: dailyError } = await supabase
+  const { data: dailyRequests, error: dailyError } = await supabase
     .from('gemini_api_rate_limits')
-    .select('id', { count: 'exact', head: true })
+    .select('created_at')
     .eq('user_id', userId)
     .eq('request_type', requestType)
-    .gte('created_at', oneDayAgo.toISOString());
+    .gte('created_at', oneDayAgo.toISOString())
+    .order('created_at', { ascending: true });
 
   if (dailyError) {
     console.error('Error checking daily rate limit:', dailyError);
     return { allowed: true };
   }
 
-  if ((dailyCount || 0) >= limits.daily) {
+  if ((dailyRequests?.length || 0) >= limits.daily) {
+    const oldestRequest = new Date(dailyRequests[0].created_at);
+    const resetTime = new Date(oldestRequest.getTime() + 24 * 60 * 60 * 1000);
+    const hoursUntilReset = Math.ceil((resetTime.getTime() - now.getTime()) / (60 * 60 * 1000));
+
     return {
       allowed: false,
-      error: `Daily rate limit exceeded for ${limits.name} translations. You can make ${limits.daily} requests per day. Please try again tomorrow.`,
+      error: `Daily rate limit exceeded for ${limits.name} translations. You can make ${limits.daily} requests per day. Try again in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
     };
   }
 
