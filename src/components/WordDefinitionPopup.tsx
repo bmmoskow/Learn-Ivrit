@@ -8,7 +8,7 @@ import { requestDeduplicator, createRequestKey } from '../utils/requestDeduplica
 type WordDefinitionPopupProps = {
   word: string;
   sentence: string;
-  position: { x: number; y: number };
+  position: { x: number; y: num429ber };
   onClose: () => void;
   onWordSaved: () => void;
 };
