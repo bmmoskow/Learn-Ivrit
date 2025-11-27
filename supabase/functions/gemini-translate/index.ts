@@ -7,6 +7,83 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
+const RATE_LIMITS = {
+  word_definition: {
+    hourly: 100,
+    daily: 500,
+    name: "word definition",
+  },
+  passage_translation: {
+    hourly: 30,
+    daily: 100,
+    name: "passage translation",
+  },
+};
+
+async function checkRateLimit(
+  supabase: any,
+  userId: string,
+  requestType: 'word_definition' | 'passage_translation'
+): Promise<{ allowed: boolean; error?: string }> {
+  const limits = RATE_LIMITS[requestType];
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+  const { data: hourlyCount, error: hourlyError } = await supabase
+    .from('gemini_api_rate_limits')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('request_type', requestType)
+    .gte('created_at', oneHourAgo.toISOString());
+
+  if (hourlyError) {
+    console.error('Error checking hourly rate limit:', hourlyError);
+    return { allowed: true };
+  }
+
+  if ((hourlyCount || 0) >= limits.hourly) {
+    return {
+      allowed: false,
+      error: `Rate limit exceeded for ${limits.name} translations. You can make ${limits.hourly} requests per hour. Please try again later.`,
+    };
+  }
+
+  const { data: dailyCount, error: dailyError } = await supabase
+    .from('gemini_api_rate_limits')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('request_type', requestType)
+    .gte('created_at', oneDayAgo.toISOString());
+
+  if (dailyError) {
+    console.error('Error checking daily rate limit:', dailyError);
+    return { allowed: true };
+  }
+
+  if ((dailyCount || 0) >= limits.daily) {
+    return {
+      allowed: false,
+      error: `Daily rate limit exceeded for ${limits.name} translations. You can make ${limits.daily} requests per day. Please try again tomorrow.`,
+    };
+  }
+
+  return { allowed: true };
+}
+
+async function logRequest(
+  supabase: any,
+  userId: string,
+  requestType: 'word_definition' | 'passage_translation'
+): Promise<void> {
+  await supabase
+    .from('gemini_api_rate_limits')
+    .insert({
+      user_id: userId,
+      request_type: requestType,
+    });
+}
+
 async function hashText(text: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
@@ -135,6 +212,40 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid or expired token" }),
+        {
+          status: 401,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
+
     if (path.includes("/translate")) {
       const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
@@ -143,9 +254,19 @@ Deno.serve(async (req: Request) => {
       }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      const rateLimitCheck = await checkRateLimit(supabase, user.id, 'passage_translation');
+      if (!rateLimitCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: rateLimitCheck.error }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
 
       const contentHash = await hashText(text);
       const textLength = text.length;
@@ -184,6 +305,8 @@ Deno.serve(async (req: Request) => {
           }
         );
       }
+
+      await logRequest(supabase, user.id, 'passage_translation');
 
       const vowelInstruction = targetLanguage === "Hebrew"
         ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
@@ -305,6 +428,22 @@ Deno.serve(async (req: Request) => {
       }
 
       const { word, targetLanguage }: DefinitionRequest = await req.json();
+
+      const rateLimitCheck = await checkRateLimit(supabase, user.id, 'word_definition');
+      if (!rateLimitCheck.allowed) {
+        return new Response(
+          JSON.stringify({ error: rateLimitCheck.error }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
+
+      await logRequest(supabase, user.id, 'word_definition');
 
       const prompt = `For the Hebrew word "${word}":
 
