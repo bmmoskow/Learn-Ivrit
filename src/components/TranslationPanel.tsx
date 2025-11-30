@@ -31,10 +31,7 @@ export function TranslationPanel() {
   const loadSavedWords = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("vocabulary_words")
-      .select("hebrew_word")
-      .eq("user_id", user.id);
+    const { data, error } = await supabase.from("vocabulary_words").select("hebrew_word").eq("user_id", user.id);
 
     if (!error && data) {
       setSavedWords(new Set(data.map((w) => w.hebrew_word)));
@@ -61,35 +58,35 @@ export function TranslationPanel() {
 
     try {
       const url = urlInput.trim();
-      const requestKey = createRequestKey('load-url', { url });
+      const requestKey = createRequestKey("load-url", { url });
 
       const content = await requestDeduplicator.dedupe(requestKey, async () => {
         let content = null;
 
         if (!isGuest && user) {
           const { data: cachedData } = await supabase
-            .from('sefaria_cache')
-            .select('content')
-            .eq('reference', url)
+            .from("sefaria_cache")
+            .select("content, access_count")
+            .eq("reference", url)
             .maybeSingle();
 
           if (cachedData) {
-            console.log('URL content found in cache');
+            console.log("URL content found in cache");
             content = cachedData.content;
 
             supabase
-              .from('sefaria_cache')
+              .from("sefaria_cache")
               .update({
                 last_accessed: new Date().toISOString(),
-                access_count: supabase.rpc('increment', { x: 1 })
+                access_count: (cachedData.access_count || 0) + 1,
               })
-              .eq('reference', url)
+              .eq("reference", url)
               .then(() => {});
           }
         }
 
         if (!content) {
-          console.log('Fetching URL content from API');
+          console.log("Fetching URL content from API");
           const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
 
           const response = await fetch(apiUrl, {
@@ -111,12 +108,12 @@ export function TranslationPanel() {
 
           if (!isGuest && user) {
             supabase
-              .from('sefaria_cache')
+              .from("sefaria_cache")
               .insert({
                 reference: url,
                 content,
                 last_accessed: new Date().toISOString(),
-                access_count: 1
+                access_count: 1,
               })
               .then(() => {});
           }
@@ -125,9 +122,9 @@ export function TranslationPanel() {
         return content;
       });
 
-      console.log('Hebrew text loaded, length:', content?.length);
-      console.log('First 200 chars:', content?.substring(0, 200));
-      console.log('Last 200 chars:', content?.substring(content?.length - 200));
+      console.log("Hebrew text loaded, length:", content?.length);
+      console.log("First 200 chars:", content?.substring(0, 200));
+      console.log("Last 200 chars:", content?.substring(content?.length - 200));
       setHebrewText(content);
       setShowUrlInput(false);
       setUrlInput("");
@@ -169,7 +166,7 @@ export function TranslationPanel() {
 
     try {
       const reference = `${bookToLoad}.${chapterToLoad}`;
-      const requestKey = createRequestKey('load-bible', { reference });
+      const requestKey = createRequestKey("load-bible", { reference });
 
       const { data, cachedTranslation } = await requestDeduplicator.dedupe(requestKey, async () => {
         let data = null;
@@ -177,9 +174,9 @@ export function TranslationPanel() {
 
         if (!isGuest && user) {
           const { data: cachedData } = await supabase
-            .from('sefaria_cache')
-            .select('content, access_count, translation')
-            .eq('reference', reference)
+            .from("sefaria_cache")
+            .select("content, access_count, translation")
+            .eq("reference", reference)
             .maybeSingle();
 
           if (cachedData) {
@@ -187,12 +184,12 @@ export function TranslationPanel() {
             cachedTranslation = cachedData.translation;
 
             supabase
-              .from('sefaria_cache')
+              .from("sefaria_cache")
               .update({
                 last_accessed: new Date().toISOString(),
-                access_count: (cachedData.access_count || 0) + 1
+                access_count: (cachedData.access_count || 0) + 1,
               })
-              .eq('reference', reference)
+              .eq("reference", reference)
               .then(() => {});
           }
         }
@@ -214,10 +211,10 @@ export function TranslationPanel() {
 
           if (!isGuest && user) {
             supabase
-              .from('sefaria_cache')
+              .from("sefaria_cache")
               .insert({
                 reference,
-                content: data
+                content: data,
               })
               .then(() => {});
           }
@@ -288,49 +285,53 @@ export function TranslationPanel() {
       const textToTranslate = hebrewText.trim();
       const textLength = textToTranslate.length;
 
-      console.log('Text to translate (first 200 chars):', textToTranslate.substring(0, 200));
-      console.log('Text length:', textLength);
+      console.log("Text to translate (first 200 chars):", textToTranslate.substring(0, 200));
+      console.log("Text length:", textLength);
 
       const encoder = new TextEncoder();
       const data = encoder.encode(textToTranslate);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const contentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      const contentHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 
-      console.log('Generated content_hash:', contentHash);
+      console.log("Generated content_hash:", contentHash);
 
-      const requestKey = createRequestKey('translate', { contentHash });
+      const requestKey = createRequestKey("translate", { contentHash });
 
       const translation = await requestDeduplicator.dedupe(requestKey, async () => {
         if (!isGuest && user) {
-          console.log('Checking cache for content_hash:', contentHash);
+          console.log("Checking cache for content_hash:", contentHash);
           const { data: cachedData, error: cacheError } = await supabase
-            .from('translation_cache')
-            .select('translation, id')
-            .eq('content_hash', contentHash)
+            .from("translation_cache")
+            .select("translation, id")
+            .eq("content_hash", contentHash)
             .maybeSingle();
 
           if (cacheError) {
-            console.log('Cache lookup error:', cacheError);
+            console.log("Cache lookup error:", cacheError);
           }
 
           if (!cacheError && cachedData) {
-            console.log('✓ Translation found in cache, returning early');
+            console.log("✓ Translation found in cache, returning early");
 
-            supabase.rpc('increment_translation_access', {
-              cache_id: cachedData.id
-            }).then(() => {});
+            supabase
+              .rpc("increment_translation_access", {
+                cache_id: cachedData.id,
+              })
+              .then(() => {});
 
             return cachedData.translation;
           } else {
-            console.log('Cache miss - will call API');
+            console.log("Cache miss - will call API");
           }
         }
 
-        console.log('Calling Gemini API for translation');
+        console.log("Calling Gemini API for translation");
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (!session) {
           throw new Error("You must be logged in to translate");
         }
@@ -357,33 +358,36 @@ export function TranslationPanel() {
         }
 
         const responseData = await response.json();
-        console.log('Translation received, length:', responseData.translation?.length);
-        console.log('First 100 chars:', responseData.translation?.substring(0, 100));
-        console.log('Last 100 chars:', responseData.translation?.substring(responseData.translation?.length - 100));
+        console.log("Translation received, length:", responseData.translation?.length);
+        console.log("First 100 chars:", responseData.translation?.substring(0, 100));
+        console.log("Last 100 chars:", responseData.translation?.substring(responseData.translation?.length - 100));
 
         if (!isGuest && user) {
           supabase
-            .from('translation_cache')
-            .upsert({
-              content_hash: contentHash,
-              hebrew_text: textToTranslate,
-              translation: responseData.translation,
-              text_length: textLength,
-              last_accessed: new Date().toISOString(),
-              access_count: 1
-            }, {
-              onConflict: 'content_hash',
-              ignoreDuplicates: true
-            })
+            .from("translation_cache")
+            .upsert(
+              {
+                content_hash: contentHash,
+                hebrew_text: textToTranslate,
+                translation: responseData.translation,
+                text_length: textLength,
+                last_accessed: new Date().toISOString(),
+                access_count: 1,
+              },
+              {
+                onConflict: "content_hash",
+                ignoreDuplicates: true,
+              },
+            )
             .then(() => {});
         }
 
         if (bibleLoaded && currentBibleRef && !isGuest && user) {
           const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
           supabase
-            .from('sefaria_cache')
+            .from("sefaria_cache")
             .update({ translation: responseData.translation })
-            .eq('reference', reference)
+            .eq("reference", reference)
             .then(() => {});
         }
 
@@ -444,14 +448,14 @@ export function TranslationPanel() {
     const hebrewParagraphs = hebrewText.split(/\n\n+/);
     const englishParagraphs = englishText ? englishText.split(/\n\n+/) : [];
 
-    console.log('Hebrew paragraphs:', hebrewParagraphs.length);
-    console.log('English paragraphs:', englishParagraphs.length);
+    console.log("Hebrew paragraphs:", hebrewParagraphs.length);
+    console.log("English paragraphs:", englishParagraphs.length);
 
     if (englishParagraphs.length > hebrewParagraphs.length) {
-      const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join('\n\n');
+      const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join("\n\n");
       if (hebrewParagraphs.length > 0 && extraEnglish.trim()) {
         englishParagraphs[hebrewParagraphs.length - 1] =
-          englishParagraphs[hebrewParagraphs.length - 1] + '\n\n' + extraEnglish;
+          englishParagraphs[hebrewParagraphs.length - 1] + "\n\n" + extraEnglish;
         englishParagraphs.length = hebrewParagraphs.length;
       }
     }
@@ -468,7 +472,7 @@ export function TranslationPanel() {
               <div className="text-xl leading-relaxed" dir="rtl" lang="he">
                 <p className="whitespace-pre-wrap">
                   {words.map((word, index) => {
-                    if (word === '\n') return <br key={index} />;
+                    if (word === "\n") return <br key={index} />;
 
                     const trimmedWord = word.trim();
                     if (!trimmedWord) return <span key={index}>{word}</span>;
@@ -550,7 +554,8 @@ export function TranslationPanel() {
               <div className="flex items-center gap-3">
                 <Book className="w-5 h-5 text-purple-600" />
                 <span className="font-semibold text-gray-800">
-                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter} / {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
+                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter} /{" "}
+                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
                 </span>
               </div>
               <div className="flex items-center gap-2">
