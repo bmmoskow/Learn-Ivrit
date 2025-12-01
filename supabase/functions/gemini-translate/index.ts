@@ -23,7 +23,7 @@ const RATE_LIMITS = {
 async function checkRateLimit(
   supabase: any,
   userId: string,
-  requestType: 'word_definition' | 'passage_translation'
+  requestType: "word_definition" | "passage_translation",
 ): Promise<{ allowed: boolean; error?: string }> {
   const limits = RATE_LIMITS[requestType];
   const now = new Date();
@@ -31,15 +31,15 @@ async function checkRateLimit(
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
   const { data: hourlyRequests, error: hourlyError } = await supabase
-    .from('gemini_api_rate_limits')
-    .select('created_at')
-    .eq('user_id', userId)
-    .eq('request_type', requestType)
-    .gte('created_at', oneHourAgo.toISOString())
-    .order('created_at', { ascending: true });
+    .from("gemini_api_rate_limits")
+    .select("created_at")
+    .eq("user_id", userId)
+    .eq("request_type", requestType)
+    .gte("created_at", oneHourAgo.toISOString())
+    .order("created_at", { ascending: true });
 
   if (hourlyError) {
-    console.error('Error checking hourly rate limit:', hourlyError);
+    console.error("Error checking hourly rate limit:", hourlyError);
     return { allowed: true };
   }
 
@@ -50,20 +50,20 @@ async function checkRateLimit(
 
     return {
       allowed: false,
-      error: `Rate limit exceeded for ${limits.name} translations. You can make ${limits.hourly} requests per hour. Try again in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? 's' : ''}.`,
+      error: `Rate limit exceeded for ${limits.name} translations. You can make ${limits.hourly} requests per hour. Try again in ${minutesUntilReset} minute${minutesUntilReset !== 1 ? "s" : ""}.`,
     };
   }
 
   const { data: dailyRequests, error: dailyError } = await supabase
-    .from('gemini_api_rate_limits')
-    .select('created_at')
-    .eq('user_id', userId)
-    .eq('request_type', requestType)
-    .gte('created_at', oneDayAgo.toISOString())
-    .order('created_at', { ascending: true });
+    .from("gemini_api_rate_limits")
+    .select("created_at")
+    .eq("user_id", userId)
+    .eq("request_type", requestType)
+    .gte("created_at", oneDayAgo.toISOString())
+    .order("created_at", { ascending: true });
 
   if (dailyError) {
-    console.error('Error checking daily rate limit:', dailyError);
+    console.error("Error checking daily rate limit:", dailyError);
     return { allowed: true };
   }
 
@@ -73,9 +73,8 @@ async function checkRateLimit(
     const hoursUntilReset = Math.ceil((resetTime.getTime() - now.getTime()) / (60 * 60 * 1000));
 
     return {
-      
       allowed: false,
-      error: `Daily rate limit exceeded for ${limits.name} translations. You can make ${limits.daily} requests per day. Try again in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? 's' : ''}.`,
+      error: `Daily rate limit exceeded for ${limits.name} translations. You can make ${limits.daily} requests per day. Try again in ${hoursUntilReset} hour${hoursUntilReset !== 1 ? "s" : ""}.`,
     };
   }
 
@@ -85,22 +84,20 @@ async function checkRateLimit(
 async function logRequest(
   supabase: any,
   userId: string,
-  requestType: 'word_definition' | 'passage_translation'
+  requestType: "word_definition" | "passage_translation",
 ): Promise<void> {
-  await supabase
-    .from('gemini_api_rate_limits')
-    .insert({
-      user_id: userId,
-      request_type: requestType,
-    });
+  await supabase.from("gemini_api_rate_limits").insert({
+    user_id: userId,
+    request_type: requestType,
+  });
 }
 
 async function hashText(text: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 interface TranslateRequest {
@@ -127,7 +124,7 @@ function extractArticleStructuredData(html: string): { title?: string; descripti
     try {
       const jsonData = JSON.parse(match[1]);
 
-      if (jsonData['@type'] === 'NewsArticle' || jsonData['@type'] === 'Article') {
+      if (jsonData["@type"] === "NewsArticle" || jsonData["@type"] === "Article") {
         if (jsonData.headline && !result.title) {
           result.title = jsonData.headline;
         }
@@ -138,8 +135,7 @@ function extractArticleStructuredData(html: string): { title?: string; descripti
           result.articleBody = jsonData.articleBody;
         }
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   if (!result.title) {
@@ -158,44 +154,47 @@ function extractArticleStructuredData(html: string): { title?: string; descripti
 function extractTextFromHtml(html: string): string {
   let text = html;
 
-  text = text.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '');
-  text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '');
-  text = text.replace(/<nav[^>]*>([\s\S]*?)<\/nav>/gi, '');
-  text = text.replace(/<header[^>]*>([\s\S]*?)<\/header>/gi, '');
-  text = text.replace(/<footer[^>]*>([\s\S]*?)<\/footer>/gi, '');
-  text = text.replace(/<aside[^>]*>([\s\S]*?)<\/aside>/gi, '');
-  text = text.replace(/<form[^>]*>([\s\S]*?)<\/form>/gi, '');
+  text = text.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "");
+  text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "");
+  text = text.replace(/<nav[^>]*>([\s\S]*?)<\/nav>/gi, "");
+  text = text.replace(/<header[^>]*>([\s\S]*?)<\/header>/gi, "");
+  text = text.replace(/<footer[^>]*>([\s\S]*?)<\/footer>/gi, "");
+  text = text.replace(/<aside[^>]*>([\s\S]*?)<\/aside>/gi, "");
+  text = text.replace(/<form[^>]*>([\s\S]*?)<\/form>/gi, "");
 
-  text = text.replace(/<figure[^>]*>([\s\S]*?)<\/figure>/gi, '');
-  text = text.replace(/<figcaption[^>]*>([\s\S]*?)<\/figcaption>/gi, '');
-  text = text.replace(/<img[^>]*>/gi, '');
-  text = text.replace(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, '');
+  text = text.replace(/<figure[^>]*>([\s\S]*?)<\/figure>/gi, "");
+  text = text.replace(/<figcaption[^>]*>([\s\S]*?)<\/figcaption>/gi, "");
+  text = text.replace(/<img[^>]*>/gi, "");
+  text = text.replace(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, "");
 
-  text = text.replace(/<div[^>]*class="[^"]*(?:caption|credit|photo|image|img|media|video|gallery|sidebar|related|comment|ad|advertisement|promo|banner)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi, '');
-  text = text.replace(/<span[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, '');
-  text = text.replace(/<p[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, '');
+  text = text.replace(
+    /<div[^>]*class="[^"]*(?:caption|credit|photo|image|img|media|video|gallery|sidebar|related|comment|ad|advertisement|promo|banner)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+    "",
+  );
+  text = text.replace(/<span[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi, "");
+  text = text.replace(/<p[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, "");
 
-  text = text.replace(/<br\s*\/?>/gi, '\n');
-  text = text.replace(/<\/p>/gi, '\n\n');
-  text = text.replace(/<\/div>/gi, '\n');
-  text = text.replace(/<\/h[1-6]>/gi, '\n\n');
+  text = text.replace(/<br\s*\/?>/gi, "\n");
+  text = text.replace(/<\/p>/gi, "\n\n");
+  text = text.replace(/<\/div>/gi, "\n");
+  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
 
-  text = text.replace(/<[^>]+>/g, '');
+  text = text.replace(/<[^>]+>/g, "");
 
-  text = text.replace(/&nbsp;/g, ' ');
+  text = text.replace(/&nbsp;/g, " ");
   text = text.replace(/&quot;/g, '"');
   text = text.replace(/&apos;/g, "'");
-  text = text.replace(/&lt;/g, '<');
-  text = text.replace(/&gt;/g, '>');
-  text = text.replace(/&amp;/g, '&');
+  text = text.replace(/&lt;/g, "<");
+  text = text.replace(/&gt;/g, ">");
+  text = text.replace(/&amp;/g, "&");
   text = text.replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(dec));
   text = text.replace(/&#x([0-9A-Fa-f]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)));
 
-  text = text.replace(/^[\s\S]*?<body[^>]*>/i, '');
-  text = text.replace(/<\/body>[\s\S]*$/i, '');
+  text = text.replace(/^[\s\S]*?<body[^>]*>/i, "");
+  text = text.replace(/<\/body>[\s\S]*$/i, "");
 
-  const lines = text.split('\n');
-  const filteredLines = lines.filter(line => {
+  const lines = text.split("\n");
+  const filteredLines = lines.filter((line) => {
     const trimmed = line.trim();
     if (trimmed.length === 0) return false;
     if (trimmed.length < 10) return false;
@@ -204,8 +203,8 @@ function extractTextFromHtml(html: string): string {
     return true;
   });
 
-  text = filteredLines.join('\n');
-  text = text.replace(/\n\s*\n\s*\n/g, '\n\n');
+  text = filteredLines.join("\n");
+  text = text.replace(/\n\s*\n\s*\n/g, "\n\n");
   text = text.trim();
 
   return text;
@@ -225,16 +224,13 @@ Deno.serve(async (req: Request) => {
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
-        {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
+        status: 401,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -242,19 +238,19 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired token" }),
-        {
-          status: 401,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
+        status: 401,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
     }
 
     if (path.includes("/translate")) {
@@ -265,65 +261,61 @@ Deno.serve(async (req: Request) => {
       }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, 'passage_translation');
+      const rateLimitCheck = await checkRateLimit(supabase, user.id, "passage_translation");
       if (!rateLimitCheck.allowed) {
-        return new Response(
-          JSON.stringify({ error: rateLimitCheck.error }),
-          {
-            status: 429,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
       }
 
       const contentHash = await hashText(text);
       const textLength = text.length;
 
       const { data: cachedTranslation, error: cacheError } = await supabase
-        .from('translation_cache')
-        .select('translation, id')
-        .eq('content_hash', contentHash)
-        .eq('text_length', textLength)
+        .from("translation_cache")
+        .select("translation, id")
+        .eq("content_hash", contentHash)
+        .eq("text_length", textLength)
         .maybeSingle();
 
       if (cachedTranslation && !cacheError) {
-        console.log('Using cached translation for hash:', contentHash);
+        console.log("Using cached translation for hash:", contentHash);
 
         const { data: currentData } = await supabase
-          .from('translation_cache')
-          .select('access_count')
-          .eq('id', cachedTranslation.id)
+          .from("translation_cache")
+          .select("access_count")
+          .eq("id", cachedTranslation.id)
           .single();
 
         await supabase
-          .from('translation_cache')
+          .from("translation_cache")
           .update({
             last_accessed: new Date().toISOString(),
-            access_count: (currentData?.access_count || 0) + 1
+            access_count: (currentData?.access_count || 0) + 1,
           })
-          .eq('id', cachedTranslation.id);
+          .eq("id", cachedTranslation.id);
 
-        return new Response(
-          JSON.stringify({ translation: cachedTranslation.translation }),
-          {
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ translation: cachedTranslation.translation }), {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
       }
 
-      await logRequest(supabase, user.id, 'passage_translation');
+      await logRequest(supabase, user.id, "passage_translation");
 
-      const vowelInstruction = targetLanguage === "Hebrew"
-        ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
-        : "";
+      const vowelInstruction =
+        targetLanguage === "Hebrew"
+          ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
+          : "";
 
-      const lineBreakInstruction = " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
+      const lineBreakInstruction =
+        " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
 
       const MAX_CHUNK_LENGTH = 3000;
       const paragraphs = text.split(/\n\n+/);
@@ -367,9 +359,11 @@ Deno.serve(async (req: Request) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              contents: [{
-                parts: [{ text: prompt }],
-              }],
+              contents: [
+                {
+                  parts: [{ text: prompt }],
+                },
+              ],
               generationConfig: {
                 temperature: 0.3,
                 topK: 40,
@@ -377,7 +371,7 @@ Deno.serve(async (req: Request) => {
                 maxOutputTokens: 8192,
               },
             }),
-          }
+          },
         );
 
         if (!response.ok) {
@@ -393,10 +387,12 @@ Deno.serve(async (req: Request) => {
         const translatedParaCount = chunkTranslation.trim().split(/\n\n+/).length;
         console.log(`Chunk ${translations.length + 1} finish reason:`, finishReason);
         console.log(`Chunk ${translations.length + 1} translation length:`, chunkTranslation.length);
-        console.log(`Chunk ${translations.length + 1} expected paragraphs: ${chunkParaCount}, got: ${translatedParaCount}`);
+        console.log(
+          `Chunk ${translations.length + 1} expected paragraphs: ${chunkParaCount}, got: ${translatedParaCount}`,
+        );
 
-        if (finishReason === 'MAX_TOKENS') {
-          console.warn('Translation was truncated due to MAX_TOKENS');
+        if (finishReason === "MAX_TOKENS") {
+          console.warn("Translation was truncated due to MAX_TOKENS");
         }
 
         if (chunkTranslation) {
@@ -408,29 +404,24 @@ Deno.serve(async (req: Request) => {
       const finalParaCount = translation.split(/\n\n+/).length;
       console.log(`Final translation paragraphs: ${finalParaCount}, expected: ${paragraphs.length}`);
 
-      await supabase
-        .from('translation_cache')
-        .insert({
-          content_hash: contentHash,
-          hebrew_text: text.substring(0, 5000),
-          translation: translation,
-          text_length: textLength,
-          cached_at: new Date().toISOString(),
-          last_accessed: new Date().toISOString(),
-          access_count: 0
-        });
+      await supabase.from("translation_cache").insert({
+        content_hash: contentHash,
+        hebrew_text: text.substring(0, 5000),
+        translation: translation,
+        text_length: textLength,
+        cached_at: new Date().toISOString(),
+        last_accessed: new Date().toISOString(),
+        access_count: 0,
+      });
 
-      console.log('Cached translation with hash:', contentHash);
+      console.log("Cached translation with hash:", contentHash);
 
-      return new Response(
-        JSON.stringify({ translation }),
-        {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      return new Response(JSON.stringify({ translation }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
+        },
+      });
     } else if (path.includes("/define")) {
       const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
@@ -440,21 +431,18 @@ Deno.serve(async (req: Request) => {
 
       const { word, targetLanguage }: DefinitionRequest = await req.json();
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, 'word_definition');
+      const rateLimitCheck = await checkRateLimit(supabase, user.id, "word_definition");
       if (!rateLimitCheck.allowed) {
-        return new Response(
-          JSON.stringify({ error: rateLimitCheck.error }),
-          {
-            status: 429,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
       }
 
-      await logRequest(supabase, user.id, 'word_definition');
+      await logRequest(supabase, user.id, "word_definition");
 
       const prompt = `For the Hebrew word "${word}":
 
@@ -489,9 +477,11 @@ FORMS:
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            contents: [{
-              parts: [{ text: prompt }],
-            }],
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
             generationConfig: {
               temperature: 0.1,
               topK: 20,
@@ -499,12 +489,12 @@ FORMS:
               maxOutputTokens: 800,
             },
           }),
-        }
+        },
       );
 
       let wordWithVowels = word;
-      let definition = '';
-      let transliteration = '';
+      let definition = "";
+      let transliteration = "";
       let forms = [];
 
       if (geminiResponse.ok) {
@@ -518,91 +508,115 @@ FORMS:
           const formsMatch = rawResponse.match(/FORMS:\s*([\s\S]+?)(?=\n\n|$)/i);
 
           wordWithVowels = wordMatch?.[1]?.trim() || word;
-          definition = defMatch?.[1]?.trim() || '';
-          transliteration = translitMatch?.[1]?.trim() || '';
+          definition = defMatch?.[1]?.trim() || "";
+          transliteration = translitMatch?.[1]?.trim() || "";
 
           if (formsMatch) {
             const formsText = formsMatch[1].trim();
 
             forms = formsText
-              .split('\n')
-              .filter(line => line.trim().startsWith('-'))
-              .map(line => {
+              .split("\n")
+              .filter((line) => line.trim().startsWith("-"))
+              .map((line) => {
                 const match = line.match(/^-\s*([^(]+)\(([^)]+)\)\s*-\s*(.+)$/);
                 if (match) {
                   return {
                     hebrew: match[1].trim(),
                     transliteration: match[2].trim(),
-                    relationship: match[3].trim()
+                    relationship: match[3].trim(),
                   };
                 }
                 return null;
               })
-              .filter(form => form !== null);
+              .filter((form) => form !== null);
           }
         }
       }
+
+      // Cache the definition for future use
+      const shortEnglish = definition && definition.trim() !== ""
+        ? (definition.length > 40 ? definition.substring(0, 40).trim() + "..." : definition.trim())
+        : "Translation unavailable";
+
+      await supabase.from("word_definitions").upsert(
+        {
+          word: word,
+          word_with_vowels: wordWithVowels,
+          definition: definition || "",
+          transliteration: transliteration || "",
+          examples: [],
+          notes: "",
+          forms: forms || [],
+          short_english: shortEnglish,
+          last_accessed: new Date().toISOString(),
+          access_count: 1,
+        },
+        {
+          onConflict: "word",
+        }
+      );
+
+      console.log("Cached word definition for:", word);
 
       return new Response(
         JSON.stringify({
           wordWithVowels,
           definition,
           examples: [],
-          notes: '',
+          notes: "",
           forms,
-          transliteration
+          transliteration,
         }),
         {
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
     } else if (path.includes("/extract-url")) {
       const { url: targetUrl }: ExtractUrlRequest = await req.json();
 
       if (!targetUrl) {
-        return new Response(
-          JSON.stringify({ error: "URL is required" }),
-          {
-            status: 400,
-            headers: {
-              ...corsHeaders,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        return new Response(JSON.stringify({ error: "URL is required" }), {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
       }
 
-      const urlToFetch = targetUrl.startsWith('http') ? targetUrl : `https://${targetUrl}`;
-      console.log('Fetching URL:', urlToFetch);
+      const urlToFetch = targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`;
+      console.log("Fetching URL:", urlToFetch);
 
       const response = await fetch(urlToFetch, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'he,en-US;q=0.9,en;q=0.8',
-        }
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+          "Accept-Language": "he,en-US;q=0.9,en;q=0.8",
+        },
       });
 
-      console.log('Response status:', response.status);
+      console.log("Response status:", response.status);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch URL (${response.status}): ${response.statusText}`);
       }
 
-      const html = await response.text();      console.log('HTML length:', html.length);
+      const html = await response.text();
+      console.log("HTML length:", html.length);
 
       if (html.length < 100) {
         throw new Error("Received too little content from URL");
       }
 
       const structuredData = extractArticleStructuredData(html);
-      console.log('Structured data found:', structuredData);
+      console.log("Structured data found:", structuredData);
 
-      let title = structuredData.title || '';
-      let content = '';
+      let title = structuredData.title || "";
+      let content = "";
 
       const htmlExtracted = extractTextFromHtml(html);
 
@@ -613,56 +627,52 @@ FORMS:
           parts.push(structuredData.description);
         }
         parts.push(structuredData.articleBody);
-        content = parts.join('\n\n\n\n');
+        content = parts.join("\n\n\n\n");
       } else {
         content = htmlExtracted;
       }
 
       if (!title) {
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        title = titleMatch ? titleMatch[1].trim() : 'Untitled';
+        title = titleMatch ? titleMatch[1].trim() : "Untitled";
       }
 
       if (!content || content.length < 50) {
-        throw new Error("Failed to extract readable content from URL. The page might not be an article or is blocking extraction.");
+        throw new Error(
+          "Failed to extract readable content from URL. The page might not be an article or is blocking extraction.",
+        );
       }
 
       return new Response(
         JSON.stringify({
           title,
           content,
-          excerpt: content.substring(0, 200)
+          excerpt: content.substring(0, 200),
         }),
         {
           headers: {
             ...corsHeaders,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
     } else {
-      return new Response(
-        JSON.stringify({ error: "Invalid endpoint" }),
-        {
-          status: 404,
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-    }
-  } catch (error: any) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        status: 500,
+      return new Response(JSON.stringify({ error: "Invalid endpoint" }), {
+        status: 404,
         headers: {
           ...corsHeaders,
           "Content-Type": "application/json",
         },
-      }
-    );
+      });
+    }
+  } catch (error: any) {
+    console.error("Error:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
+    });
   }
 });

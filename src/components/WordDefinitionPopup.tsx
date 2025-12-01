@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { X, Loader2, BookmarkPlus, Check, RefreshCw } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../../supabase/client';
-import { generateBasicHebrewForms } from '../utils/hebrewForms';
-import { requestDeduplicator, createRequestKey } from '../utils/requestDeduplicator';
+import { useState, useEffect } from "react";
+import { X, Loader2, BookmarkPlus, Check, RefreshCw } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { supabase } from "../../supabase/client";
+import { generateBasicHebrewForms } from "../utils/hebrewForms";
+import { requestDeduplicator, createRequestKey } from "../utils/requestDeduplicator";
 
 type WordDefinitionPopupProps = {
   word: string;
   sentence: string;
-  position: { x: number; y: num429ber };
+  position: { x: number; y: number };
   onClose: () => void;
   onWordSaved: () => void;
 };
@@ -43,15 +43,12 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [forceRefresh, setForceRefresh] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
-      await Promise.all([
-        fetchDefinition(),
-        checkIfSaved()
-      ]);
+      await Promise.all([fetchDefinition(), checkIfSaved()]);
     };
     loadData();
   }, [currentWord, forceRefresh]);
@@ -60,10 +57,10 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
     if (!user) return;
 
     const { data } = await supabase
-      .from('vocabulary_words')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('hebrew_word', currentWord)
+      .from("vocabulary_words")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("hebrew_word", currentWord)
       .maybeSingle();
 
     setSaved(!!data);
@@ -71,20 +68,22 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
   const fetchDefinition = async () => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const requestKey = createRequestKey('define-word', { word: currentWord, forceRefresh });
+      const requestKey = createRequestKey("define-word", { word: currentWord, forceRefresh });
 
       const { data, shortEnglish } = await requestDeduplicator.dedupe(requestKey, async () => {
         let data;
-        let shortEnglish = 'No translation';
+        let shortEnglish = "No translation";
 
         if (!forceRefresh) {
           const { data: cachedData } = await supabase
-            .from('word_definitions')
-            .select('word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count')
-            .eq('word', currentWord)
+            .from("word_definitions")
+            .select(
+              "word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count",
+            )
+            .eq("word", currentWord)
             .maybeSingle();
 
           if (cachedData) {
@@ -93,19 +92,19 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
               definition: cachedData.definition,
               transliteration: cachedData.transliteration,
               examples: cachedData.examples || [],
-              notes: cachedData.notes || '',
+              notes: cachedData.notes || "",
               forms: cachedData.forms || [],
-              shortEnglish: cachedData.short_english
+              shortEnglish: cachedData.short_english,
             };
             shortEnglish = cachedData.short_english;
 
             supabase
-              .from('word_definitions')
+              .from("word_definitions")
               .update({
                 last_accessed: new Date().toISOString(),
-                access_count: (cachedData.access_count || 0) + 1
+                access_count: (cachedData.access_count || 0) + 1,
               })
-              .eq('word', currentWord)
+              .eq("word", currentWord)
               .then(() => {});
           }
         }
@@ -113,60 +112,44 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
         if (!data) {
           const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/define`;
 
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) {
-            throw new Error("You must be logged in to get word definitions");
-          }
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          // Guests can look up words, but edge function handles auth requirements
 
           const response = await fetch(apiUrl, {
-            method: 'POST',
+            method: "POST",
             headers: {
-              'Authorization': `Bearer ${session.access_token}`,
-              'Content-Type': 'application/json',
+              ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+              "Content-Type": "application/json",
             },
             body: JSON.stringify({
               word: currentWord,
-              targetLanguage: 'Hebrew'
-            })
+              targetLanguage: "Hebrew",
+            }),
           });
 
           if (!response.ok) {
             const errorData = await response.json();
             if (response.status === 429) {
-              throw new Error(errorData.error || 'Rate limit exceeded. Please try again later.');
+              throw new Error(errorData.error || "Rate limit exceeded. Please try again later.");
             }
-            throw new Error(errorData.error || 'Failed to fetch definition');
+            throw new Error(errorData.error || "Failed to fetch definition");
           }
 
           data = await response.json();
 
-          shortEnglish = data.definition && data.definition.trim() !== ''
-            ? data.definition.trim()
-            : 'Translation unavailable';
+          shortEnglish =
+            data.definition && data.definition.trim() !== "" ? data.definition.trim() : "Translation unavailable";
 
           if (shortEnglish.length > 40) {
-            shortEnglish = shortEnglish.substring(0, 40).trim() + '...';
+            shortEnglish = shortEnglish.substring(0, 40).trim() + "...";
           }
 
           data.shortEnglish = shortEnglish;
 
-          supabase
-            .from('word_definitions')
-            .upsert({
-              word: currentWord,
-              word_with_vowels: data.wordWithVowels || currentWord,
-              definition: data.definition || '',
-              transliteration: data.transliteration || '',
-              examples: data.examples || [],
-              notes: data.notes || '',
-              forms: data.forms || [],
-              short_english: shortEnglish,
-              last_accessed: new Date().toISOString(),
-              access_count: 1
-            }, {
-              onConflict: 'word'
-            })
-            .then(() => {});
+          // Edge function handles caching to word_definitions with service role
 
           if (forceRefresh) {
             setForceRefresh(false);
@@ -179,31 +162,30 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
       let relatedWords = (data.forms || []).map((form: any) => ({
         hebrew: form.hebrew,
         english: form.transliteration,
-        relationship: form.relationship
+        relationship: form.relationship,
       }));
 
       if (relatedWords.length === 0) {
         const basicForms = generateBasicHebrewForms(
           data.wordWithVowels || currentWord,
-          data.transliteration || romanizeHebrew(currentWord)
+          data.transliteration || romanizeHebrew(currentWord),
         );
         relatedWords = basicForms;
       }
 
-
       setDefinition({
         translation: currentWord,
-        definition: data.definition || 'No definition available',
+        definition: data.definition || "No definition available",
         transliteration: data.transliteration || romanizeHebrew(currentWord),
         wordWithVowels: data.wordWithVowels || currentWord,
         examples: data.examples || [],
-        notes: data.notes || '',
+        notes: data.notes || "",
         relatedWords,
-        shortEnglish
+        shortEnglish,
       });
     } catch (err: any) {
-      setError(err.message || 'Failed to load definition');
-      console.error('Definition error:', err);
+      setError(err.message || "Failed to load definition");
+      console.error("Definition error:", err);
     } finally {
       setLoading(false);
     }
@@ -211,33 +193,56 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
   const romanizeHebrew = (text: string): string => {
     const hebrewToRoman: { [key: string]: string } = {
-      'א': 'a', 'ב': 'b', 'ג': 'g', 'ד': 'd', 'ה': 'h', 'ו': 'v', 'ז': 'z',
-      'ח': 'ch', 'ט': 't', 'י': 'y', 'כ': 'k', 'ך': 'k', 'ל': 'l', 'ם': 'm',
-      'מ': 'm', 'ן': 'n', 'נ': 'n', 'ס': 's', 'ע': '', 'פ': 'p', 'ף': 'f',
-      'צ': 'ts', 'ץ': 'ts', 'ק': 'k', 'ר': 'r', 'ש': 'sh', 'ת': 't'
+      א: "a",
+      ב: "b",
+      ג: "g",
+      ד: "d",
+      ה: "h",
+      ו: "v",
+      ז: "z",
+      ח: "ch",
+      ט: "t",
+      י: "y",
+      כ: "k",
+      ך: "k",
+      ל: "l",
+      ם: "m",
+      מ: "m",
+      ן: "n",
+      נ: "n",
+      ס: "s",
+      ע: "",
+      פ: "p",
+      ף: "f",
+      צ: "ts",
+      ץ: "ts",
+      ק: "k",
+      ר: "r",
+      ש: "sh",
+      ת: "t",
     };
 
     return text
-      .split('')
-      .map(char => hebrewToRoman[char] || char)
-      .join('');
+      .split("")
+      .map((char) => hebrewToRoman[char] || char)
+      .join("");
   };
 
   const saveToVocabulary = async () => {
     if (!user || !definition || saved) return;
 
     setSaving(true);
-    setError('');
+    setError("");
 
     try {
       const { data: wordData, error: insertError } = await supabase
-        .from('vocabulary_words')
+        .from("vocabulary_words")
         .insert({
           user_id: user.id,
           hebrew_word: currentWord,
-          english_translation: definition.shortEnglish || definition.definition.split('.')[0].trim(),
+          english_translation: definition.shortEnglish || definition.definition.split(".")[0].trim(),
           definition: definition.definition,
-          transliteration: definition.transliteration
+          transliteration: definition.transliteration,
         })
         .select()
         .single();
@@ -245,7 +250,7 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
       if (insertError) throw insertError;
 
       supabase
-        .from('word_statistics')
+        .from("word_statistics")
         .insert({
           user_id: user.id,
           word_id: wordData.id,
@@ -253,19 +258,19 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
           incorrect_count: 0,
           total_attempts: 0,
           consecutive_correct: 0,
-          confidence_score: 0
+          confidence_score: 0,
         })
         .then(() => {});
 
       setSaved(true);
       onWordSaved();
     } catch (err: any) {
-      if (err.code === '23505') {
-        setError('Word already in vocabulary');
+      if (err.code === "23505") {
+        setError("Word already in vocabulary");
         setSaved(true);
       } else {
-        setError('Failed to save word');
-        console.error('Save error:', err);
+        setError("Failed to save word");
+        console.error("Save error:", err);
       }
     } finally {
       setSaving(false);
@@ -274,41 +279,27 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
   const maxPopupHeight = window.innerHeight - 100;
   const popupStyle = {
-    position: 'fixed' as const,
+    position: "fixed" as const,
     left: `${Math.min(Math.max(position.x, 160), window.innerWidth - 160)}px`,
     top: `${Math.min(Math.max(position.y, 50), window.innerHeight - maxPopupHeight - 50)}px`,
-    transform: 'translateX(-50%)',
+    transform: "translateX(-50%)",
     maxHeight: `${maxPopupHeight}px`,
-    zIndex: 1000
+    zIndex: 1000,
   };
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black bg-opacity-20 z-[999]"
-        onClick={onClose}
-      />
-      <div
-        style={popupStyle}
-        className="bg-white rounded-lg shadow-2xl border border-gray-200 w-80 overflow-hidden"
-      >
+      <div className="fixed inset-0 bg-black bg-opacity-20 z-[999]" onClick={onClose} />
+      <div style={popupStyle} className="bg-white rounded-lg shadow-2xl border border-gray-200 w-80 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center justify-between">
-              {definition && (
-                <p className="text-blue-100 text-sm italic">
-                  {definition.transliteration}
-                </p>
-              )}
+              {definition && <p className="text-blue-100 text-sm italic">{definition.transliteration}</p>}
               <h3 className="text-2xl font-bold" dir="rtl">
                 {definition?.wordWithVowels || currentWord}
               </h3>
             </div>
-            {definition && (
-              <p className="text-white text-base font-medium mt-2">
-                {definition.shortEnglish}
-              </p>
-            )}
+            {definition && <p className="text-white text-base font-medium mt-2">{definition.shortEnglish}</p>}
           </div>
           <div className="flex items-center gap-1 ml-2">
             <button
@@ -317,12 +308,9 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
               className="text-white hover:bg-blue-500 rounded-lg p-1 transition disabled:opacity-50 disabled:cursor-not-allowed"
               title="Refresh definition"
             >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
             </button>
-            <button
-              onClick={onClose}
-              className="text-white hover:bg-blue-500 rounded-lg p-1 transition"
-            >
+            <button onClick={onClose} className="text-white hover:bg-blue-500 rounded-lg p-1 transition">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -330,9 +318,7 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
 
         {!loading && definition && definition.relatedWords && definition.relatedWords.length > 0 && (
           <div className="p-4 border-t border-gray-200">
-            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-              Related Words
-            </p>
+            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Related Words</p>
             <div className="space-y-1.5">
               {definition.relatedWords.map((relatedWord, idx) => (
                 <button
@@ -345,14 +331,10 @@ export function WordDefinitionPopup({ word, sentence, position, onClose, onWordS
                       <span className="text-base font-medium text-gray-900 group-hover:text-blue-700" dir="rtl">
                         {relatedWord.hebrew}
                       </span>
-                      <span className="text-sm text-gray-600 ml-2">
-                        {relatedWord.english}
-                      </span>
+                      <span className="text-sm text-gray-600 ml-2">{relatedWord.english}</span>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {relatedWord.relationship}
-                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{relatedWord.relationship}</p>
                 </button>
               ))}
             </div>
