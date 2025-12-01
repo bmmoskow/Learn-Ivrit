@@ -301,34 +301,7 @@ export function TranslationPanel() {
       const requestKey = createRequestKey("translate", { contentHash });
 
       const translation = await requestDeduplicator.dedupe(requestKey, async () => {
-        if (!isGuest && user) {
-          console.log("Checking cache for content_hash:", contentHash);
-          const { data: cachedData, error: cacheError } = await supabase
-            .from("translation_cache")
-            .select("translation, id")
-            .eq("content_hash", contentHash)
-            .maybeSingle();
-
-          if (cacheError) {
-            console.log("Cache lookup error:", cacheError);
-          }
-
-          if (!cacheError && cachedData) {
-            console.log("✓ Translation found in cache, returning early");
-
-            supabase
-              .rpc("increment_translation_access", {
-                cache_id: cachedData.id,
-              })
-              .then(() => {});
-
-            return cachedData.translation;
-          } else {
-            console.log("Cache miss - will call API");
-          }
-        }
-
-        console.log("Calling Gemini API for translation");
+        console.log("Calling edge function for translation");
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
         const {
@@ -363,26 +336,6 @@ export function TranslationPanel() {
         console.log("Translation received, length:", responseData.translation?.length);
         console.log("First 100 chars:", responseData.translation?.substring(0, 100));
         console.log("Last 100 chars:", responseData.translation?.substring(responseData.translation?.length - 100));
-
-        if (!isGuest && user) {
-          supabase
-            .from("translation_cache")
-            .upsert(
-              {
-                content_hash: contentHash,
-                hebrew_text: textToTranslate,
-                translation: responseData.translation,
-                text_length: textLength,
-                last_accessed: new Date().toISOString(),
-                access_count: 1,
-              },
-              {
-                onConflict: "content_hash",
-                ignoreDuplicates: true,
-              },
-            )
-            .then(() => {});
-        }
 
         if (bibleLoaded && currentBibleRef && !isGuest && user) {
           const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
