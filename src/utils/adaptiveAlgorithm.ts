@@ -1,17 +1,17 @@
-import { VocabularyWord, WordStatistics } from '../lib/supabase';
+import { Tables } from "../../supabase/types";
+
+type VocabularyWord = Tables<"vocabulary_words">;
+type WordStatistics = Tables<"word_statistics">;
 
 export type WordWithStats = VocabularyWord & {
   statistics?: WordStatistics;
 };
 
-export function selectTestWords(
-  words: WordWithStats[],
-  count: number
-): WordWithStats[] {
+export function selectTestWords(words: WordWithStats[], count: number): WordWithStats[] {
   if (words.length === 0) return [];
   if (words.length <= count) return words;
 
-  const weightedWords = words.map(word => {
+  const weightedWords = words.map((word) => {
     const weight = calculateWeight(word);
     return { word, weight };
   });
@@ -51,9 +51,7 @@ function calculateWeight(word: WordWithStats): number {
 
   const stats = word.statistics;
 
-  const errorRate = stats.total_attempts > 0
-    ? stats.incorrect_count / stats.total_attempts
-    : 0;
+  const errorRate = stats.total_attempts > 0 ? stats.incorrect_count / stats.total_attempts : 0;
 
   const isMastered = stats.consecutive_correct >= 5;
   if (isMastered) {
@@ -61,7 +59,7 @@ function calculateWeight(word: WordWithStats): number {
   }
 
   const baseWeight = 100;
-  const errorMultiplier = 1 + (errorRate * 4);
+  const errorMultiplier = 1 + errorRate * 4;
 
   let recencyMultiplier = 1;
   if (stats.last_tested) {

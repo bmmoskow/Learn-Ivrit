@@ -115,6 +115,10 @@ interface ExtractUrlRequest {
   url: string;
 }
 
+interface ImageOcrRequest {
+  imageData: string; // base64 encoded image
+}
+
 function extractArticleStructuredData(html: string): { title?: string; description?: string; articleBody?: string } {
   const result: { title?: string; description?: string; articleBody?: string } = {};
 
@@ -649,6 +653,110 @@ FORMS:
           content,
           excerpt: content.substring(0, 200),
         }),
+        {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    } else if (path.includes("/ocr")) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+      if (!GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set");
+      }
+
+      const { imageData }: ImageOcrRequest = await req.json();
+
+      if (!imageData) {
+        return new Response(JSON.stringify({ error: "Image data is required" }), {
+          status: 400,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
+      }
+
+      const rateLimitCheck = await checkRateLimit(supabase, user.id, "passage_translation");
+      if (!rateLimitCheck.allowed) {
+        return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+          },
+        });
+      }
+
+      await logRequest(supabase, user.id, "passage_translation");
+
+      console.log("Processing image for OCR...");
+
+      // Extract base64 data if it includes the data URL prefix
+      const base64Data = imageData.includes(",") ? imageData.split(",")[1] : imageData;
+
+      const prompt = `Extract ALL Hebrew text from this image. Include vowel marks (nikud) if present. Return ONLY the extracted Hebrew text, nothing else.`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: "image/jpeg",
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              topK: 20,
+              topP: 0.9,
+              maxOutputTokens: 4096,
+            },
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gemini API error:", errorText);
+        throw new Error(`Image OCR failed: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      console.log("Extracted text length:", extractedText.length);
+      console.log("First 200 chars:", extractedText.substring(0, 200));
+
+      if (!extractedText.trim()) {
+        return new Response(
+          JSON.stringify({ error: "No Hebrew text found in the image. Please try a clearer image." }),
+          {
+            status: 400,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ hebrewText: extractedText.trim() }),
         {
           headers: {
             ...corsHeaders,

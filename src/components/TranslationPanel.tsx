@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, Upload } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../../supabase/client";
 import { WordDefinitionPopup } from "./WordDefinitionPopup";
@@ -27,6 +27,8 @@ export function TranslationPanel() {
   const [loadingBible, setLoadingBible] = useState(false);
   const [bibleLoaded, setBibleLoaded] = useState(false);
   const [currentBibleRef, setCurrentBibleRef] = useState<{ book: string; chapter: number } | null>(null);
+  const [processingImage, setProcessingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSavedWords = async () => {
     if (!user) return;
@@ -442,6 +444,78 @@ export function TranslationPanel() {
     navigator.clipboard.writeText(text);
   };
 
+  const handleImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
+    }
+
+    setProcessingImage(true);
+    setError("");
+
+    try {
+      // Convert image to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+
+      await new Promise((resolve, reject) => {
+        reader.onload = resolve;
+        reader.onerror = reject;
+      });
+
+      const base64Data = reader.result as string;
+
+      console.log("Sending image for OCR...");
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("You must be logged in to use image OCR");
+      }
+
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/ocr`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageData: base64Data,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 429) {
+          throw new Error(errorData.error || "Rate limit exceeded. Please try again later.");
+        }
+        throw new Error(errorData.error || "Failed to extract text from image");
+      }
+
+      const data = await response.json();
+      console.log("OCR completed, text length:", data.hebrewText?.length);
+
+      setHebrewText(data.hebrewText);
+      setBibleLoaded(false);
+      setCurrentBibleRef(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to process image. Please try again.");
+      console.error("Image OCR error:", err);
+    } finally {
+      setProcessingImage(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+  };
+
   const renderSyncedText = () => {
     if (!hebrewText) return null;
 
@@ -524,6 +598,25 @@ export function TranslationPanel() {
             </h2>
           </div>
           <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={processingImage}
+              className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Upload image with Hebrew text"
+            >
+              {processingImage ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Upload className="w-5 h-5" />
+              )}
+            </button>
             <button
               onClick={() => handleCopy(hebrewText)}
               disabled={!hebrewText}
@@ -714,6 +807,13 @@ export function TranslationPanel() {
               <div className="absolute top-2 left-2 text-gray-400 pointer-events-none text-sm leading-relaxed">
                 Paste Hebrew text here,{" "}
                 <span
+                  className="text-green-600 underline cursor-pointer pointer-events-auto"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  upload image
+                </span>
+                ,{" "}
+                <span
                   className="text-blue-600 underline cursor-pointer pointer-events-auto"
                   onClick={() => setShowUrlInput(true)}
                 >
@@ -747,6 +847,15 @@ export function TranslationPanel() {
                 Try "אני לומד עברית"
               </button>
             </div>
+          </div>
+        )}
+
+        {processingImage && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-sm text-green-800 flex items-center justify-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Extracting Hebrew text from image...
+            </p>
           </div>
         )}
 
