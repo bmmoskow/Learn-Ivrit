@@ -309,7 +309,21 @@ export function TranslationPanel() {
       const requestKey = createRequestKey("translate", { contentHash });
 
       const translation = await requestDeduplicator.dedupe(requestKey, async () => {
-        console.log("Calling edge function for translation");
+        // Check frontend cache first (faster than edge function round-trip)
+        const { data: cached } = await supabase
+          .from("translation_cache")
+          .select("id, translation")
+          .eq("content_hash", contentHash)
+          .maybeSingle();
+
+        if (cached?.translation) {
+          console.log("Frontend cache hit for hash:", contentHash);
+          // Update access stats in background (fire and forget)
+          supabase.rpc("increment_translation_access", { cache_id: cached.id }).then();
+          return cached.translation;
+        }
+
+        console.log("Cache miss, calling edge function for translation");
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
         const {
