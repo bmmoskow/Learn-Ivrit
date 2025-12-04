@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, Upload } from "lucide-react";
+import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, Upload, Bookmark, BookmarkPlus } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../../supabase/client";
 import { WordDefinitionPopup } from "./WordDefinitionPopup";
 import { BIBLE_BOOKS } from "../data/bibleBooks";
 import { requestDeduplicator, createRequestKey } from "../utils/requestDeduplicator";
+import { BookmarkManager } from "./BookmarkManager";
+import { SaveBookmarkDialog } from "./SaveBookmarkDialog";
+import { Bookmark as BookmarkType } from "../hooks/useBookmarks";
 
 export function TranslationPanel() {
   const { user, isGuest } = useAuth();
@@ -28,6 +31,9 @@ export function TranslationPanel() {
   const [bibleLoaded, setBibleLoaded] = useState(false);
   const [currentBibleRef, setCurrentBibleRef] = useState<{ book: string; chapter: number } | null>(null);
   const [processingImage, setProcessingImage] = useState(false);
+  const [showBookmarkManager, setShowBookmarkManager] = useState(false);
+  const [showSaveBookmark, setShowSaveBookmark] = useState(false);
+  const [currentSource, setCurrentSource] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSavedWords = async () => {
@@ -132,6 +138,7 @@ export function TranslationPanel() {
       setUrlInput("");
       setBibleLoaded(false);
       setCurrentBibleRef(null);
+      setCurrentSource(url);
     } catch (err) {
       setError("Failed to load content from URL. Please check the URL and try again.");
       console.error("URL extraction error:", err);
@@ -241,6 +248,7 @@ export function TranslationPanel() {
       setShowBibleInput(false);
       setBibleLoaded(true);
       setCurrentBibleRef({ book: bookToLoad, chapter: chapterToLoad });
+      setCurrentSource(`${bookToLoad} ${chapterToLoad}`);
     } catch (err) {
       setError("Failed to load Bible chapter. Please try again.");
       console.error("Bible loading error:", err);
@@ -454,6 +462,7 @@ export function TranslationPanel() {
       setHebrewText(data.hebrewText);
       setBibleLoaded(false);
       setCurrentBibleRef(null);
+      setCurrentSource("Image OCR");
     } catch (err: any) {
       setError(err.message || "Failed to process image. Please try again.");
       console.error("Image OCR error:", err);
@@ -467,6 +476,15 @@ export function TranslationPanel() {
     if (file) {
       handleImageUpload(file);
     }
+  };
+
+  const handleLoadBookmark = (bookmark: BookmarkType) => {
+    setHebrewText(bookmark.hebrew_text);
+    setEnglishText(""); // Clear - will be fetched from cache or re-translated
+    setCurrentSource(bookmark.source);
+    setBibleLoaded(false);
+    setCurrentBibleRef(null);
+    setShowBookmarkManager(false);
   };
 
   const syncedParagraphs = useMemo(() => {
@@ -558,6 +576,25 @@ export function TranslationPanel() {
             </h2>
           </div>
           <div className="flex gap-2">
+            {!isGuest && (
+              <>
+                <button
+                  onClick={() => setShowBookmarkManager(true)}
+                  className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                  title="Bookmarks"
+                >
+                  <Bookmark className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setShowSaveBookmark(true)}
+                  disabled={!hebrewText}
+                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Save bookmark"
+                >
+                  <BookmarkPlus className="w-5 h-5" />
+                </button>
+              </>
+            )}
             <input
               ref={fileInputRef}
               type="file"
@@ -591,6 +628,7 @@ export function TranslationPanel() {
                 setEnglishText("");
                 setBibleLoaded(false);
                 setCurrentBibleRef(null);
+                setCurrentSource(null);
               }}
               disabled={!hebrewText}
               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
@@ -840,6 +878,22 @@ export function TranslationPanel() {
           position={selectedWord.position}
           onClose={() => setSelectedWord(null)}
           onWordSaved={loadSavedWords}
+        />
+      )}
+
+      {showBookmarkManager && (
+        <BookmarkManager
+          onLoadBookmark={handleLoadBookmark}
+          onClose={() => setShowBookmarkManager(false)}
+        />
+      )}
+
+      {showSaveBookmark && (
+        <SaveBookmarkDialog
+          hebrewText={hebrewText}
+          source={currentSource}
+          onClose={() => setShowSaveBookmark(false)}
+          onSaved={() => {}}
         />
       )}
     </div>
