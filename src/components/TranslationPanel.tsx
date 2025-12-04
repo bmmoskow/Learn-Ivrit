@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, Upload } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../../supabase/client";
@@ -469,15 +469,13 @@ export function TranslationPanel() {
     }
   };
 
-  const renderSyncedText = () => {
+  const syncedParagraphs = useMemo(() => {
     if (!hebrewText) return null;
 
     const hebrewParagraphs = hebrewText.split(/\n\n+/);
     const englishParagraphs = englishText ? englishText.split(/\n\n+/) : [];
 
-    console.log("Hebrew paragraphs:", hebrewParagraphs.length);
-    console.log("English paragraphs:", englishParagraphs.length);
-
+    // Merge extra English paragraphs if needed
     if (englishParagraphs.length > hebrewParagraphs.length) {
       const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join("\n\n");
       if (hebrewParagraphs.length > 0 && extraEnglish.trim()) {
@@ -487,11 +485,20 @@ export function TranslationPanel() {
       }
     }
 
+    return hebrewParagraphs.map((hebrewPara, paraIndex) => ({
+      hebrew: hebrewPara,
+      english: englishParagraphs[paraIndex] || "",
+      index: paraIndex,
+    }));
+  }, [hebrewText, englishText]);
+
+  const renderSyncedText = () => {
+    if (!syncedParagraphs) return null;
+
     return (
       <div className="space-y-6">
-        {hebrewParagraphs.map((hebrewPara, paraIndex) => {
-          const words = hebrewPara.split(/(\s+|\n)/);
-          const englishPara = englishParagraphs[paraIndex] || "";
+        {syncedParagraphs.map(({ hebrew, english, index: paraIndex }) => {
+          const words = hebrew.split(/(\s+|\n)/);
 
           return (
             <div key={paraIndex} className="grid grid-cols-2 gap-6">
@@ -526,8 +533,8 @@ export function TranslationPanel() {
                 <p className="whitespace-pre-wrap">
                   {translating ? (
                     <span className="text-gray-400">Translating...</span>
-                  ) : englishPara ? (
-                    englishPara
+                  ) : english ? (
+                    english
                   ) : (
                     <span className="text-gray-400">Translation will appear here...</span>
                   )}
