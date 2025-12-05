@@ -1,55 +1,39 @@
-import { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { LogIn, UserPlus, Mail, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, Mail, Eye, EyeOff } from "lucide-react";
+import { UseLoginReturn } from "./useLogin";
 
-export function Login() {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [isResetPassword, setIsResetPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { signIn, signUp, signInAsGuest, resetPassword } = useAuth();
+type LoginFormProps = UseLoginReturn;
 
+export function LoginForm({
+  email,
+  password,
+  fullName,
+  error,
+  message,
+  loading,
+  showPassword,
+  isSignUp,
+  isResetPassword,
+  setEmail,
+  setPassword,
+  setFullName,
+  setShowPassword,
+  handleSignIn,
+  handleSignUp,
+  handleResetPassword,
+  handleGuestSignIn,
+  switchToSignUp,
+  switchToSignIn,
+  switchToResetPassword,
+}: LoginFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
-
-    try {
-      if (isResetPassword) {
-        const { error } = await resetPassword(email);
-        if (error) throw error;
-        setMessage('Password reset link sent to your email. Click the link in the email to reset your password.');
-        setEmail('');
-      } else if (isSignUp) {
-        const { error } = await signUp(email, password, fullName);
-        if (error) throw error;
-        setMessage('Account created successfully! Please sign in.');
-        setIsSignUp(false);
-        setPassword('');
-        setFullName('');
-      } else {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
-      }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
-    } finally {
-      setLoading(false);
+    if (isResetPassword) {
+      await handleResetPassword();
+    } else if (isSignUp) {
+      await handleSignUp();
+    } else {
+      await handleSignIn();
     }
-  };
-
-  const resetForm = () => {
-    setError('');
-    setMessage('');
-    setEmail('');
-    setPassword('');
-    setFullName('');
   };
 
   return (
@@ -58,21 +42,19 @@ export function Login() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {isResetPassword ? 'Reset Password' : isSignUp ? 'Create Account' : 'Welcome Back'}
+              {isResetPassword ? "Reset Password" : isSignUp ? "Create Account" : "Welcome Back"}
             </h1>
             <p className="text-gray-600">
               {isResetPassword
-                ? 'Enter your email to receive a reset link'
+                ? "Enter your email to receive a reset link"
                 : isSignUp
-                ? 'Start your Hebrew learning journey'
-                : 'Sign in to continue learning'}
+                  ? "Start your Hebrew learning journey"
+                  : "Sign in to continue learning"}
             </p>
           </div>
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
-            </div>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
           )}
 
           {message && (
@@ -84,9 +66,7 @@ export function Login() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name (Optional)
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name (Optional)</label>
                 <input
                   type="text"
                   value={fullName}
@@ -98,9 +78,7 @@ export function Login() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
                 type="email"
                 value={email}
@@ -113,9 +91,7 @@ export function Login() {
 
             {!isResetPassword && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
@@ -153,7 +129,7 @@ export function Login() {
                   ) : (
                     <LogIn className="w-5 h-5" />
                   )}
-                  {isResetPassword ? 'Send Reset Link' : isSignUp ? 'Sign Up' : 'Sign In'}
+                  {isResetPassword ? "Send Reset Link" : isSignUp ? "Sign Up" : "Sign In"}
                 </>
               )}
             </button>
@@ -172,26 +148,20 @@ export function Login() {
                 </div>
 
                 <button
-                  onClick={signInAsGuest}
+                  onClick={handleGuestSignIn}
                   className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition"
                 >
                   Continue as Guest
                 </button>
 
                 <button
-                  onClick={() => {
-                    setIsSignUp(!isSignUp);
-                    resetForm();
-                  }}
+                  onClick={isSignUp ? switchToSignIn : switchToSignUp}
                   className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium pt-2"
                 >
-                  {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                  {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
                 </button>
                 <button
-                  onClick={() => {
-                    setIsResetPassword(true);
-                    resetForm();
-                  }}
+                  onClick={switchToResetPassword}
                   className="w-full text-sm text-gray-600 hover:text-gray-700"
                 >
                   Forgot password?
@@ -200,10 +170,7 @@ export function Login() {
             )}
             {isResetPassword && (
               <button
-                onClick={() => {
-                  setIsResetPassword(false);
-                  resetForm();
-                }}
+                onClick={switchToSignIn}
                 className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
               >
                 Back to sign in

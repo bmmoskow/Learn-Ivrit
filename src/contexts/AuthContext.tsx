@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../../supabase/client';
+import { retryWithBackoff } from '../utils/retryWithBackoff/retryWithBackoff';
 
 type AuthContextType = {
   user: User | null;
@@ -23,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Check if Supabase is properly configured
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn('Supabase not configured - authentication will not work, but guest mode is available');
@@ -74,36 +75,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await retryWithBackoff(() =>
+      supabase.auth.signUp({ email, password })
+    );
 
     if (!error && data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          email: data.user.email!,
-          full_name: fullName || null,
-        });
+      // Profile creation also retries on 5xx
+      await retryWithBackoff(async () => {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user!.id,
+            email: data.user!.email!,
+            full_name: fullName || null,
+          });
 
-      if (profileError) {
-        console.error('Error creating profile:', profileError);
-      }
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+      });
     }
 
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await retryWithBackoff(() =>
+      supabase.auth.signInWithPassword({ email, password })
+    );
     return { error };
   };
-
   const signInAsGuest = () => {
     localStorage.setItem('guestMode', 'true');
     setIsGuest(true);
@@ -120,7 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await retryWithBackoff(() =>
+      supabase.auth.resetPasswordForEmail(email)
+    );
     return { error };
   };
 

@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { Login } from './Login';
+import { ReactNode } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { Login } from "./Login/Login";
 
 type ProtectedRouteProps = {
   children: ReactNode;
