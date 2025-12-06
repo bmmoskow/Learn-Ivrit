@@ -7,8 +7,8 @@ import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
 const mockUser = { id: "test-user-id", email: "test@example.com" };
 const mockSession = { user: mockUser };
 
-// Mock Supabase client
-vi.mock("../../integrations/supabase/client", () => ({
+// Mock Supabase client - must mock the path used by AuthContext
+vi.mock("../../../supabase/client", () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({
@@ -32,6 +32,7 @@ vi.mock("../../integrations/supabase/client", () => ({
           limit: vi.fn().mockResolvedValue({ data: [], error: null }),
         }),
       }),
+      upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
     }),
   },
 }));
