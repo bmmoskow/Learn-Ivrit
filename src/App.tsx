@@ -6,7 +6,7 @@ import { Dashboard } from "./components/Dashboard";
 import { TranslationPanel } from "./components/TranslationPanel";
 import { VocabularyList } from "./components/VocabularyList";
 import { TestPanel } from "./components/TestPanel";
-import { ResetPassword } from "./components/ResetPassword";
+import { ResetPassword } from "./components/ResetPassword/ResetPassword";
 import { supabase } from "../supabase/client";
 
 function AppContent() {
