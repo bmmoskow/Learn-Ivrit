@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { TestQuestion } from '../TestPanel';
-import { WordWithStats, shuffleArray } from '../../utils/adaptiveAlgorithm';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../../supabase/client';
-import { Check, X, Loader2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { TestQuestion } from "../TestPanel";
+import { WordWithStats, shuffleArray } from "../../utils/adaptiveAlgorithm";
+import { useAuth } from "../../contexts/AuthContext/AuthContext";
+import { supabase } from "../../../supabase/client";
+import { Check, X, Loader2 } from "lucide-react";
 
 type MultipleChoiceTestProps = {
   question: TestQuestion;
@@ -12,12 +12,7 @@ type MultipleChoiceTestProps = {
   onAnswer: (answer: string, isCorrect: boolean) => void;
 };
 
-export function MultipleChoiceTest({
-  question,
-  questionNumber,
-  totalQuestions,
-  onAnswer
-}: MultipleChoiceTestProps) {
+export function MultipleChoiceTest({ question, questionNumber, totalQuestions, onAnswer }: MultipleChoiceTestProps) {
   const { user, isGuest } = useAuth();
   const [options, setOptions] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
@@ -46,13 +41,13 @@ export function MultipleChoiceTest({
 
       try {
         const poolSize = totalQuestions * 4;
-        const { data: vocabData, error } = await supabase.rpc('select_test_words', {
+        const { data: vocabData, error } = await supabase.rpc("select_test_words", {
           p_user_id: user.id,
-          p_limit: poolSize
+          p_limit: poolSize,
         });
 
         if (error) {
-          console.error('Error fetching distractor pool:', error);
+          console.error("Error fetching distractor pool:", error);
           setOptions([correctAnswer]);
         } else {
           const allWords = vocabData.map((word: any) => word.english_translation);
@@ -64,7 +59,7 @@ export function MultipleChoiceTest({
           setOptions(allOptions);
         }
       } catch (err) {
-        console.error('Error in fetchDistractorPool:', err);
+        console.error("Error in fetchDistractorPool:", err);
         setOptions([correctAnswer]);
       }
 
@@ -119,18 +114,18 @@ export function MultipleChoiceTest({
               const isSelected = selectedAnswer === option;
               const isCorrect = option === question.word.english_translation;
 
-              let buttonClass = 'w-full p-5 text-left text-lg rounded-xl border-2 transition ';
+              let buttonClass = "w-full p-5 text-left text-lg rounded-xl border-2 transition ";
 
               if (showFeedback) {
                 if (isCorrect) {
-                  buttonClass += 'border-green-600 bg-green-50 text-green-900';
+                  buttonClass += "border-green-600 bg-green-50 text-green-900";
                 } else if (isSelected && !isCorrect) {
-                  buttonClass += 'border-red-600 bg-red-50 text-red-900';
+                  buttonClass += "border-red-600 bg-red-50 text-red-900";
                 } else {
-                  buttonClass += 'border-gray-200 bg-gray-50 text-gray-500';
+                  buttonClass += "border-gray-200 bg-gray-50 text-gray-500";
                 }
               } else {
-                buttonClass += 'border-gray-300 hover:border-green-500 hover:bg-green-50';
+                buttonClass += "border-gray-300 hover:border-green-500 hover:bg-green-50";
               }
 
               return (
@@ -157,11 +152,7 @@ export function MultipleChoiceTest({
               <div
                 key={i}
                 className={`h-2 w-8 rounded-full ${
-                  i < questionNumber - 1
-                    ? 'bg-green-600'
-                    : i === questionNumber - 1
-                    ? 'bg-green-400'
-                    : 'bg-gray-300'
+                  i < questionNumber - 1 ? "bg-green-600" : i === questionNumber - 1 ? "bg-green-400" : "bg-gray-300"
                 }`}
               />
             ))}

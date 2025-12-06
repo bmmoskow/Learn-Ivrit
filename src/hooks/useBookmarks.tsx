@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../supabase/client";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext/AuthContext";
 
 export interface BookmarkFolder {
   id: string;
