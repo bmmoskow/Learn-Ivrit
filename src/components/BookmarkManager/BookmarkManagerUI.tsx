@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Bookmark,
   ChevronRight,
@@ -12,38 +11,74 @@ import {
   Check,
   FolderPlus,
 } from "lucide-react";
-import { useBookmarks, BookmarkFolder, Bookmark as BookmarkType } from "../hooks/useBookmarks";
-import { useAuth } from "../contexts/AuthContext/AuthContext";
+import { BookmarkFolder, Bookmark as BookmarkType } from "../../hooks/useBookmarks";
 
-interface BookmarkManagerProps {
-  onLoadBookmark: (bookmark: BookmarkType) => void;
+interface BookmarkManagerUIProps {
+  // Auth
+  isGuest: boolean;
+  isAuthenticated: boolean;
+
+  // Data
+  rootFolders: BookmarkFolder[];
+  rootBookmarks: BookmarkType[];
+  loading: boolean;
+  error: string | null;
+
+  // UI state
+  expandedFolders: Set<string>;
+  editingId: string | null;
+  editingName: string;
+  newFolderParent: string | null | undefined;
+  newFolderName: string;
+
+  // Actions
   onClose: () => void;
+  clearError: () => void;
+  toggleFolder: (folderId: string) => void;
+  startEditing: (id: string, currentName: string) => void;
+  cancelEditing: () => void;
+  saveRename: (id: string, isFolder: boolean) => Promise<void>;
+  handleCreateFolder: (parentId: string | null) => Promise<void>;
+  handleDeleteFolder: (folderId: string) => Promise<void>;
+  handleDeleteBookmark: (bookmarkId: string) => Promise<void>;
+  handleLoadBookmark: (bookmark: BookmarkType) => void;
+  setNewFolderParent: (parentId: string | null | undefined) => void;
+  setNewFolderName: (name: string) => void;
+  setEditingName: (name: string) => void;
+  getSubfolders: (parentId: string | null) => BookmarkFolder[];
+  getBookmarksInFolder: (folderId: string | null) => BookmarkType[];
 }
 
-export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProps) {
-  const { user, isGuest } = useAuth();
-  const {
-    folders,
-    bookmarks,
-    loading,
-    error,
-    clearError,
-    createFolder,
-    deleteFolder,
-    renameFolder,
-    deleteBookmark,
-    renameBookmark,
-    getBookmarksInFolder,
-    getSubfolders,
-  } = useBookmarks();
-
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingName, setEditingName] = useState("");
-  const [newFolderParent, setNewFolderParent] = useState<string | null | undefined>(undefined);
-  const [newFolderName, setNewFolderName] = useState("");
-
-  if (isGuest || !user) {
+export function BookmarkManagerUI({
+  isGuest,
+  isAuthenticated,
+  rootFolders,
+  rootBookmarks,
+  loading,
+  error,
+  expandedFolders,
+  editingId,
+  editingName,
+  newFolderParent,
+  newFolderName,
+  onClose,
+  clearError,
+  toggleFolder,
+  startEditing,
+  cancelEditing,
+  saveRename,
+  handleCreateFolder,
+  handleDeleteFolder,
+  handleDeleteBookmark,
+  handleLoadBookmark,
+  setNewFolderParent,
+  setNewFolderName,
+  setEditingName,
+  getSubfolders,
+  getBookmarksInFolder,
+}: BookmarkManagerUIProps) {
+  // Guest/unauthenticated view
+  if (isGuest || !isAuthenticated) {
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
         <div className="bg-white rounded-xl shadow-xl p-6 max-w-md mx-4">
@@ -58,65 +93,6 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
       </div>
     );
   }
-
-  const toggleFolder = (folderId: string) => {
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderId)) {
-        next.delete(folderId);
-      } else {
-        next.add(folderId);
-      }
-      return next;
-    });
-  };
-
-  const startEditing = (id: string, currentName: string) => {
-    setEditingId(id);
-    setEditingName(currentName);
-  };
-
-  const cancelEditing = () => {
-    setEditingId(null);
-    setEditingName("");
-  };
-
-  const saveRename = async (id: string, isFolder: boolean) => {
-    if (!editingName.trim()) return;
-
-    const success = isFolder
-      ? await renameFolder(id, editingName.trim())
-      : await renameBookmark(id, editingName.trim());
-
-    if (success) {
-      cancelEditing();
-    }
-  };
-
-  const handleCreateFolder = async (parentId: string | null) => {
-    if (!newFolderName.trim()) return;
-
-    const folder = await createFolder(newFolderName.trim(), parentId);
-    if (folder) {
-      setNewFolderParent(undefined);
-      setNewFolderName("");
-      if (parentId) {
-        setExpandedFolders((prev) => new Set([...prev, parentId]));
-      }
-    }
-  };
-
-  const handleDeleteFolder = async (folderId: string) => {
-    if (confirm("Delete this folder and all its contents?")) {
-      await deleteFolder(folderId);
-    }
-  };
-
-  const handleDeleteBookmark = async (bookmarkId: string) => {
-    if (confirm("Delete this bookmark?")) {
-      await deleteBookmark(bookmarkId);
-    }
-  };
 
   const renderFolder = (folder: BookmarkFolder, depth: number = 0) => {
     const isExpanded = expandedFolders.has(folder.id);
@@ -153,10 +129,16 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
                 className="flex-1 px-1 py-0.5 text-sm border rounded"
                 autoFocus
               />
-              <button onClick={() => saveRename(folder.id, true)} className="p-0.5 text-green-600 hover:bg-green-50 rounded">
+              <button
+                onClick={() => saveRename(folder.id, true)}
+                className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+              >
                 <Check className="w-4 h-4" />
               </button>
-              <button onClick={cancelEditing} className="p-0.5 text-gray-500 hover:bg-gray-100 rounded">
+              <button
+                onClick={cancelEditing}
+                className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -215,7 +197,10 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
                   className="flex-1 px-1 py-0.5 text-sm border rounded"
                   autoFocus
                 />
-                <button onClick={() => handleCreateFolder(folder.id)} className="p-0.5 text-green-600 hover:bg-green-50 rounded">
+                <button
+                  onClick={() => handleCreateFolder(folder.id)}
+                  className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+                >
                   <Check className="w-4 h-4" />
                 </button>
                 <button
@@ -261,10 +246,16 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
               className="flex-1 px-1 py-0.5 text-sm border rounded"
               autoFocus
             />
-            <button onClick={() => saveRename(bookmark.id, false)} className="p-0.5 text-green-600 hover:bg-green-50 rounded">
+            <button
+              onClick={() => saveRename(bookmark.id, false)}
+              className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+            >
               <Check className="w-4 h-4" />
             </button>
-            <button onClick={cancelEditing} className="p-0.5 text-gray-500 hover:bg-gray-100 rounded">
+            <button
+              onClick={cancelEditing}
+              className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -272,7 +263,7 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
           <>
             <span
               className="flex-1 text-sm cursor-pointer hover:text-blue-600"
-              onClick={() => onLoadBookmark(bookmark)}
+              onClick={() => handleLoadBookmark(bookmark)}
               title={bookmark.source || undefined}
             >
               {bookmark.name}
@@ -298,9 +289,6 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
       </div>
     );
   };
-
-  const rootFolders = getSubfolders(null);
-  const rootBookmarks = getBookmarksInFolder(null);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -353,7 +341,10 @@ export function BookmarkManager({ onLoadBookmark, onClose }: BookmarkManagerProp
                     className="flex-1 px-1 py-0.5 text-sm border rounded"
                     autoFocus
                   />
-                  <button onClick={() => handleCreateFolder(null)} className="p-0.5 text-green-600 hover:bg-green-50 rounded">
+                  <button
+                    onClick={() => handleCreateFolder(null)}
+                    className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+                  >
                     <Check className="w-4 h-4" />
                   </button>
                   <button
