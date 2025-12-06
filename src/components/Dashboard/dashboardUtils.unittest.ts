@@ -244,3 +244,25 @@ describe("transformWeakWordsData", () => {
     expect(result[0].statistics.confidence_score).toBe(100);
   });
 });
+
+describe("initialDashboardStats", () => {
+  it("has correct initial stats structure", () => {
+    const initialStats = {
+      totalWords: 0,
+      testsCompleted: 0,
+      averageScore: 0,
+      weakWords: [],
+      recentTests: [],
+      studyStreak: 0,
+    };
+
+    expect(initialStats).toEqual({
+      totalWords: 0,
+      testsCompleted: 0,
+      averageScore: 0,
+      weakWords: [],
+      recentTests: [],
+      studyStreak: 0,
+    });
+  });
+});

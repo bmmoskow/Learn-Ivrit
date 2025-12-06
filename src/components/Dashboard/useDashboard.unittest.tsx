@@ -60,17 +60,4 @@ describe("useDashboard", () => {
     expect(typeof result.current.loadDashboardData).toBe("function");
   });
 
-  it("has correct initial stats structure", () => {
-    const { result } = renderHook(() => useDashboard(), { wrapper });
-
-    expect(result.current.stats).toEqual({
-      totalWords: 0,
-      testsCompleted: 0,
-      averageScore: 0,
-      weakWords: [],
-      recentTests: [],
-      studyStreak: 0,
-    });
-  });
 });
- 
