@@ -267,6 +267,9 @@ describe('useBookmarkManager', () => {
     });
 
     it('returns true when in guest mode', async () => {
+      // Store original localStorage
+      const originalLocalStorage = window.localStorage;
+
       // Mock localStorage to return guestMode = true
       const localStorageMock = {
         getItem: vi.fn((key: string) => key === 'guestMode' ? 'true' : null),
@@ -274,24 +277,29 @@ describe('useBookmarkManager', () => {
         removeItem: vi.fn(),
         clear: vi.fn(),
         length: 0,
-        key: vi.fn(),
+        key: vi.fn(() => null),
       };
-      Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true });
+      Object.defineProperty(window, 'localStorage', { value: localStorageMock, writable: true, configurable: true });
 
-      // Create a fresh wrapper that will read the mocked localStorage value on mount
-      const guestWrapper = ({ children }: { children: ReactNode }) => (
-        <AuthProvider>{children}</AuthProvider>
-      );
+      try {
+        // Create a fresh wrapper that will read the mocked localStorage value on mount
+        const guestWrapper = ({ children }: { children: ReactNode }) => (
+          <AuthProvider>{children}</AuthProvider>
+        );
 
-      const { result } = renderHook(
-        () => useBookmarkManager({ onLoadBookmark: mockOnLoadBookmark, onClose: mockOnClose }),
-        { wrapper: guestWrapper }
-      );
+        const { result } = renderHook(
+          () => useBookmarkManager({ onLoadBookmark: mockOnLoadBookmark, onClose: mockOnClose }),
+          { wrapper: guestWrapper }
+        );
 
-      // Wait for the AuthProvider useEffect to run
-      await vi.waitFor(() => {
-        expect(result.current.isGuest).toBe(true);
-      });
+        // Wait for the AuthProvider useEffect to run
+        await vi.waitFor(() => {
+          expect(result.current.isGuest).toBe(true);
+        });
+      } finally {
+        // Restore original localStorage
+        Object.defineProperty(window, 'localStorage', { value: originalLocalStorage, writable: true, configurable: true });
+      }
     });
   });
 
