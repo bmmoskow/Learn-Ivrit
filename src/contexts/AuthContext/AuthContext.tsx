@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
-import { supabase } from '../../supabase/client';
-import { retryWithBackoff } from '../utils/retryWithBackoff/retryWithBackoff';
+import { supabase } from '../../../supabase/client';
+import { retryWithBackoff } from '../../utils/retryWithBackoff/retryWithBackoff';
 
 type AuthContextType = {
   user: User | null;

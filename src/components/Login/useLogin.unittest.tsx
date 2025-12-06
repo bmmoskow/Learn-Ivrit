@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { useLogin } from './useLogin';
-import { AuthProvider } from '../../contexts/AuthContext';
+import { AuthProvider } from '../../contexts/AuthContext/AuthContext';
 
 // Mock the Supabase client - the true external boundary
 vi.mock('../../../supabase/client', () => ({

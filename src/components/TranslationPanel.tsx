@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, Upload, Bookmark, BookmarkPlus } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext/AuthContext";
 import { supabase } from "../../supabase/client";
 import { WordDefinitionPopup } from "./WordDefinitionPopup";
 import { BIBLE_BOOKS } from "../data/bibleBooks";

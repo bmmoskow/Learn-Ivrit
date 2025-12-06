@@ -1,17 +1,19 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../../supabase/client';
-import type { Tables } from '../../supabase/types';
-import { selectTestWords, calculateConfidenceScore, shuffleArray, WordWithStats } from '../utils/adaptiveAlgorithm';
-import { TestResults } from './tests/TestResults';
-import { BookOpen, Loader2 } from 'lucide-react';
-import { defaultVocabulary } from '../data/defaultVocabulary';
+import { useState, useEffect, lazy, Suspense } from "react";
+import { useAuth } from "../contexts/AuthContext/AuthContext";
+import { supabase } from "../../supabase/client";
+import type { Tables } from "../../supabase/types";
+import { selectTestWords, calculateConfidenceScore, shuffleArray, WordWithStats } from "../utils/adaptiveAlgorithm";
+import { TestResults } from "./tests/TestResults";
+import { BookOpen, Loader2 } from "lucide-react";
+import { defaultVocabulary } from "../data/defaultVocabulary";
 
-const FlashcardTest = lazy(() => import('./tests/FlashcardTest').then(m => ({ default: m.FlashcardTest })));
-const MultipleChoiceTest = lazy(() => import('./tests/MultipleChoiceTest').then(m => ({ default: m.MultipleChoiceTest })));
-const FillInBlankTest = lazy(() => import('./tests/FillInBlankTest').then(m => ({ default: m.FillInBlankTest })));
+const FlashcardTest = lazy(() => import("./tests/FlashcardTest").then((m) => ({ default: m.FlashcardTest })));
+const MultipleChoiceTest = lazy(() =>
+  import("./tests/MultipleChoiceTest").then((m) => ({ default: m.MultipleChoiceTest })),
+);
+const FillInBlankTest = lazy(() => import("./tests/FillInBlankTest").then((m) => ({ default: m.FillInBlankTest })));
 
-export type TestType = 'flashcard' | 'multiple_choice' | 'fill_in_blank';
+export type TestType = "flashcard" | "multiple_choice" | "fill_in_blank";
 
 export type TestQuestion = {
   word: WordWithStats;
@@ -41,16 +43,16 @@ export function TestPanel() {
     if (isGuest) {
       const guestWords: WordWithStats[] = defaultVocabulary.map((word, index) => ({
         id: `guest-${index}`,
-        user_id: 'guest',
+        user_id: "guest",
         hebrew_word: word.hebrew,
         english_translation: word.english,
         definition: word.english,
-        transliteration: '',
+        transliteration: "",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         statistics: {
           id: `guest-stats-${index}`,
-          user_id: 'guest',
+          user_id: "guest",
           word_id: `guest-${index}`,
           correct_count: 0,
           incorrect_count: 0,
@@ -59,8 +61,8 @@ export function TestPanel() {
           last_tested: null,
           confidence_score: 0,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       }));
       setWords(guestWords);
       setLoading(false);
@@ -73,18 +75,18 @@ export function TestPanel() {
 
     try {
       const { data: vocabData, error } = await supabase
-        .from('vocabulary_words')
-        .select('id, user_id, hebrew_word, english_translation, definition, transliteration, created_at, updated_at')
-        .eq('user_id', user.id);
+        .from("vocabulary_words")
+        .select("id, user_id, hebrew_word, english_translation, definition, transliteration, created_at, updated_at")
+        .eq("user_id", user.id);
 
       if (error) {
-        console.error('Error loading vocabulary:', error);
+        console.error("Error loading vocabulary:", error);
         setWords([]);
       } else {
-        const wordsWithStats: WordWithStats[] = vocabData.map(word => ({
+        const wordsWithStats: WordWithStats[] = vocabData.map((word) => ({
           ...word,
           statistics: {
-            id: '',
+            id: "",
             user_id: word.user_id,
             word_id: word.id,
             correct_count: 0,
@@ -94,13 +96,13 @@ export function TestPanel() {
             last_tested: null,
             confidence_score: 0,
             created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }
+            updated_at: new Date().toISOString(),
+          },
         }));
         setWords(wordsWithStats);
       }
     } catch (err) {
-      console.error('Error loading vocabulary:', err);
+      console.error("Error loading vocabulary:", err);
       setWords([]);
     } finally {
       setLoading(false);
@@ -119,29 +121,32 @@ export function TestPanel() {
       if (!user) return;
 
       try {
-        const { data: vocabData, error } = await supabase.rpc('select_test_words', {
+        const { data: vocabData, error } = await supabase.rpc("select_test_words", {
           p_user_id: user.id,
-          p_limit: count
+          p_limit: count,
         });
 
         if (error) {
-          console.error('Error fetching test words:', error);
-          selectedWords = selectTestWords(words.filter(w => w !== null), count);
+          console.error("Error fetching test words:", error);
+          selectedWords = selectTestWords(
+            words.filter((w) => w !== null),
+            count,
+          );
         } else {
           const lowConfidenceWords = vocabData.map((word: any) => ({
             ...word,
-            statistics: word.stats
+            statistics: word.stats,
           }));
 
           selectedWords = shuffleArray([...lowConfidenceWords]);
         }
       } catch (err) {
-        console.error('Error in startTest:', err);
+        console.error("Error in startTest:", err);
         return;
       }
     }
 
-    const questions: TestQuestion[] = selectedWords.map(word => ({ word }));
+    const questions: TestQuestion[] = selectedWords.map((word) => ({ word }));
 
     setTestType(type);
     setCurrentTest(questions);
@@ -154,34 +159,32 @@ export function TestPanel() {
   const saveTestResultsAsync = (completedTest: TestQuestion[]) => {
     if (isGuest || !user) return;
 
-    const correctCount = completedTest.filter(q => q.isCorrect).length;
+    const correctCount = completedTest.filter((q) => q.isCorrect).length;
     const totalQuestions = completedTest.length;
     const scorePercentage = (correctCount / totalQuestions) * 100;
     const durationSeconds = Math.floor((Date.now() - testStartTime) / 1000);
     const timestamp = new Date().toISOString();
 
-    const responses = completedTest.map(question => ({
+    const responses = completedTest.map((question) => ({
       word_id: question.word.id,
-      user_answer: question.userAnswer || '',
+      user_answer: question.userAnswer || "",
       correct_answer: question.word.english_translation,
       is_correct: question.isCorrect || false,
-      response_time_seconds: question.responseTime
+      response_time_seconds: question.responseTime,
     }));
 
-    const statistics = completedTest.map(question => {
+    const statistics = completedTest.map((question) => {
       const stats = question.word.statistics;
       const newCorrectCount = (stats?.correct_count || 0) + (question.isCorrect ? 1 : 0);
       const newIncorrectCount = (stats?.incorrect_count || 0) + (question.isCorrect ? 0 : 1);
       const newTotalAttempts = (stats?.total_attempts || 0) + 1;
-      const newConsecutiveCorrect = question.isCorrect
-        ? (stats?.consecutive_correct || 0) + 1
-        : 0;
+      const newConsecutiveCorrect = question.isCorrect ? (stats?.consecutive_correct || 0) + 1 : 0;
 
       const newConfidenceScore = calculateConfidenceScore({
         correct_count: newCorrectCount,
         incorrect_count: newIncorrectCount,
         total_attempts: newTotalAttempts,
-        consecutive_correct: newConsecutiveCorrect
+        consecutive_correct: newConsecutiveCorrect,
       });
 
       return {
@@ -191,26 +194,28 @@ export function TestPanel() {
         total_attempts: newTotalAttempts,
         consecutive_correct: newConsecutiveCorrect,
         last_tested: timestamp,
-        confidence_score: newConfidenceScore
+        confidence_score: newConfidenceScore,
       };
     });
 
-    supabase.rpc('save_complete_test_results', {
-      p_user_id: user.id,
-      p_test_type: testType!,
-      p_total_questions: totalQuestions,
-      p_correct_answers: correctCount,
-      p_score_percentage: scorePercentage,
-      p_duration_seconds: durationSeconds,
-      p_responses: responses,
-      p_statistics: statistics
-    }).then(({ data: savedTestId, error }) => {
-      if (error) {
-        console.error('Error saving test results:', error);
-      } else {
-        setTestId(savedTestId);
-      }
-    });
+    supabase
+      .rpc("save_complete_test_results", {
+        p_user_id: user.id,
+        p_test_type: testType!,
+        p_total_questions: totalQuestions,
+        p_correct_answers: correctCount,
+        p_score_percentage: scorePercentage,
+        p_duration_seconds: durationSeconds,
+        p_responses: responses,
+        p_statistics: statistics,
+      })
+      .then(({ data: savedTestId, error }) => {
+        if (error) {
+          console.error("Error saving test results:", error);
+        } else {
+          setTestId(savedTestId);
+        }
+      });
   };
 
   const handleAnswer = (answer: string, isCorrect: boolean) => {
@@ -221,7 +226,7 @@ export function TestPanel() {
       ...updatedQuestions[currentQuestionIndex],
       userAnswer: answer,
       isCorrect,
-      responseTime
+      responseTime,
     };
 
     setCurrentTest(updatedQuestions);
@@ -235,7 +240,7 @@ export function TestPanel() {
   };
 
   const finishTest = async (completedTest: TestQuestion[]) => {
-    const minDisplayTime = new Promise(resolve => setTimeout(resolve, 2000));
+    const minDisplayTime = new Promise((resolve) => setTimeout(resolve, 2000));
 
     await minDisplayTime;
     setShowResults(true);
@@ -291,12 +296,14 @@ export function TestPanel() {
     const currentQuestion = currentTest[currentQuestionIndex];
 
     return (
-      <Suspense fallback={
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-        </div>
-      }>
-        {testType === 'flashcard' && (
+      <Suspense
+        fallback={
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+        }
+      >
+        {testType === "flashcard" && (
           <FlashcardTest
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
@@ -305,7 +312,7 @@ export function TestPanel() {
           />
         )}
 
-        {testType === 'multiple_choice' && (
+        {testType === "multiple_choice" && (
           <MultipleChoiceTest
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
@@ -314,7 +321,7 @@ export function TestPanel() {
           />
         )}
 
-        {testType === 'fill_in_blank' && (
+        {testType === "fill_in_blank" && (
           <FillInBlankTest
             question={currentQuestion}
             questionNumber={currentQuestionIndex + 1}
@@ -336,9 +343,7 @@ export function TestPanel() {
           </p>
 
           <div className="mb-8">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Number of Questions
-            </label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Number of Questions</label>
             <input
               type="range"
               min="5"
@@ -356,42 +361,37 @@ export function TestPanel() {
 
           <div className="grid md:grid-cols-3 gap-4">
             <button
-              onClick={() => startTest('flashcard')}
+              onClick={() => startTest("flashcard")}
               className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <div className="text-4xl mb-3">🎴</div>
               <h3 className="text-xl font-bold mb-2">Flashcards</h3>
-              <p className="text-blue-100 text-sm">
-                See Hebrew words and guess the English translation
-              </p>
+              <p className="text-blue-100 text-sm">See Hebrew words and guess the English translation</p>
             </button>
 
             <button
-              onClick={() => startTest('multiple_choice')}
+              onClick={() => startTest("multiple_choice")}
               className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl hover:from-green-600 hover:to-green-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <div className="text-4xl mb-3">✅</div>
               <h3 className="text-xl font-bold mb-2">Multiple Choice</h3>
-              <p className="text-green-100 text-sm">
-                Choose the correct translation from options
-              </p>
+              <p className="text-green-100 text-sm">Choose the correct translation from options</p>
             </button>
 
             <button
-              onClick={() => startTest('fill_in_blank')}
+              onClick={() => startTest("fill_in_blank")}
               className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl hover:from-orange-600 hover:to-orange-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <div className="text-4xl mb-3">✍️</div>
               <h3 className="text-xl font-bold mb-2">Fill in the Blank</h3>
-              <p className="text-orange-100 text-sm">
-                Type the English translation yourself
-              </p>
+              <p className="text-orange-100 text-sm">Type the English translation yourself</p>
             </button>
           </div>
 
           <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <strong>Adaptive Learning:</strong> The test will focus more on words you struggle with and less on words you've mastered.
+              <strong>Adaptive Learning:</strong> The test will focus more on words you struggle with and less on words
+              you've mastered.
             </p>
           </div>
         </div>

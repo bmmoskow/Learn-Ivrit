@@ -13,7 +13,7 @@ import {
   FolderPlus,
 } from "lucide-react";
 import { useBookmarks, BookmarkFolder, Bookmark as BookmarkType } from "../hooks/useBookmarks";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext/AuthContext";
 
 interface BookmarkManagerProps {
   onLoadBookmark: (bookmark: BookmarkType) => void;

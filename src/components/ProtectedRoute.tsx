@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext/AuthContext";
 import { Login } from "./Login/Login";
 
 type ProtectedRouteProps = {

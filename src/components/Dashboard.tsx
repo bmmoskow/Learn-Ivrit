@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../../supabase/client';
-import type { Tables } from '../../supabase/types';
+import { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext/AuthContext";
+import { supabase } from "../../supabase/client";
+import type { Tables } from "../../supabase/types";
 
-type VocabularyWord = Tables<'vocabulary_words'>;
-type WordStatistics = Tables<'word_statistics'>;
-type UserTest = Tables<'user_tests'>;
-import { BookOpen, Target, TrendingUp, Award, Clock, Flame } from 'lucide-react';
+type VocabularyWord = Tables<"vocabulary_words">;
+type WordStatistics = Tables<"word_statistics">;
+type UserTest = Tables<"user_tests">;
+import { BookOpen, Target, TrendingUp, Award, Clock, Flame } from "lucide-react";
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -16,7 +16,7 @@ export function Dashboard() {
     averageScore: 0,
     weakWords: [] as Array<VocabularyWord & { statistics: WordStatistics }>,
     recentTests: [] as UserTest[],
-    studyStreak: 0
+    studyStreak: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -31,14 +31,11 @@ export function Dashboard() {
 
     try {
       const [wordsResult, weakWordsResult, testsResult] = await Promise.all([
+        supabase.from("vocabulary_words").select("id").eq("user_id", user.id).limit(1000),
         supabase
-          .from('vocabulary_words')
-          .select('id')
-          .eq('user_id', user.id)
-          .limit(1000),
-        supabase
-          .from('word_statistics')
-          .select(`
+          .from("word_statistics")
+          .select(
+            `
             id,
             user_id,
             word_id,
@@ -60,16 +57,19 @@ export function Dashboard() {
               created_at,
               updated_at
             )
-          `)
-          .eq('user_id', user.id)
-          .order('confidence_score', { ascending: true })
+          `,
+          )
+          .eq("user_id", user.id)
+          .order("confidence_score", { ascending: true })
           .limit(5),
         supabase
-          .from('user_tests')
-          .select('id, user_id, test_type, total_questions, correct_answers, score_percentage, duration_seconds, completed_at, created_at')
-          .eq('user_id', user.id)
-          .order('completed_at', { ascending: false })
-          .limit(5)
+          .from("user_tests")
+          .select(
+            "id, user_id, test_type, total_questions, correct_answers, score_percentage, duration_seconds, completed_at, created_at",
+          )
+          .eq("user_id", user.id)
+          .order("completed_at", { ascending: false })
+          .limit(5),
       ]);
 
       const { data: wordsData } = wordsResult;
@@ -78,12 +78,10 @@ export function Dashboard() {
 
       // Transform the joined data to match expected structure
       const weakWords = weakWordsData
-        ? weakWordsData
-            .filter(item => item.vocabulary_words)
-            .map(item => ({
-              ...(Array.isArray(item.vocabulary_words)
-                ? item.vocabulary_words[0]
-                : item.vocabulary_words),
+        ? (weakWordsData
+            .filter((item) => item.vocabulary_words)
+            .map((item) => ({
+              ...(Array.isArray(item.vocabulary_words) ? item.vocabulary_words[0] : item.vocabulary_words),
               statistics: {
                 id: item.id,
                 user_id: item.user_id,
@@ -96,13 +94,14 @@ export function Dashboard() {
                 confidence_score: item.confidence_score,
                 created_at: item.created_at,
                 updated_at: item.updated_at,
-              }
-            })) as Array<VocabularyWord & { statistics: WordStatistics }>
+              },
+            })) as Array<VocabularyWord & { statistics: WordStatistics }>)
         : [];
 
-      const averageScore = testsData && testsData.length > 0
-        ? testsData.reduce((sum, test) => sum + test.score_percentage, 0) / testsData.length
-        : 0;
+      const averageScore =
+        testsData && testsData.length > 0
+          ? testsData.reduce((sum, test) => sum + test.score_percentage, 0) / testsData.length
+          : 0;
 
       const studyStreak = calculateStudyStreak(testsData || []);
 
@@ -112,10 +111,10 @@ export function Dashboard() {
         averageScore: Math.round(averageScore),
         weakWords,
         recentTests: testsData || [],
-        studyStreak
+        studyStreak,
       });
     } catch (err) {
-      console.error('Error loading dashboard:', err);
+      console.error("Error loading dashboard:", err);
     } finally {
       setLoading(false);
     }
@@ -128,7 +127,7 @@ export function Dashboard() {
     today.setHours(0, 0, 0, 0);
 
     const testDates = tests
-      .map(test => {
+      .map((test) => {
         const date = new Date(test.completed_at);
         date.setHours(0, 0, 0, 0);
         return date.getTime();
@@ -152,7 +151,10 @@ export function Dashboard() {
   };
 
   const formatTestType = (type: string) => {
-    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    return type
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const formatDate = (dateString: string) => {
@@ -162,7 +164,7 @@ export function Dashboard() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffHours < 1) return 'Just now';
+    if (diffHours < 1) return "Just now";
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString();
@@ -228,10 +230,7 @@ export function Dashboard() {
             {stats.weakWords.length > 0 ? (
               <div className="space-y-3">
                 {stats.weakWords.map((word) => (
-                  <div
-                    key={word.id}
-                    className="p-4 bg-red-50 border border-red-200 rounded-lg"
-                  >
+                  <div key={word.id} className="p-4 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xl font-bold text-gray-900" dir="rtl">
                         {word.hebrew_word}
@@ -242,7 +241,9 @@ export function Dashboard() {
                     </div>
                     <p className="text-gray-700">{word.english_translation}</p>
                     <div className="mt-2 flex items-center gap-4 text-xs text-gray-600">
-                      <span>{word.statistics.correct_count}/{word.statistics.total_attempts} correct</span>
+                      <span>
+                        {word.statistics.correct_count}/{word.statistics.total_attempts} correct
+                      </span>
                       <span>Streak: {word.statistics.consecutive_correct}</span>
                     </div>
                   </div>
@@ -269,23 +270,27 @@ export function Dashboard() {
                     className="p-4 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-gray-900">
-                        {formatTestType(test.test_type)}
-                      </span>
-                      <span className={`text-lg font-bold ${
-                        test.score_percentage >= 80
-                          ? 'text-green-600'
-                          : test.score_percentage >= 60
-                          ? 'text-yellow-600'
-                          : 'text-red-600'
-                      }`}>
+                      <span className="font-semibold text-gray-900">{formatTestType(test.test_type)}</span>
+                      <span
+                        className={`text-lg font-bold ${
+                          test.score_percentage >= 80
+                            ? "text-green-600"
+                            : test.score_percentage >= 60
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                        }`}
+                      >
                         {Math.round(test.score_percentage)}%
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
-                      <span>{test.correct_answers}/{test.total_questions} correct</span>
+                      <span>
+                        {test.correct_answers}/{test.total_questions} correct
+                      </span>
                       {test.duration_seconds && (
-                        <span>{Math.floor(test.duration_seconds / 60)}m {test.duration_seconds % 60}s</span>
+                        <span>
+                          {Math.floor(test.duration_seconds / 60)}m {test.duration_seconds % 60}s
+                        </span>
                       )}
                       <span className="ml-auto">{formatDate(test.completed_at)}</span>
                     </div>
@@ -293,9 +298,7 @@ export function Dashboard() {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500 text-center py-8">
-                No tests completed yet. Start testing your knowledge!
-              </p>
+              <p className="text-gray-500 text-center py-8">No tests completed yet. Start testing your knowledge!</p>
             )}
           </div>
         </div>
