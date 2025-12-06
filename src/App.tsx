@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation";
-import { Dashboard } from "./components/Dashboard";
+import { Dashboard } from "./components/Dashboard/Dashboard";
 import { TranslationPanel } from "./components/TranslationPanel";
 import { VocabularyList } from "./components/VocabularyList";
 import { TestPanel } from "./components/TestPanel";
