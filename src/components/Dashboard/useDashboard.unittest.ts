@@ -5,12 +5,10 @@ import {
   formatDate,
   calculateAverageScore,
   transformWeakWordsData,
-} from "./useDashboard";
-import type { Tables } from "../../../supabase/types";
+  type UserTestData,
+} from "./dashboardUtils";
 
-type UserTest = Tables<"user_tests">;
-
-const createMockTest = (overrides: Partial<UserTest> = {}): UserTest => ({
+const createMockTest = (overrides: Partial<UserTestData> = {}): UserTestData => ({
   id: "test-1",
   user_id: "user-1",
   test_type: "flashcard",
