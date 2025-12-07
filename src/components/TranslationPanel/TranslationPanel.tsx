@@ -1,7 +1,7 @@
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { WordDefinitionPopup } from "../WordDefinitionPopup";
 import { BookmarkManager } from "../BookmarkManager/BookmarkManager";
-import { SaveBookmarkDialog } from "../SaveBookmarkDialog";
+import { SaveBookmarkDialog } from "../SaveBookmarkDialog/SaveBookmarkDialog";
 import { useTranslationPanel } from "./useTranslationPanel";
 import { TranslationPanelUI } from "./TranslationPanelUI";
 

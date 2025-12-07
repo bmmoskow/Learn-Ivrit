@@ -1,77 +1,56 @@
-import { useState } from "react";
 import { Bookmark, Folder, FolderPlus, X, Check, ChevronRight, ChevronDown } from "lucide-react";
-import { useBookmarks, BookmarkFolder } from "../hooks/useBookmarks";
-import { supabase } from "../../supabase/client";
+import { BookmarkFolder } from "../../hooks/useBookmarks";
 
-interface SaveBookmarkDialogProps {
-  hebrewText: string;
+interface SaveBookmarkDialogUIProps {
+  // State
+  bookmarkName: string;
+  selectedFolderId: string | null;
+  showNewFolder: boolean;
+  newFolderName: string;
+  saving: boolean;
+  error: string | null;
   source: string | null;
+  rootFolders: BookmarkFolder[];
+
+  // Setters
+  setBookmarkName: (name: string) => void;
+  setSelectedFolderId: (id: string | null) => void;
+  setNewFolderName: (name: string) => void;
+  setShowNewFolder: (show: boolean) => void;
+
+  // Actions
   onClose: () => void;
-  onSaved: () => void;
+  handleSave: () => void;
+  handleCreateFolder: () => void;
+  cancelNewFolder: () => void;
+  getSubfolders: (parentId: string | null) => BookmarkFolder[];
+  isExpanded: (folderId: string) => boolean;
+  toggleFolder: (folderId: string) => void;
 }
 
-export function SaveBookmarkDialog({ hebrewText, source, onClose, onSaved }: SaveBookmarkDialogProps) {
-  const { folders, createFolder, createBookmark, getSubfolders } = useBookmarks();
-
-  const [bookmarkName, setBookmarkName] = useState("");
-  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [showNewFolder, setShowNewFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const toggleFolder = (folderId: string) => {
-    setExpandedFolders((prev) => {
-      const next = new Set(prev);
-      if (next.has(folderId)) {
-        next.delete(folderId);
-      } else {
-        next.add(folderId);
-      }
-      return next;
-    });
-  };
-
-  const handleSave = async () => {
-    if (!bookmarkName.trim()) {
-      setError("Please enter a name for the bookmark");
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-
-    const bookmark = await createBookmark(
-      bookmarkName.trim(),
-      hebrewText,
-      source,
-      selectedFolderId
-    );
-
-    if (bookmark) {
-      onSaved();
-      onClose();
-    } else {
-      setError("Failed to save bookmark");
-    }
-
-    setSaving(false);
-  };
-
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim()) return;
-
-    const folder = await createFolder(newFolderName.trim(), null);
-    if (folder) {
-      setSelectedFolderId(folder.id);
-      setShowNewFolder(false);
-      setNewFolderName("");
-    }
-  };
-
+export function SaveBookmarkDialogUI({
+  bookmarkName,
+  selectedFolderId,
+  showNewFolder,
+  newFolderName,
+  saving,
+  error,
+  source,
+  rootFolders,
+  setBookmarkName,
+  setSelectedFolderId,
+  setNewFolderName,
+  setShowNewFolder,
+  onClose,
+  handleSave,
+  handleCreateFolder,
+  cancelNewFolder,
+  getSubfolders,
+  isExpanded,
+  toggleFolder,
+}: SaveBookmarkDialogUIProps) {
   const renderFolderOption = (folder: BookmarkFolder, depth: number = 0) => {
-    const isExpanded = expandedFolders.has(folder.id);
+    const expanded = isExpanded(folder.id);
     const subfolders = getSubfolders(folder.id);
     const isSelected = selectedFolderId === folder.id;
 
@@ -92,7 +71,7 @@ export function SaveBookmarkDialog({ hebrewText, source, onClose, onSaved }: Sav
               }}
               className="p-0.5"
             >
-              {isExpanded ? (
+              {expanded ? (
                 <ChevronDown className="w-4 h-4 text-gray-500" />
               ) : (
                 <ChevronRight className="w-4 h-4 text-gray-500" />
@@ -105,12 +84,10 @@ export function SaveBookmarkDialog({ hebrewText, source, onClose, onSaved }: Sav
           <span className="text-sm flex-1">{folder.name}</span>
           {isSelected && <Check className="w-4 h-4 text-blue-600" />}
         </div>
-        {isExpanded && subfolders.map((subfolder) => renderFolderOption(subfolder, depth + 1))}
+        {expanded && subfolders.map((subfolder) => renderFolderOption(subfolder, depth + 1))}
       </div>
     );
   };
-
-  const rootFolders = getSubfolders(null);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -172,10 +149,7 @@ export function SaveBookmarkDialog({ hebrewText, source, onClose, onSaved }: Sav
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleCreateFolder();
-                    if (e.key === "Escape") {
-                      setShowNewFolder(false);
-                      setNewFolderName("");
-                    }
+                    if (e.key === "Escape") cancelNewFolder();
                   }}
                   placeholder="Folder name"
                   className="flex-1 px-2 py-1 text-sm border rounded"
@@ -188,10 +162,7 @@ export function SaveBookmarkDialog({ hebrewText, source, onClose, onSaved }: Sav
                   <Check className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => {
-                    setShowNewFolder(false);
-                    setNewFolderName("");
-                  }}
+                  onClick={cancelNewFolder}
                   className="p-1 text-gray-500 hover:bg-gray-100 rounded"
                 >
                   <X className="w-4 h-4" />
