@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { TestQuestion } from '../TestPanel';
-import { Check, X, ArrowRight } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { TestQuestion } from "../TestPanel/testPanelUtils";
+import { Check, X, ArrowRight } from "lucide-react";
 
 type FillInBlankTestProps = {
   question: TestQuestion;
@@ -10,7 +10,7 @@ type FillInBlankTestProps = {
 };
 
 export function FillInBlankTest({ question, questionNumber, totalQuestions, onAnswer }: FillInBlankTestProps) {
-  const [userInput, setUserInput] = useState('');
+  const [userInput, setUserInput] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -18,7 +18,7 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
 
   useEffect(() => {
     if (!isProcessing) {
-      setUserInput('');
+      setUserInput("");
       setShowFeedback(false);
       inputRef.current?.focus();
     }
@@ -62,19 +62,13 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">
-            Type the English translation
-          </p>
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">Type the English translation</p>
 
           <div className="text-center mb-8">
             <p className="text-6xl font-bold text-gray-900 mb-4" dir="rtl">
               {question.word.hebrew_word}
             </p>
-            {question.word.transliteration && (
-              <p className="text-xl text-gray-500">
-                {question.word.transliteration}
-              </p>
-            )}
+            {question.word.transliteration && <p className="text-xl text-gray-500">{question.word.transliteration}</p>}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -86,7 +80,7 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
                 onChange={(e) => !showFeedback && setUserInput(e.target.value)}
                 onKeyDown={(e) => showFeedback && e.preventDefault()}
                 placeholder="Type your answer..."
-                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${showFeedback ? 'bg-gray-100' : ''}`}
+                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${showFeedback ? "bg-gray-100" : ""}`}
               />
             </div>
 
@@ -103,11 +97,11 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
           </form>
 
           {showFeedback && (
-            <div className={`mt-6 p-6 rounded-xl ${
-              isCorrect
-                ? 'bg-green-100 border-2 border-green-300'
-                : 'bg-red-100 border-2 border-red-300'
-            }`}>
+            <div
+              className={`mt-6 p-6 rounded-xl ${
+                isCorrect ? "bg-green-100 border-2 border-green-300" : "bg-red-100 border-2 border-red-300"
+              }`}
+            >
               <div className="flex items-center gap-3 mb-2">
                 {isCorrect ? (
                   <>
@@ -124,9 +118,7 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
               {!isCorrect && (
                 <div className="mt-4">
                   <p className="text-sm text-red-700 mb-1">Correct answer:</p>
-                  <p className="text-2xl font-bold text-red-900">
-                    {question.word.english_translation}
-                  </p>
+                  <p className="text-2xl font-bold text-red-900">{question.word.english_translation}</p>
                 </div>
               )}
             </div>
@@ -134,7 +126,7 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
         </div>
 
         <div className="mt-6 text-center text-sm text-gray-500">
-          {!showFeedback && 'Type your answer and press Enter or click Submit'}
+          {!showFeedback && "Type your answer and press Enter or click Submit"}
         </div>
       </div>
     </div>

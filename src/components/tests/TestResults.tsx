@@ -1,5 +1,5 @@
-import { TestQuestion, TestType } from '../TestPanel';
-import { Trophy, RotateCcw, Home, TrendingUp } from 'lucide-react';
+import { TestQuestion, TestType } from "../TestPanel/testPanelUtils";
+import { Trophy, RotateCcw, Home, TrendingUp } from "lucide-react";
 
 type TestResultsProps = {
   test: TestQuestion[];
@@ -9,28 +9,28 @@ type TestResultsProps = {
 };
 
 export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestResultsProps) {
-  const correctCount = test.filter(q => q.isCorrect).length;
+  const correctCount = test.filter((q) => q.isCorrect).length;
   const totalQuestions = test.length;
   const scorePercentage = Math.round((correctCount / totalQuestions) * 100);
 
   const getScoreColor = () => {
-    if (scorePercentage >= 90) return 'text-green-600';
-    if (scorePercentage >= 70) return 'text-blue-600';
-    if (scorePercentage >= 50) return 'text-orange-600';
-    return 'text-red-600';
+    if (scorePercentage >= 90) return "text-green-600";
+    if (scorePercentage >= 70) return "text-blue-600";
+    if (scorePercentage >= 50) return "text-orange-600";
+    return "text-red-600";
   };
 
   const getScoreMessage = () => {
-    if (scorePercentage >= 90) return 'Excellent work!';
-    if (scorePercentage >= 70) return 'Good job!';
-    if (scorePercentage >= 50) return 'Keep practicing!';
-    return 'Keep studying!';
+    if (scorePercentage >= 90) return "Excellent work!";
+    if (scorePercentage >= 70) return "Good job!";
+    if (scorePercentage >= 50) return "Keep practicing!";
+    return "Keep studying!";
   };
 
   const testTypeLabel = {
-    flashcard: 'Flashcards',
-    multiple_choice: 'Multiple Choice',
-    fill_in_blank: 'Fill in the Blank'
+    flashcard: "Flashcards",
+    multiple_choice: "Multiple Choice",
+    fill_in_blank: "Fill in the Blank",
   }[testType];
 
   return (
@@ -45,15 +45,11 @@ export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestRes
 
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-8 mb-8">
             <div className="text-center">
-              <div className={`text-6xl font-bold mb-2 ${getScoreColor()}`}>
-                {scorePercentage}%
-              </div>
+              <div className={`text-6xl font-bold mb-2 ${getScoreColor()}`}>{scorePercentage}%</div>
               <div className="text-gray-700 text-lg">
                 {correctCount} out of {totalQuestions} correct
               </div>
-              <div className="text-gray-500 text-sm mt-2">
-                Test Type: {testTypeLabel}
-              </div>
+              <div className="text-gray-500 text-sm mt-2">Test Type: {testTypeLabel}</div>
             </div>
           </div>
 
@@ -67,9 +63,7 @@ export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestRes
                 <div
                   key={index}
                   className={`p-4 rounded-lg border-2 ${
-                    question.isCorrect
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-red-200 bg-red-50'
+                    question.isCorrect ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -78,10 +72,10 @@ export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestRes
                         <span className="text-2xl font-bold" dir="rtl">
                           {question.word.hebrew_word}
                         </span>
-                        <span className={`text-sm font-semibold ${
-                          question.isCorrect ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {question.isCorrect ? '✓ Correct' : '✗ Incorrect'}
+                        <span
+                          className={`text-sm font-semibold ${question.isCorrect ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {question.isCorrect ? "✓ Correct" : "✗ Incorrect"}
                         </span>
                       </div>
                       <div className="text-sm text-gray-700">
@@ -93,11 +87,7 @@ export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestRes
                         </div>
                       )}
                     </div>
-                    {question.responseTime && (
-                      <div className="text-sm text-gray-500">
-                        {question.responseTime}s
-                      </div>
-                    )}
+                    {question.responseTime && <div className="text-sm text-gray-500">{question.responseTime}s</div>}
                   </div>
                 </div>
               ))}

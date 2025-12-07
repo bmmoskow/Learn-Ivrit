@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TestQuestion } from "../TestPanel";
+import { TestQuestion } from "../TestPanel/testPanelUtils";
 import { WordWithStats, shuffleArray } from "../../utils/adaptiveAlgorithm";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../supabase/client";

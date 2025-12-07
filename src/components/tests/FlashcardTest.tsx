@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { TestQuestion } from '../TestPanel';
-import { Eye, EyeOff, Check, X } from 'lucide-react';
+import { useState } from "react";
+import { TestQuestion } from "../TestPanel/testPanelUtils";
+import { Eye, EyeOff, Check, X } from "lucide-react";
 
 type FlashcardTestProps = {
   question: TestQuestion;
@@ -18,7 +18,7 @@ export function FlashcardTest({ question, questionNumber, totalQuestions, onAnsw
   };
 
   const handleIncorrect = () => {
-    onAnswer('', false);
+    onAnswer("", false);
     setShowAnswer(false);
   };
 
@@ -38,24 +38,20 @@ export function FlashcardTest({ question, questionNumber, totalQuestions, onAnsw
 
           {showAnswer ? (
             <>
-              <div className="text-3xl text-blue-600 font-semibold mb-12">
-                {question.word.english_translation}
-              </div>
+              <div className="text-3xl text-blue-600 font-semibold mb-12">{question.word.english_translation}</div>
 
               <div className="flex gap-4">
                 <button
                   onClick={handleCorrect}
                   className="flex items-center gap-2 bg-green-600 text-white px-8 py-4 rounded-xl hover:bg-green-700 transition text-lg font-semibold shadow-lg"
                 >
-                  <Check className="w-6 h-6" />
-                  I Got It Right
+                  <Check className="w-6 h-6" />I Got It Right
                 </button>
                 <button
                   onClick={handleIncorrect}
                   className="flex items-center gap-2 bg-red-600 text-white px-8 py-4 rounded-xl hover:bg-red-700 transition text-lg font-semibold shadow-lg"
                 >
-                  <X className="w-6 h-6" />
-                  I Got It Wrong
+                  <X className="w-6 h-6" />I Got It Wrong
                 </button>
               </div>
             </>
@@ -76,11 +72,7 @@ export function FlashcardTest({ question, questionNumber, totalQuestions, onAnsw
               <div
                 key={i}
                 className={`h-2 w-8 rounded-full ${
-                  i < questionNumber - 1
-                    ? 'bg-blue-600'
-                    : i === questionNumber - 1
-                    ? 'bg-blue-400'
-                    : 'bg-gray-300'
+                  i < questionNumber - 1 ? "bg-blue-600" : i === questionNumber - 1 ? "bg-blue-400" : "bg-gray-300"
                 }`}
               />
             ))}

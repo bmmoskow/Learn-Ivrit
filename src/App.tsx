@@ -5,7 +5,7 @@ import { Navigation } from "./components/Navigation";
 import { Dashboard } from "./components/Dashboard/Dashboard";
 import { TranslationPanel } from "./components/TranslationPanel/TranslationPanel";
 import { VocabularyList } from "./components/VocabularyList/VocabularyList";
-import { TestPanel } from "./components/TestPanel";
+import { TestPanel } from "./components/TestPanel/TestPanel";
 import { ResetPassword } from "./components/ResetPassword/ResetPassword";
 import { supabase } from "../supabase/client";
 
