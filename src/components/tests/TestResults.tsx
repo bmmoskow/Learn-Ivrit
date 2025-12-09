@@ -1,51 +1,34 @@
-import { TestQuestion, TestType } from "../TestPanel/testPanelUtils";
 import { Trophy, RotateCcw, Home, TrendingUp } from "lucide-react";
-
-type TestResultsProps = {
-  test: TestQuestion[];
-  testType: TestType;
-  onRetakeTest: () => void;
-  onNewTest: () => void;
-};
+import type { TestResultsProps } from "./testResultsUtils";
+import {
+  calculateScorePercentage,
+  countCorrectAnswers,
+  getScoreColor,
+  getScoreMessage,
+  getTestTypeLabel,
+} from "./testResultsUtils";
 
 export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestResultsProps) {
-  const correctCount = test.filter((q) => q.isCorrect).length;
+  const correctCount = countCorrectAnswers(test);
   const totalQuestions = test.length;
-  const scorePercentage = Math.round((correctCount / totalQuestions) * 100);
-
-  const getScoreColor = () => {
-    if (scorePercentage >= 90) return "text-green-600";
-    if (scorePercentage >= 70) return "text-blue-600";
-    if (scorePercentage >= 50) return "text-orange-600";
-    return "text-red-600";
-  };
-
-  const getScoreMessage = () => {
-    if (scorePercentage >= 90) return "Excellent work!";
-    if (scorePercentage >= 70) return "Good job!";
-    if (scorePercentage >= 50) return "Keep practicing!";
-    return "Keep studying!";
-  };
-
-  const testTypeLabel = {
-    flashcard: "Flashcards",
-    multiple_choice: "Multiple Choice",
-    fill_in_blank: "Fill in the Blank",
-  }[testType];
+  const scorePercentage = calculateScorePercentage(correctCount, totalQuestions);
+  const scoreColor = getScoreColor(scorePercentage);
+  const scoreMessage = getScoreMessage(scorePercentage);
+  const testTypeLabel = getTestTypeLabel(testType);
 
   return (
     <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-purple-50">
       <div className="w-full max-w-3xl">
         <div className="bg-white rounded-2xl shadow-2xl p-12">
           <div className="text-center mb-8">
-            <Trophy className={`w-20 h-20 mx-auto mb-4 ${getScoreColor()}`} />
+            <Trophy className={`w-20 h-20 mx-auto mb-4 ${scoreColor}`} />
             <h2 className="text-4xl font-bold text-gray-900 mb-2">Test Complete!</h2>
-            <p className="text-xl text-gray-600">{getScoreMessage()}</p>
+            <p className="text-xl text-gray-600">{scoreMessage}</p>
           </div>
 
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-8 mb-8">
             <div className="text-center">
-              <div className={`text-6xl font-bold mb-2 ${getScoreColor()}`}>{scorePercentage}%</div>
+              <div className={`text-6xl font-bold mb-2 ${scoreColor}`}>{scorePercentage}%</div>
               <div className="text-gray-700 text-lg">
                 {correctCount} out of {totalQuestions} correct
               </div>
