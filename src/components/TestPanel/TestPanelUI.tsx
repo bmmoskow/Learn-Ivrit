@@ -7,7 +7,7 @@ const FlashcardTest = lazy(() =>
   import("./FlashcardTest").then((m) => ({ default: m.FlashcardTest }))
 );
 const MultipleChoiceTest = lazy(() =>
-  import("./MultipleChoiceTest").then((m) => ({
+  import("./MultipleChoiceTest/MultipleChoiceTest").then((m) => ({
     default: m.MultipleChoiceTest,
   }))
 );
