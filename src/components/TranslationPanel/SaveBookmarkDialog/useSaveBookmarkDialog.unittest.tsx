@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { ReactNode } from "react";
-import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
+import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
 import { useSaveBookmarkDialog } from "./useSaveBookmarkDialog";
 
 // Mock the supabase client - must match exact import path used by useBookmarks
-vi.mock("../../../supabase/client", () => ({
+vi.mock("../../../../supabase/client", () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),

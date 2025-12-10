@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
-import { useBookmarks, BookmarkFolder, Bookmark } from "../../hooks/useBookmarks";
-import { useAuth } from "../../contexts/AuthContext/AuthContext";
+import { useBookmarks, BookmarkFolder, Bookmark } from "../../../hooks/useBookmarks";
+import { useAuth } from "../../../contexts/AuthContext/AuthContext";
 import {
   toggleFolderExpanded,
   getBookmarksInFolder as utilGetBookmarksInFolder,

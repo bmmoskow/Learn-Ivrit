@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useWordDefinitionPopup } from "./useWordDefinitionPopup";
-import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
+import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
 import React from "react";
 
-vi.mock("../../../supabase/client", () => ({
+vi.mock("../../../../supabase/client", () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({

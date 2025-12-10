@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../../contexts/AuthContext/AuthContext";
-import { supabase } from "../../../supabase/client";
-import { generateBasicHebrewForms } from "../../utils/hebrewForms";
-import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator";
+import { useAuth } from "../../../contexts/AuthContext/AuthContext";
+import { supabase } from "../../../../supabase/client";
+import { generateBasicHebrewForms } from "../../../utils/hebrewForms";
+import { requestDeduplicator, createRequestKey } from "../../../utils/requestDeduplicator";
 import {
   Definition,
   romanizeHebrew,

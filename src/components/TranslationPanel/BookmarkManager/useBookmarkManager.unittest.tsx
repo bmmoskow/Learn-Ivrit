@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { useBookmarkManager } from './useBookmarkManager';
-import { AuthProvider } from '../../contexts/AuthContext/AuthContext';
+import { AuthProvider } from '../../../contexts/AuthContext/AuthContext';
 
 // Mock the Supabase client
-vi.mock('../../../supabase/client', () => ({
+vi.mock('../../../../supabase/client', () => ({
   supabase: {
     auth: {
       getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
@@ -35,7 +35,7 @@ vi.mock('../../../supabase/client', () => ({
 }));
 
 // Import the mocked supabase after mocking
-import { supabase } from '../../../supabase/client';
+import { supabase } from '../../../../supabase/client';
 
 // Wrapper to provide AuthContext
 const wrapper = ({ children }: { children: ReactNode }) => (
