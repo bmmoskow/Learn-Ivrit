@@ -4,6 +4,20 @@ import { useWordDefinitionPopup } from "./useWordDefinitionPopup";
 import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
 import React from "react";
 
+const mockInsert = vi.fn().mockReturnValue({
+  select: vi.fn().mockReturnValue({
+    single: vi.fn().mockResolvedValue({ data: { id: "word-id" }, error: null }),
+  }),
+});
+
+const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null });
+
+const mockUpdate = vi.fn().mockReturnValue({
+  eq: vi.fn().mockReturnValue({
+    then: vi.fn(),
+  }),
+});
+
 vi.mock("../../../../supabase/client", () => ({
   supabase: {
     auth: {
@@ -14,25 +28,34 @@ vi.mock("../../../../supabase/client", () => ({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),
     },
-    from: vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+    from: vi.fn().mockImplementation((table: string) => {
+      if (table === "vocabulary_words") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: mockMaybeSingle,
+              maybeSingle: mockMaybeSingle,
+            }),
           }),
-          maybeSingle: vi.fn().mockResolvedValue({ data: null }),
-        }),
-      }),
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: { id: "word-id" }, error: null }),
-        }),
-      }),
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
+          insert: mockInsert,
+        };
+      }
+      if (table === "word_definitions") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+          update: mockUpdate,
+        };
+      }
+      return {
+        insert: vi.fn().mockReturnValue({
           then: vi.fn(),
         }),
-      }),
+        update: mockUpdate,
+      };
     }),
   },
 }));
@@ -150,6 +173,28 @@ describe("useWordDefinitionPopup", () => {
       const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
 
       expect(typeof result.current.saveToVocabulary).toBe("function");
+    });
+
+    it("should insert words with vowels when definition provides them", () => {
+      const insertSpy = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: { id: "word-id" }, error: null }),
+        }),
+      });
+
+      const testData = {
+        user_id: "test-user",
+        hebrew_word: "שָׁלוֹם",
+        english_translation: "Peace",
+        definition: "Peace, hello",
+        transliteration: "shalom",
+      };
+
+      insertSpy(testData);
+
+      expect(insertSpy).toHaveBeenCalledWith(testData);
+      expect(insertSpy.mock.calls[0][0].hebrew_word).toBe("שָׁלוֹם");
+      expect(insertSpy.mock.calls[0][0].hebrew_word).toContain("ָ");
     });
   });
 });
