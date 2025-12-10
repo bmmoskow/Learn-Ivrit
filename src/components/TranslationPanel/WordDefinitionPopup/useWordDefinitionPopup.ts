@@ -42,14 +42,15 @@ export function useWordDefinitionPopup({
   const [error, setError] = useState("");
   const [forceRefresh, setForceRefresh] = useState(false);
 
-  const checkIfSaved = useCallback(async () => {
+  const checkIfSaved = useCallback(async (wordToCheck?: string) => {
     if (!user) return;
 
+    const checkWord = wordToCheck || currentWord;
     const { data } = await supabase
       .from("vocabulary_words")
       .select("id")
       .eq("user_id", user.id)
-      .eq("hebrew_word", currentWord)
+      .eq("hebrew_word", checkWord)
       .maybeSingle();
 
     setSaved(!!data);
@@ -145,7 +146,7 @@ export function useWordDefinitionPopup({
         relatedWords = basicForms;
       }
 
-      setDefinition({
+      const newDefinition = {
         translation: currentWord,
         definition: data.definition || "No definition available",
         transliteration: data.transliteration || romanizeHebrew(currentWord),
@@ -154,21 +155,24 @@ export function useWordDefinitionPopup({
         notes: data.notes || "",
         relatedWords,
         shortEnglish,
-      });
+      };
+
+      setDefinition(newDefinition);
+
+      if (user) {
+        checkIfSaved(newDefinition.wordWithVowels);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load definition");
       console.error("Definition error:", err);
     } finally {
       setLoading(false);
     }
-  }, [currentWord, forceRefresh]);
+  }, [currentWord, forceRefresh, user, checkIfSaved]);
 
   useEffect(() => {
-    const loadData = async () => {
-      await Promise.all([fetchDefinition(), checkIfSaved()]);
-    };
-    loadData();
-  }, [fetchDefinition, checkIfSaved]);
+    fetchDefinition();
+  }, [fetchDefinition]);
 
   const handleRefresh = useCallback(() => {
     setForceRefresh(true);
@@ -185,7 +189,7 @@ export function useWordDefinitionPopup({
         .from("vocabulary_words")
         .insert({
           user_id: user.id,
-          hebrew_word: currentWord,
+          hebrew_word: definition.wordWithVowels || currentWord,
           english_translation: definition.shortEnglish || definition.definition.split(".")[0].trim(),
           definition: definition.definition,
           transliteration: definition.transliteration,
