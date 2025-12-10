@@ -1,18 +1,18 @@
 import { lazy, Suspense } from "react";
-import { TestResults } from "../tests/TestResults";
+import { TestResults } from "./TestResults/TestResults";
 import { BookOpen, Loader2 } from "lucide-react";
 import type { TestType, TestQuestion } from "./testPanelUtils";
 
 const FlashcardTest = lazy(() =>
-  import("../tests/FlashcardTest").then((m) => ({ default: m.FlashcardTest }))
+  import("./FlashcardTest").then((m) => ({ default: m.FlashcardTest }))
 );
 const MultipleChoiceTest = lazy(() =>
-  import("../tests/MultipleChoiceTest").then((m) => ({
+  import("./MultipleChoiceTest").then((m) => ({
     default: m.MultipleChoiceTest,
   }))
 );
 const FillInBlankTest = lazy(() =>
-  import("../tests/FillInBlankTest").then((m) => ({
+  import("./FillInBlankTest").then((m) => ({
     default: m.FillInBlankTest,
   }))
 );
