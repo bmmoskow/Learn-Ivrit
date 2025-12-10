@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useResetPassword } from './useResetPassword';
 
 // Mock the Supabase client
-vi.mock('../../../supabase/client', () => ({
+vi.mock('../../../../supabase/client', () => ({
   supabase: {
     auth: {
       updateUser: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock('../../../supabase/client', () => ({
 }));
 
 // Import the mocked supabase after mocking
-import { supabase } from '../../../supabase/client';
+import { supabase } from '../../../../supabase/client';
 
 describe('useResetPassword', () => {
   beforeEach(() => {
