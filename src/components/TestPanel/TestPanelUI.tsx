@@ -4,7 +4,7 @@ import { BookOpen, Loader2 } from "lucide-react";
 import type { TestType, TestQuestion } from "./testPanelUtils";
 
 const FlashcardTest = lazy(() =>
-  import("./FlashcardTest").then((m) => ({ default: m.FlashcardTest }))
+  import("./FlashcardTest/FlashcardTest").then((m) => ({ default: m.FlashcardTest }))
 );
 const MultipleChoiceTest = lazy(() =>
   import("./MultipleChoiceTest/MultipleChoiceTest").then((m) => ({
