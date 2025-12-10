@@ -1,4 +1,4 @@
-import type { WordWithStats } from "../../utils/adaptiveAlgorithm";
+import type { WordWithStats } from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
 
 export type TestType = "flashcard" | "multiple_choice" | "fill_in_blank";
 

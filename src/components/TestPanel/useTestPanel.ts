@@ -6,7 +6,7 @@ import {
   calculateConfidenceScore,
   shuffleArray,
   WordWithStats,
-} from "../../utils/adaptiveAlgorithm";
+} from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
 import { defaultVocabulary } from "../../data/defaultVocabulary";
 import {
   TestType,

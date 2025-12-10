@@ -18,7 +18,7 @@ import {
   MAX_QUESTIONS,
   TestQuestion,
 } from "./testPanelUtils";
-import type { WordWithStats } from "../../utils/adaptiveAlgorithm";
+import type { WordWithStats } from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
 
 describe("testPanelUtils", () => {
   describe("createGuestWord", () => {
