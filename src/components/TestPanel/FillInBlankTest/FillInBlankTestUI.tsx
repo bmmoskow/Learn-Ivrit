@@ -1,54 +1,41 @@
-import { useState, useEffect, useRef } from "react";
-import { TestQuestion } from "../TestPanel/testPanelUtils";
 import { Check, X, ArrowRight } from "lucide-react";
+import type { TestQuestion } from "../testPanelUtils";
+import { calculateProgress } from "./fillInBlankTestUtils";
 
-type FillInBlankTestProps = {
+interface FillInBlankTestUIProps {
+  // Data
   question: TestQuestion;
   questionNumber: number;
   totalQuestions: number;
-  onAnswer: (answer: string, isCorrect: boolean) => void;
-};
 
-export function FillInBlankTest({ question, questionNumber, totalQuestions, onAnswer }: FillInBlankTestProps) {
-  const [userInput, setUserInput] = useState("");
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  // State
+  userInput: string;
+  showFeedback: boolean;
+  isCorrect: boolean;
+  inputRef: React.RefObject<HTMLInputElement>;
 
-  useEffect(() => {
-    if (!isProcessing) {
-      setUserInput("");
-      setShowFeedback(false);
-      inputRef.current?.focus();
-    }
-  }, [question, isProcessing]);
+  // Actions
+  setUserInput: (value: string) => void;
+  handleSubmit: (e: React.FormEvent) => void;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!userInput.trim() || showFeedback) return;
-
-    const correct = userInput.trim().toLowerCase() === question.word.english_translation.toLowerCase();
-    const answer = userInput.trim();
-
-    setIsCorrect(correct);
-    setShowFeedback(true);
-
-    const isLastQuestion = questionNumber === totalQuestions;
-
-    if (isLastQuestion) {
-      setIsProcessing(true);
-    }
-
-    setTimeout(() => {
-      onAnswer(answer, correct);
-    }, 2000);
-  };
+export function FillInBlankTestUI({
+  question,
+  questionNumber,
+  totalQuestions,
+  userInput,
+  showFeedback,
+  isCorrect,
+  inputRef,
+  setUserInput,
+  handleSubmit,
+}: FillInBlankTestUIProps) {
+  const progress = calculateProgress(questionNumber, totalQuestions);
 
   return (
     <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-orange-50 to-white">
       <div className="w-full max-w-2xl">
+        {/* Progress bar */}
         <div className="mb-6 flex items-center justify-between">
           <div className="text-sm font-medium text-gray-600">
             Question {questionNumber} of {totalQuestions}
@@ -56,21 +43,28 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
           <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-orange-600 transition-all duration-300"
-              style={{ width: `${(questionNumber / totalQuestions) * 100}%` }}
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
+        {/* Main card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">Type the English translation</p>
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">
+            Type the English translation
+          </p>
 
+          {/* Hebrew word display */}
           <div className="text-center mb-8">
             <p className="text-6xl font-bold text-gray-900 mb-4" dir="rtl">
               {question.word.hebrew_word}
             </p>
-            {question.word.transliteration && <p className="text-xl text-gray-500">{question.word.transliteration}</p>}
+            {question.word.transliteration && (
+              <p className="text-xl text-gray-500">{question.word.transliteration}</p>
+            )}
           </div>
 
+          {/* Input form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <input
@@ -80,7 +74,9 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
                 onChange={(e) => !showFeedback && setUserInput(e.target.value)}
                 onKeyDown={(e) => showFeedback && e.preventDefault()}
                 placeholder="Type your answer..."
-                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${showFeedback ? "bg-gray-100" : ""}`}
+                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${
+                  showFeedback ? "bg-gray-100" : ""
+                }`}
               />
             </div>
 
@@ -96,10 +92,13 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
             )}
           </form>
 
+          {/* Feedback display */}
           {showFeedback && (
             <div
               className={`mt-6 p-6 rounded-xl ${
-                isCorrect ? "bg-green-100 border-2 border-green-300" : "bg-red-100 border-2 border-red-300"
+                isCorrect
+                  ? "bg-green-100 border-2 border-green-300"
+                  : "bg-red-100 border-2 border-red-300"
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
@@ -118,13 +117,16 @@ export function FillInBlankTest({ question, questionNumber, totalQuestions, onAn
               {!isCorrect && (
                 <div className="mt-4">
                   <p className="text-sm text-red-700 mb-1">Correct answer:</p>
-                  <p className="text-2xl font-bold text-red-900">{question.word.english_translation}</p>
+                  <p className="text-2xl font-bold text-red-900">
+                    {question.word.english_translation}
+                  </p>
                 </div>
               )}
             </div>
           )}
         </div>
 
+        {/* Helper text */}
         <div className="mt-6 text-center text-sm text-gray-500">
           {!showFeedback && "Type your answer and press Enter or click Submit"}
         </div>

@@ -12,7 +12,7 @@ const MultipleChoiceTest = lazy(() =>
   }))
 );
 const FillInBlankTest = lazy(() =>
-  import("./FillInBlankTest").then((m) => ({
+  import("./FillInBlankTest/FillInBlankTest").then((m) => ({
     default: m.FillInBlankTest,
   }))
 );
