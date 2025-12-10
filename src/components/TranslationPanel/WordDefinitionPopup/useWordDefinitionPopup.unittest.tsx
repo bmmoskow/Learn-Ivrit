@@ -33,7 +33,9 @@ vi.mock("../../../../supabase/client", () => ({
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              eq: mockMaybeSingle,
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: mockMaybeSingle,
+              }),
               maybeSingle: mockMaybeSingle,
             }),
           }),
