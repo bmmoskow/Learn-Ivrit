@@ -1,5 +1,5 @@
 import { Bookmark, Folder, FolderPlus, X, Check, ChevronRight, ChevronDown } from "lucide-react";
-import { BookmarkFolder } from "../../hooks/useBookmarks";
+import { BookmarkFolder } from "../../../hooks/useBookmarks/bookmarksUtils";
 
 interface SaveBookmarkDialogUIProps {
   // State

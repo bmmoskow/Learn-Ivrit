@@ -1,28 +1,46 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../supabase/client";
-import { useAuth } from "../contexts/AuthContext/AuthContext";
+import { supabase } from "../../../supabase/client";
+import { useAuth } from "../../contexts/AuthContext/AuthContext";
+import {
+  type BookmarkFolder,
+  type Bookmark,
+  getErrorMessage,
+  filterBookmarksByFolder,
+  filterSubfolders,
+  removeFolder,
+  removeBookmark,
+  removeBookmarksInFolder,
+  updateFolderName,
+  updateBookmarkName,
+  updateBookmarkFolder,
+} from "./bookmarksUtils";
 
-export interface BookmarkFolder {
-  id: string;
-  user_id: string;
-  name: string;
-  parent_folder_id: string | null;
-  created_at: string;
-  updated_at: string;
+export type { BookmarkFolder, Bookmark };
+
+export interface UseBookmarksReturn {
+  folders: BookmarkFolder[];
+  bookmarks: Bookmark[];
+  loading: boolean;
+  error: string | null;
+  clearError: () => void;
+  refresh: () => Promise<void>;
+  createFolder: (name: string, parentFolderId?: string | null) => Promise<BookmarkFolder | null>;
+  deleteFolder: (folderId: string) => Promise<boolean>;
+  renameFolder: (folderId: string, newName: string) => Promise<boolean>;
+  createBookmark: (
+    name: string,
+    hebrewText: string,
+    source: string | null,
+    folderId?: string | null
+  ) => Promise<Bookmark | null>;
+  deleteBookmark: (bookmarkId: string) => Promise<boolean>;
+  renameBookmark: (bookmarkId: string, newName: string) => Promise<boolean>;
+  moveBookmark: (bookmarkId: string, newFolderId: string | null) => Promise<boolean>;
+  getBookmarksInFolder: (folderId: string | null) => Bookmark[];
+  getSubfolders: (parentId: string | null) => BookmarkFolder[];
 }
 
-export interface Bookmark {
-  id: string;
-  user_id: string;
-  folder_id: string | null;
-  name: string;
-  hebrew_text: string;
-  source: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export function useBookmarks() {
+export function useBookmarks(): UseBookmarksReturn {
   const { user } = useAuth();
   const [folders, setFolders] = useState<BookmarkFolder[]>([]);
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -94,11 +112,7 @@ export function useBookmarks() {
 
     if (error) {
       console.error("Error creating folder:", error);
-      if (error.code === "23505") {
-        setError("A folder with this name already exists in this location");
-      } else {
-        setError("Failed to create folder");
-      }
+      setError(getErrorMessage(error.code, "folder"));
       return null;
     }
 
@@ -122,9 +136,8 @@ export function useBookmarks() {
       return false;
     }
 
-    setFolders((prev) => prev.filter((f) => f.id !== folderId));
-    // Also remove bookmarks in this folder from local state
-    setBookmarks((prev) => prev.filter((b) => b.folder_id !== folderId));
+    setFolders((prev) => removeFolder(prev, folderId));
+    setBookmarks((prev) => removeBookmarksInFolder(prev, folderId));
     return true;
   };
 
@@ -139,15 +152,11 @@ export function useBookmarks() {
 
     if (error) {
       console.error("Error renaming folder:", error);
-      if (error.code === "23505") {
-        setError("A folder with this name already exists in this location");
-      } else {
-        setError("Failed to rename folder");
-      }
+      setError(getErrorMessage(error.code, "folder"));
       return false;
     }
 
-    setFolders((prev) => prev.map((f) => (f.id === folderId ? { ...f, name: newName } : f)));
+    setFolders((prev) => updateFolderName(prev, folderId, newName));
     return true;
   };
 
@@ -173,11 +182,7 @@ export function useBookmarks() {
 
     if (error) {
       console.error("Error creating bookmark:", error);
-      if (error.code === "23505") {
-        setError("A bookmark with this name already exists in this location");
-      } else {
-        setError("Failed to create bookmark");
-      }
+      setError(getErrorMessage(error.code, "bookmark"));
       return null;
     }
 
@@ -201,7 +206,7 @@ export function useBookmarks() {
       return false;
     }
 
-    setBookmarks((prev) => prev.filter((b) => b.id !== bookmarkId));
+    setBookmarks((prev) => removeBookmark(prev, bookmarkId));
     return true;
   };
 
@@ -216,15 +221,11 @@ export function useBookmarks() {
 
     if (error) {
       console.error("Error renaming bookmark:", error);
-      if (error.code === "23505") {
-        setError("A bookmark with this name already exists in this location");
-      } else {
-        setError("Failed to rename bookmark");
-      }
+      setError(getErrorMessage(error.code, "bookmark"));
       return false;
     }
 
-    setBookmarks((prev) => prev.map((b) => (b.id === bookmarkId ? { ...b, name: newName } : b)));
+    setBookmarks((prev) => updateBookmarkName(prev, bookmarkId, newName));
     return true;
   };
 
@@ -243,16 +244,16 @@ export function useBookmarks() {
       return false;
     }
 
-    setBookmarks((prev) => prev.map((b) => (b.id === bookmarkId ? { ...b, folder_id: newFolderId } : b)));
+    setBookmarks((prev) => updateBookmarkFolder(prev, bookmarkId, newFolderId));
     return true;
   };
 
   const getBookmarksInFolder = (folderId: string | null): Bookmark[] => {
-    return bookmarks.filter((b) => b.folder_id === folderId);
+    return filterBookmarksByFolder(bookmarks, folderId);
   };
 
   const getSubfolders = (parentId: string | null): BookmarkFolder[] => {
-    return folders.filter((f) => f.parent_folder_id === parentId);
+    return filterSubfolders(folders, parentId);
   };
 
   const clearError = () => setError(null);

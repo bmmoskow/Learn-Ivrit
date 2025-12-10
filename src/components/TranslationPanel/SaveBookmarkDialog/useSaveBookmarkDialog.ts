@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useBookmarks, BookmarkFolder, Bookmark } from "../../../hooks/useBookmarks";
+import { useBookmarks, BookmarkFolder, Bookmark } from "../../../hooks/useBookmarks/useBookmarks";
 import { validateBookmarkName, validateFolderName, toggleFolderInSet } from "./saveBookmarkDialogUtils";
 
 export interface UseSaveBookmarkDialogProps {

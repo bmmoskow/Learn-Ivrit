@@ -1,4 +1,4 @@
-import { Bookmark as BookmarkType } from "../../hooks/useBookmarks";
+import { Bookmark as BookmarkType } from "../../../hooks/useBookmarks/useBookmarks";
 import { useBookmarkManager } from "./useBookmarkManager";
 import { BookmarkManagerUI } from "./BookmarkManagerUI";
 

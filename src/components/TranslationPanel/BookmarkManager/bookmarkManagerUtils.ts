@@ -6,7 +6,7 @@
  * VITE_SUPABASE_URL. Keeping pure functions here allows unit testing without mocking Supabase.
  */
 
-import { BookmarkFolder, Bookmark } from "../../hooks/useBookmarks";
+import { BookmarkFolder, Bookmark } from "../../../hooks/useBookmarks/bookmarksUtils";
 
 /**
  * Toggle a folder's expanded state in the set

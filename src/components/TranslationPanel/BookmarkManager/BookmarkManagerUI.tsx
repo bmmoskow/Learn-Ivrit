@@ -11,7 +11,7 @@ import {
   Check,
   FolderPlus,
 } from "lucide-react";
-import { BookmarkFolder, Bookmark as BookmarkType } from "../../hooks/useBookmarks";
+import { BookmarkFolder, Bookmark as BookmarkType } from "../../../hooks/useBookmarks/useBookmarks";
 
 interface BookmarkManagerUIProps {
   // Auth

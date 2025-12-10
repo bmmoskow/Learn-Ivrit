@@ -8,7 +8,7 @@ import {
   isValidFolderName,
   isValidBookmarkName,
 } from "./bookmarkManagerUtils";
-import { BookmarkFolder, Bookmark } from "../../hooks/useBookmarks";
+import { BookmarkFolder, Bookmark } from "../../../hooks/useBookmarks/bookmarksUtils";
 
 // Mock data
 const mockFolders: BookmarkFolder[] = [
