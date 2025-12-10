@@ -276,40 +276,11 @@ Deno.serve(async (req: Request) => {
         });
       }
 
+      // Cache lookup is now done on frontend for faster retrieval
+      // Edge function only handles cache misses (actual translation)
       const contentHash = await hashText(text);
       const textLength = text.length;
-
-      const { data: cachedTranslation, error: cacheError } = await supabase
-        .from("translation_cache")
-        .select("translation, id")
-        .eq("content_hash", contentHash)
-        .eq("text_length", textLength)
-        .maybeSingle();
-
-      if (cachedTranslation && !cacheError) {
-        console.log("Using cached translation for hash:", contentHash);
-
-        const { data: currentData } = await supabase
-          .from("translation_cache")
-          .select("access_count")
-          .eq("id", cachedTranslation.id)
-          .single();
-
-        await supabase
-          .from("translation_cache")
-          .update({
-            last_accessed: new Date().toISOString(),
-            access_count: (currentData?.access_count || 0) + 1,
-          })
-          .eq("id", cachedTranslation.id);
-
-        return new Response(JSON.stringify({ translation: cachedTranslation.translation }), {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
-        });
-      }
+      console.log("Translating text - hash:", contentHash, "length:", textLength);
 
       await logRequest(supabase, user.id, "passage_translation");
 
@@ -408,7 +379,7 @@ Deno.serve(async (req: Request) => {
       const finalParaCount = translation.split(/\n\n+/).length;
       console.log(`Final translation paragraphs: ${finalParaCount}, expected: ${paragraphs.length}`);
 
-      await supabase.from("translation_cache").insert({
+      const { error: insertError } = await supabase.from("translation_cache").insert({
         content_hash: contentHash,
         hebrew_text: text.substring(0, 5000),
         translation: translation,
@@ -418,7 +389,11 @@ Deno.serve(async (req: Request) => {
         access_count: 0,
       });
 
-      console.log("Cached translation with hash:", contentHash);
+      if (insertError) {
+        console.error("Failed to cache translation:", insertError);
+      } else {
+        console.log("✓ Cached translation with hash:", contentHash);
+      }
 
       return new Response(JSON.stringify({ translation }), {
         headers: {

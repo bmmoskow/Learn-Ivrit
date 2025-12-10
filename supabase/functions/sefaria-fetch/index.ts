@@ -16,6 +16,29 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Check for authentication (optional - guests allowed for read-only access)
+    const authHeader = req.headers.get("Authorization");
+    let userId: string | null = null;
+
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+      if (!authError && user) {
+        userId = user.id;
+        console.log(`Authenticated request from user: ${userId}`);
+      } else {
+        // Guest mode - allow read-only access without valid token
+        console.log("Guest mode access (no valid token)");
+      }
+    } else {
+      console.log("Guest mode access (no auth header)");
+    }
+
     const url = new URL(req.url);
     const reference = url.searchParams.get("reference");
 
@@ -31,10 +54,6 @@ Deno.serve(async (req: Request) => {
         }
       );
     }
-
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
