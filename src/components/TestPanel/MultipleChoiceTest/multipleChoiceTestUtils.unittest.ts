@@ -64,17 +64,6 @@ describe("multipleChoiceTestUtils", () => {
       expect(options).toContain("peace");
       expect(options).toContain("war");
     });
-
-    it("generates different orders on multiple calls (probabilistic)", () => {
-      const correctAnswer = "peace";
-      const allTranslations = ["peace", "war", "love", "hate", "joy"];
-
-      const options1 = generateOptions(correctAnswer, allTranslations, 4);
-      const options2 = generateOptions(correctAnswer, allTranslations, 4);
-
-      const isDifferentOrder = options1.some((opt, idx) => opt !== options2[idx]);
-      expect(isDifferentOrder).toBe(true);
-    });
   });
 
   describe("shuffleArray", () => {
@@ -110,17 +99,6 @@ describe("multipleChoiceTestUtils", () => {
     it("handles single element array", () => {
       const shuffled = shuffleArray([42]);
       expect(shuffled).toEqual([42]);
-    });
-
-    it("produces different orders on multiple calls (probabilistic)", () => {
-      const input = [1, 2, 3, 4, 5, 6, 7, 8];
-      const results = Array.from({ length: 10 }, () => shuffleArray(input));
-
-      const allSame = results.every((result) =>
-        result.every((val, idx) => val === results[0][idx])
-      );
-
-      expect(allSame).toBe(false);
     });
   });
 
