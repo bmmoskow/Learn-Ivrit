@@ -281,4 +281,32 @@ describe('useBookmarkManager', () => {
       expect(result.current.user).toBeNull();
     });
   });
+
+  describe('empty state handling', () => {
+    it('does not show error when no bookmarks or folders exist', async () => {
+      (supabase.auth.getSession as any).mockResolvedValue({
+        data: {
+          session: {
+            user: { id: 'test-user-id', email: 'test@example.com' },
+            access_token: 'test-token',
+          },
+        },
+      });
+
+      const { result } = renderHook(
+        () => useBookmarkManager({ onLoadBookmark: mockOnLoadBookmark, onClose: mockOnClose }),
+        { wrapper }
+      );
+
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      });
+
+      expect(result.current.error).toBeNull();
+      expect(result.current.folders).toEqual([]);
+      expect(result.current.bookmarks).toEqual([]);
+      expect(result.current.rootFolders).toEqual([]);
+      expect(result.current.rootBookmarks).toEqual([]);
+    });
+  });
 });
