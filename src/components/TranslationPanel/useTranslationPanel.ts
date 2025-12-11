@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../supabase/client";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
-import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator";
+import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator/requestDeduplicator";
 import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks";
 import {
   stripHtml,

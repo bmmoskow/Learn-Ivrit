@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../../supabase/client";
 import { generateBasicHebrewForms } from "../../../utils/hebrewForms/hebrewFormsUtils";
-import { requestDeduplicator, createRequestKey } from "../../../utils/requestDeduplicator";
+import { requestDeduplicator, createRequestKey } from "../../../utils/requestDeduplicator/requestDeduplicator";
 import {
   Definition,
   romanizeHebrew,
