@@ -132,7 +132,16 @@ export function useWordDefinitionPopup({
         return { data, shortEnglish };
       });
 
-      let relatedWords = (data.forms || []).map((form: unknown) => ({
+      const dataObj = data as {
+        forms?: Array<{ hebrew: string; transliteration: string; relationship: string }>;
+        wordWithVowels?: string;
+        transliteration?: string;
+        definition?: string;
+        examples?: Array<{ hebrew: string; english: string }>;
+        notes?: string;
+      };
+
+      let relatedWords: Array<{ hebrew: string; english: string; relationship: string }> = (dataObj.forms || []).map((form) => ({
         hebrew: form.hebrew,
         english: form.transliteration,
         relationship: form.relationship,
@@ -140,19 +149,23 @@ export function useWordDefinitionPopup({
 
       if (relatedWords.length === 0) {
         const basicForms = generateBasicHebrewForms(
-          data.wordWithVowels || currentWord,
-          data.transliteration || romanizeHebrew(currentWord)
+          dataObj.wordWithVowels || currentWord,
+          dataObj.transliteration || romanizeHebrew(currentWord)
         );
-        relatedWords = basicForms;
+        relatedWords = basicForms.map(form => ({
+          hebrew: form.hebrew,
+          english: form.transliteration,
+          relationship: form.relationship,
+        }));
       }
 
-      const newDefinition = {
+      const newDefinition: Definition = {
         translation: currentWord,
-        definition: data.definition || "No definition available",
-        transliteration: data.transliteration || romanizeHebrew(currentWord),
-        wordWithVowels: data.wordWithVowels || currentWord,
-        examples: data.examples || [],
-        notes: data.notes || "",
+        definition: dataObj.definition || "No definition available",
+        transliteration: dataObj.transliteration || romanizeHebrew(currentWord),
+        wordWithVowels: dataObj.wordWithVowels || currentWord,
+        examples: dataObj.examples || [],
+        notes: dataObj.notes || "",
         relatedWords,
         shortEnglish,
       };
@@ -162,8 +175,8 @@ export function useWordDefinitionPopup({
       if (user) {
         checkIfSaved(newDefinition.wordWithVowels);
       }
-    } catch (err: unknown) {
-      setError(err.message || "Failed to load definition");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load definition");
       console.error("Definition error:", err);
     } finally {
       setLoading(false);
@@ -214,8 +227,8 @@ export function useWordDefinitionPopup({
 
       setSaved(true);
       onWordSaved();
-    } catch (err: unknown) {
-      if (err.code === "23505") {
+    } catch (err) {
+      if (err && typeof err === 'object' && 'code' in err && err.code === "23505") {
         setError("Word already in vocabulary");
         setSaved(true);
       } else {

@@ -37,8 +37,8 @@ describe('useLogin', () => {
     vi.clearAllMocks();
     localStorage.clear();
     // Reset default mock implementations
-    (supabase.auth.getSession).mockResolvedValue({ data: { session: null } });
-    (supabase.auth.onAuthStateChange).mockReturnValue({
+    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
+    (supabase.auth.onAuthStateChange as any).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
   });
@@ -61,7 +61,7 @@ describe('useLogin', () => {
 
   describe('handleSignIn', () => {
     it('calls supabase signInWithPassword with email and password', async () => {
-      (supabase.auth.signInWithPassword).mockResolvedValue({ error: null });
+      (supabase.auth.signInWithPassword as any).mockResolvedValue({ error: null });
 
       const { result } = renderHook(() => useLogin(), { wrapper });
 
@@ -82,7 +82,7 @@ describe('useLogin', () => {
     });
 
     it('sets error on sign in failure (4xx - no retry)', async () => {
-      (supabase.auth.signInWithPassword).mockResolvedValue({
+      (supabase.auth.signInWithPassword as any).mockResolvedValue({
         error: { message: 'Invalid credentials', status: 401 },
       });
 
@@ -103,7 +103,7 @@ describe('useLogin', () => {
     });
 
     it('retries on 5xx error then succeeds', async () => {
-      (supabase.auth.signInWithPassword)
+      (supabase.auth.signInWithPassword as any)
         .mockRejectedValueOnce({ status: 500, message: 'Internal Server Error' })
         .mockResolvedValue({ error: null });
 
@@ -123,7 +123,7 @@ describe('useLogin', () => {
     });
 
     it('gives up after max retries on persistent 5xx error', async () => {
-      (supabase.auth.signInWithPassword).mockRejectedValue({
+      (supabase.auth.signInWithPassword as any).mockRejectedValue({
         status: 503,
         message: 'Service Unavailable'
       });
@@ -145,8 +145,8 @@ describe('useLogin', () => {
     });
 
     it('sets loading state during sign in', async () => {
-      let resolveSignIn: (value: unknown) => void;
-      (supabase.auth.signInWithPassword).mockImplementation(
+      let resolveSignIn: (value: any) => void;
+      (supabase.auth.signInWithPassword as any).mockImplementation(
         () => new Promise((resolve) => {
           resolveSignIn = resolve;
         })
@@ -177,7 +177,7 @@ describe('useLogin', () => {
 
   describe('handleSignUp', () => {
     it('calls supabase signUp with email and password', async () => {
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: { id: 'user-123', email: 'new@example.com' } },
         error: null,
       });
@@ -201,7 +201,7 @@ describe('useLogin', () => {
     });
 
     it('shows success message and switches to sign in on success', async () => {
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: { id: 'user-123', email: 'new@example.com' } },
         error: null,
       });
@@ -226,7 +226,7 @@ describe('useLogin', () => {
     });
 
     it('sets error on sign up failure (4xx - no retry)', async () => {
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: null },
         error: { message: 'Email already exists', status: 400 },
       });
@@ -247,7 +247,7 @@ describe('useLogin', () => {
     });
 
     it('retries on 5xx error then succeeds', async () => {
-      (supabase.auth.signUp)
+      (supabase.auth.signUp as any)
         .mockRejectedValueOnce({ status: 500, message: 'Internal Server Error' })
         .mockResolvedValue({
           data: { user: { id: 'user-123', email: 'new@example.com' } },
@@ -270,7 +270,7 @@ describe('useLogin', () => {
     });
 
     it('sets error for invalid email format', async () => {
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: null },
         error: { message: 'Unable to validate email address: invalid format', status: 422 },
       });
@@ -291,7 +291,7 @@ describe('useLogin', () => {
     });
 
     it('sets error for weak password', async () => {
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: null },
         error: { message: 'Password should be at least 6 characters', status: 422 },
       });
@@ -314,7 +314,7 @@ describe('useLogin', () => {
 
   describe('handleResetPassword', () => {
     it('calls supabase resetPasswordForEmail with email', async () => {
-      (supabase.auth.resetPasswordForEmail).mockResolvedValue({ error: null });
+      (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({ error: null });
 
       const { result } = renderHook(() => useLogin(), { wrapper });
 
@@ -330,7 +330,7 @@ describe('useLogin', () => {
     });
 
     it('shows success message and clears email on success', async () => {
-      (supabase.auth.resetPasswordForEmail).mockResolvedValue({ error: null });
+      (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({ error: null });
 
       const { result } = renderHook(() => useLogin(), { wrapper });
 
@@ -347,7 +347,7 @@ describe('useLogin', () => {
     });
 
     it('sets error on reset password failure (4xx - no retry)', async () => {
-      (supabase.auth.resetPasswordForEmail).mockResolvedValue({
+      (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({
         error: { message: 'User not found', status: 404 },
       });
 
@@ -366,7 +366,7 @@ describe('useLogin', () => {
     });
 
     it('retries on 5xx error then succeeds', async () => {
-      (supabase.auth.resetPasswordForEmail)
+      (supabase.auth.resetPasswordForEmail as any)
         .mockRejectedValueOnce({ status: 502, message: 'Bad Gateway' })
         .mockResolvedValue({ error: null });
 

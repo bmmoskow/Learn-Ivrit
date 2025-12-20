@@ -49,8 +49,8 @@ describe('useBookmarkManager', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    (supabase.auth.getSession).mockResolvedValue({ data: { session: null } });
-    (supabase.auth.onAuthStateChange).mockReturnValue({
+    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
+    (supabase.auth.onAuthStateChange as any).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
   });
@@ -205,8 +205,8 @@ describe('useBookmarkManager', () => {
         hebrew_text: 'שלום',
         source: 'Genesis 1:1',
         folder_id: null,
-        created_at: null,
-        updated_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       act(() => {
@@ -284,7 +284,7 @@ describe('useBookmarkManager', () => {
 
   describe('empty state handling', () => {
     it('does not show error when no bookmarks or folders exist', async () => {
-      (supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as any).mockResolvedValue({
         data: {
           session: {
             user: { id: 'test-user-id', email: 'test@example.com' },

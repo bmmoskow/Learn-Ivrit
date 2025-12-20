@@ -393,8 +393,8 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       });
 
       setEnglishText(translation);
-    } catch (err: unknown) {
-      setError(err.message || "Failed to translate. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to translate. Please try again.");
       console.error("Translation error:", err);
     } finally {
       setTranslating(false);
@@ -478,8 +478,8 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       setBibleLoaded(false);
       setCurrentBibleRef(null);
       setCurrentSource("Image OCR");
-    } catch (err: unknown) {
-      setError(err.message || "Failed to process image. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process image. Please try again.");
       console.error("Image OCR error:", err);
     } finally {
       setProcessingImage(false);

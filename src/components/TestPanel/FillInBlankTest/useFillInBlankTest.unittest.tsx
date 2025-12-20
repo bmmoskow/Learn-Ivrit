@@ -92,7 +92,7 @@ describe("useFillInBlankTest", () => {
       const { result } = renderHook(() => useFillInBlankTest(defaultProps));
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.showFeedback).toBe(false);
@@ -107,7 +107,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.showFeedback).toBe(false);
@@ -122,7 +122,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.showFeedback).toBe(true);
@@ -136,7 +136,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.isCorrect).toBe(true);
@@ -150,7 +150,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.isCorrect).toBe(false);
@@ -164,7 +164,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(mockOnAnswer).not.toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       act(() => {
@@ -192,7 +192,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       act(() => {
@@ -218,7 +218,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.isProcessing).toBe(true);
@@ -232,7 +232,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() });
+        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
       });
 
       expect(result.current.isProcessing).toBe(false);

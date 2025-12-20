@@ -70,7 +70,7 @@ export function Dashboard() {
                         {word.hebrew_word}
                       </span>
                       <span className="text-sm font-semibold text-red-700">
-                        {Math.round(word.statistics.confidence_score)}% mastery
+                        {Math.round(word.statistics.confidence_score ?? 0)}% mastery
                       </span>
                     </div>
                     <p className="text-gray-700">{word.english_translation}</p>
@@ -107,14 +107,14 @@ export function Dashboard() {
                       <span className="font-semibold text-gray-900">{formatTestType(test.test_type)}</span>
                       <span
                         className={`text-lg font-bold ${
-                          test.score_percentage >= 80
+                          (test.score_percentage ?? 0) >= 80
                             ? "text-green-600"
-                            : test.score_percentage >= 60
+                            : (test.score_percentage ?? 0) >= 60
                               ? "text-yellow-600"
                               : "text-red-600"
                         }`}
                       >
-                        {Math.round(test.score_percentage)}%
+                        {Math.round(test.score_percentage ?? 0)}%
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-gray-600">
@@ -126,7 +126,7 @@ export function Dashboard() {
                           {Math.floor(test.duration_seconds / 60)}m {test.duration_seconds % 60}s
                         </span>
                       )}
-                      <span className="ml-auto">{formatDate(test.completed_at)}</span>
+                      <span className="ml-auto">{formatDate(test.completed_at ?? "")}</span>
                     </div>
                   </div>
                 ))}

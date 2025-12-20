@@ -135,7 +135,7 @@ export function useTestPanel(): UseTestPanelReturn {
               count
             );
           } else {
-            const lowConfidenceWords = vocabData.map((word: unknown) =>
+            const lowConfidenceWords = (vocabData as Array<Record<string, unknown> & { stats?: unknown }>).map((word) =>
               mapRpcWordToWordWithStats(word)
             );
             selectedWords = shuffleArray([...lowConfidenceWords]);

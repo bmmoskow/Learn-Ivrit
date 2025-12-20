@@ -16,7 +16,14 @@ vi.mock("../../contexts/AuthContext/AuthContext", () => ({
 }));
 
 describe("useBookmarks", () => {
-  const mockUser = { id: "user-1" };
+  const mockUser = {
+    id: "user-1",
+    email: "test@example.com",
+    app_metadata: {},
+    user_metadata: {},
+    aud: "authenticated",
+    created_at: new Date().toISOString(),
+  };
 
   const mockFolders: BookmarkFolder[] = [
     {
@@ -62,7 +69,16 @@ describe("useBookmarks", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(useAuth).mockReturnValue({ user: mockUser });
+    vi.mocked(useAuth).mockReturnValue({
+      user: mockUser as any,
+      isGuest: false,
+      loading: false,
+      signUp: vi.fn(),
+      signIn: vi.fn(),
+      signInAsGuest: vi.fn(),
+      signOut: vi.fn(),
+      resetPassword: vi.fn(),
+    });
   });
 
   const mockSupabaseQuery = (data: unknown, error: unknown = null) => {
@@ -75,13 +91,22 @@ describe("useBookmarks", () => {
       update: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data, error }),
     };
-    vi.mocked(supabase.from).mockReturnValue(queryMock);
+    vi.mocked(supabase.from).mockReturnValue(queryMock as any);
     return queryMock;
   };
 
   describe("initial state", () => {
     it("initializes with empty arrays", () => {
-      vi.mocked(useAuth).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       expect(result.current.folders).toEqual([]);
@@ -96,7 +121,7 @@ describe("useBookmarks", () => {
         if (field === "name") {
           const tableName = vi.mocked(supabase.from).mock.calls[
             vi.mocked(supabase.from).mock.calls.length - 1
-          ][0];
+          ][0] as string;
           return Promise.resolve({
             data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
             error: null,
@@ -166,7 +191,16 @@ describe("useBookmarks", () => {
     });
 
     it("returns null when user is not logged in", async () => {
-      vi.mocked(useAuth).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       const folder = await result.current.createFolder("Test");
@@ -198,7 +232,16 @@ describe("useBookmarks", () => {
     });
 
     it("returns false when user is not logged in", async () => {
-      vi.mocked(useAuth).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       const success = await result.current.deleteFolder("f1");
@@ -285,7 +328,16 @@ describe("useBookmarks", () => {
     });
 
     it("returns null when user is not logged in", async () => {
-      vi.mocked(useAuth).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       const bookmark = await result.current.createBookmark("Test", "text", null);
@@ -371,7 +423,7 @@ describe("useBookmarks", () => {
       queryMock.order.mockImplementation(() => {
         const tableName = vi.mocked(supabase.from).mock.calls[
           vi.mocked(supabase.from).mock.calls.length - 1
-        ][0];
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -394,7 +446,7 @@ describe("useBookmarks", () => {
       queryMock.order.mockImplementation(() => {
         const tableName = vi.mocked(supabase.from).mock.calls[
           vi.mocked(supabase.from).mock.calls.length - 1
-        ][0];
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -419,7 +471,7 @@ describe("useBookmarks", () => {
       queryMock.order.mockImplementation(() => {
         const tableName = vi.mocked(supabase.from).mock.calls[
           vi.mocked(supabase.from).mock.calls.length - 1
-        ][0];
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -442,7 +494,7 @@ describe("useBookmarks", () => {
       queryMock.order.mockImplementation(() => {
         const tableName = vi.mocked(supabase.from).mock.calls[
           vi.mocked(supabase.from).mock.calls.length - 1
-        ][0];
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -488,7 +540,7 @@ describe("useBookmarks", () => {
       queryMock.order.mockImplementation(() => {
         const tableName = vi.mocked(supabase.from).mock.calls[
           vi.mocked(supabase.from).mock.calls.length - 1
-        ][0];
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,

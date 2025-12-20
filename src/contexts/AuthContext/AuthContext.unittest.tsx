@@ -32,6 +32,22 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 // Helper to wait for async state updates
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
+// Custom waitFor helper that triggers React updates (currently unused but kept for potential future use)
+// const _waitForCondition = async (callback: () => void, timeout = 1000) => {
+//   const start = Date.now();
+//   while (Date.now() - start < timeout) {
+//     try {
+//       callback();
+//       return;
+//     } catch {
+//       await act(async () => {
+//         await new Promise(resolve => setTimeout(resolve, 10));
+//       });
+//     }
+//   }
+//   callback(); // Final attempt, will throw if still failing
+// };
+
 describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,8 +55,8 @@ describe('AuthContext', () => {
     // Mock env vars so AuthContext doesn't early-return before checking guest mode
     vi.stubEnv('VITE_SUPABASE_URL', 'http://test.supabase.co');
     vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'test-key');
-    (supabase.auth.getSession).mockResolvedValue({ data: { session: null } });
-    (supabase.auth.onAuthStateChange).mockReturnValue({
+    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
+    (supabase.auth.onAuthStateChange as any).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
   });
@@ -110,7 +126,7 @@ describe('AuthContext', () => {
 
     it('restores authenticated session', async () => {
       const mockUser = { id: 'user-123', email: 'test@example.com' };
-      (supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as any).mockResolvedValue({
         data: { session: { user: mockUser } },
       });
 
@@ -127,7 +143,7 @@ describe('AuthContext', () => {
 
   describe('signIn', () => {
     it('calls supabase signInWithPassword', async () => {
-      (supabase.auth.signInWithPassword).mockResolvedValue({ error: null });
+      (supabase.auth.signInWithPassword as any).mockResolvedValue({ error: null });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -147,7 +163,7 @@ describe('AuthContext', () => {
 
     it('returns error on failure', async () => {
       const mockError = { message: 'Invalid credentials', status: 401 };
-      (supabase.auth.signInWithPassword).mockResolvedValue({ error: mockError });
+      (supabase.auth.signInWithPassword as any).mockResolvedValue({ error: mockError });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -155,7 +171,7 @@ describe('AuthContext', () => {
         await flushPromises();
       });
 
-      let response: unknown;
+      let response: any;
       await act(async () => {
         response = await result.current.signIn('test@example.com', 'wrong');
       });
@@ -164,7 +180,7 @@ describe('AuthContext', () => {
     });
 
     it('retries on 5xx error', async () => {
-      (supabase.auth.signInWithPassword)
+      (supabase.auth.signInWithPassword as any)
         .mockRejectedValueOnce({ status: 500 })
         .mockResolvedValue({ error: null });
 
@@ -185,7 +201,7 @@ describe('AuthContext', () => {
   describe('signUp', () => {
     it('calls supabase signUp and creates profile', async () => {
       const mockUser = { id: 'user-123', email: 'new@example.com' };
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: mockUser },
         error: null,
       });
@@ -210,7 +226,7 @@ describe('AuthContext', () => {
 
     it('returns error on failure', async () => {
       const mockError = { message: 'Email already exists', status: 400 };
-      (supabase.auth.signUp).mockResolvedValue({
+      (supabase.auth.signUp as any).mockResolvedValue({
         data: { user: null },
         error: mockError,
       });
@@ -221,7 +237,7 @@ describe('AuthContext', () => {
         await flushPromises();
       });
 
-      let response: unknown;
+      let response: any;
       await act(async () => {
         response = await result.current.signUp('existing@example.com', 'password');
       });
@@ -230,7 +246,7 @@ describe('AuthContext', () => {
     });
 
     it('retries on 5xx error', async () => {
-      (supabase.auth.signUp)
+      (supabase.auth.signUp as any)
         .mockRejectedValueOnce({ status: 503 })
         .mockResolvedValue({
           data: { user: { id: 'user-123', email: 'new@example.com' } },
@@ -272,7 +288,7 @@ describe('AuthContext', () => {
 
   describe('signOut', () => {
     it('calls supabase signOut for authenticated user', async () => {
-      (supabase.auth.signOut).mockResolvedValue({ error: null });
+      (supabase.auth.signOut as any).mockResolvedValue({ error: null });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -312,7 +328,7 @@ describe('AuthContext', () => {
 
   describe('resetPassword', () => {
     it('calls supabase resetPasswordForEmail', async () => {
-      (supabase.auth.resetPasswordForEmail).mockResolvedValue({ error: null });
+      (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({ error: null });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -329,7 +345,7 @@ describe('AuthContext', () => {
 
     it('returns error on failure', async () => {
       const mockError = { message: 'User not found', status: 404 };
-      (supabase.auth.resetPasswordForEmail).mockResolvedValue({ error: mockError });
+      (supabase.auth.resetPasswordForEmail as any).mockResolvedValue({ error: mockError });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -337,7 +353,7 @@ describe('AuthContext', () => {
         await flushPromises();
       });
 
-      let response: unknown;
+      let response: any;
       await act(async () => {
         response = await result.current.resetPassword('unknown@example.com');
       });
@@ -346,7 +362,7 @@ describe('AuthContext', () => {
     });
 
     it('retries on 5xx error', async () => {
-      (supabase.auth.resetPasswordForEmail)
+      (supabase.auth.resetPasswordForEmail as any)
         .mockRejectedValueOnce({ status: 502 })
         .mockResolvedValue({ error: null });
 
@@ -366,8 +382,8 @@ describe('AuthContext', () => {
 
   describe('onAuthStateChange', () => {
     it('updates user on SIGNED_IN event', async () => {
-      let authCallback: (event: string, session: unknown) => void;
-      (supabase.auth.onAuthStateChange).mockImplementation((callback: unknown) => {
+      let authCallback: (event: string, session: any) => void;
+      (supabase.auth.onAuthStateChange as any).mockImplementation((callback: any) => {
         authCallback = callback;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
@@ -389,12 +405,12 @@ describe('AuthContext', () => {
 
     it('clears user on SIGNED_OUT event', async () => {
       const mockUser = { id: 'user-123', email: 'test@example.com' };
-      (supabase.auth.getSession).mockResolvedValue({
+      (supabase.auth.getSession as any).mockResolvedValue({
         data: { session: { user: mockUser } },
       });
 
-      let authCallback: (event: string, session: unknown) => void;
-      (supabase.auth.onAuthStateChange).mockImplementation((callback: unknown) => {
+      let authCallback: (event: string, session: any) => void;
+      (supabase.auth.onAuthStateChange as any).mockImplementation((callback: any) => {
         authCallback = callback;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
@@ -416,13 +432,13 @@ describe('AuthContext', () => {
 
     it('upserts profile on SIGNED_IN event', async () => {
       let authCallback: (event: string, session: unknown) => void;
-      (supabase.auth.onAuthStateChange).mockImplementation((callback: unknown) => {
+      (supabase.auth.onAuthStateChange as any).mockImplementation((callback: (event: string, session: unknown) => void) => {
         authCallback = callback;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
 
       const mockUpsert = vi.fn().mockResolvedValue({ error: null });
-      (supabase.from).mockReturnValue({ upsert: mockUpsert, insert: vi.fn() });
+      (supabase.from as any).mockReturnValue({ upsert: mockUpsert, insert: vi.fn() });
 
       renderHook(() => useAuth(), { wrapper });
 

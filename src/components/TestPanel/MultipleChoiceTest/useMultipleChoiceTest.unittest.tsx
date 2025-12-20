@@ -12,6 +12,30 @@ const mockUser = {
   created_at: new Date().toISOString(),
 };
 
+const createMockVocabWord = (translation: string, id: string = `word-${translation}`) => ({
+  id,
+  user_id: "user-123",
+  hebrew_word: "מילה",
+  english_translation: translation,
+  definition: `Definition for ${translation}`,
+  transliteration: translation,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  stats: {
+    id: `stat-${id}`,
+    user_id: "user-123",
+    word_id: id,
+    correct_count: 5,
+    incorrect_count: 2,
+    total_attempts: 7,
+    consecutive_correct: 2,
+    last_tested: null,
+    confidence_score: 65,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+});
+
 const mockQuestion: TestQuestion = {
   word: {
     id: "word-1",
@@ -22,19 +46,19 @@ const mockQuestion: TestQuestion = {
     transliteration: "shalom",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  },
-  stats: {
-    id: "stat-1",
-    user_id: "user-123",
-    word_id: "word-1",
-    correct_count: 5,
-    incorrect_count: 2,
-    total_attempts: 7,
-    consecutive_correct: 2,
-    last_tested: null,
-    confidence_score: 65,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    statistics: {
+      id: "stat-1",
+      user_id: "user-123",
+      word_id: "word-1",
+      correct_count: 5,
+      incorrect_count: 2,
+      total_attempts: 7,
+      consecutive_correct: 2,
+      last_tested: null,
+      confidence_score: 65,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
   },
 };
 
@@ -63,9 +87,9 @@ describe("useMultipleChoiceTest", () => {
       loading: false,
       signIn: vi.fn(),
       signUp: vi.fn(),
+      signInAsGuest: vi.fn(),
       signOut: vi.fn(),
       resetPassword: vi.fn(),
-      updatePassword: vi.fn(),
     });
   });
 
@@ -74,7 +98,10 @@ describe("useMultipleChoiceTest", () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: [],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -97,16 +124,19 @@ describe("useMultipleChoiceTest", () => {
 
     it("loads options from database for authenticated user", async () => {
       const mockVocabData = [
-        { english_translation: "peace" },
-        { english_translation: "war" },
-        { english_translation: "love" },
-        { english_translation: "hate" },
+        createMockVocabWord("peace"),
+        createMockVocabWord("war"),
+        createMockVocabWord("love"),
+        createMockVocabWord("hate"),
       ];
 
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: mockVocabData,
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -136,9 +166,9 @@ describe("useMultipleChoiceTest", () => {
         loading: false,
         signIn: vi.fn(),
         signUp: vi.fn(),
+        signInAsGuest: vi.fn(),
         signOut: vi.fn(),
         resetPassword: vi.fn(),
-        updatePassword: vi.fn(),
       });
 
       const { result } = renderHook(() =>
@@ -161,8 +191,16 @@ describe("useMultipleChoiceTest", () => {
     it("handles database error gracefully", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: null,
-        error: { message: "Database error" },
-      });
+        error: {
+          message: "Database error",
+          details: '',
+          hint: '',
+          code: 'PGRST116'
+        },
+        count: null,
+        status: 500,
+        statusText: 'Internal Server Error',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -184,7 +222,10 @@ describe("useMultipleChoiceTest", () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: [],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -216,11 +257,14 @@ describe("useMultipleChoiceTest", () => {
     it("sets selected answer and shows feedback", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: [
-          { english_translation: "peace" },
-          { english_translation: "war" },
+          createMockVocabWord("peace"),
+          createMockVocabWord("war"),
         ],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -245,9 +289,12 @@ describe("useMultipleChoiceTest", () => {
 
     it("calls onAnswer with correct result after delay", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
-        data: [{ english_translation: "peace" }],
+        data: [createMockVocabWord("peace")],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const onAnswer = vi.fn();
 
@@ -280,11 +327,14 @@ describe("useMultipleChoiceTest", () => {
     it("calls onAnswer with incorrect result for wrong answer", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: [
-          { english_translation: "peace" },
-          { english_translation: "war" },
+          createMockVocabWord("peace"),
+          createMockVocabWord("war"),
         ],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const onAnswer = vi.fn();
 
@@ -315,11 +365,14 @@ describe("useMultipleChoiceTest", () => {
     it("prevents multiple selections when feedback is shown", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: [
-          { english_translation: "peace" },
-          { english_translation: "war" },
+          createMockVocabWord("peace"),
+          createMockVocabWord("war"),
         ],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const onAnswer = vi.fn();
 
@@ -351,9 +404,12 @@ describe("useMultipleChoiceTest", () => {
 
     it("sets isProcessing on last question", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
-        data: [{ english_translation: "peace" }],
+        data: [createMockVocabWord("peace")],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -377,9 +433,12 @@ describe("useMultipleChoiceTest", () => {
 
     it("does not set isProcessing on non-last question", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
-        data: [{ english_translation: "peace" }],
+        data: [createMockVocabWord("peace")],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -406,11 +465,14 @@ describe("useMultipleChoiceTest", () => {
     it("resets state when question changes", async () => {
       vi.mocked(supabase.rpc).mockResolvedValue({
         data: [
-          { english_translation: "peace" },
-          { english_translation: "war" },
+          createMockVocabWord("peace"),
+          createMockVocabWord("war"),
         ],
         error: null,
-      });
+        count: null,
+        status: 200,
+        statusText: 'OK',
+      } as any);
 
       const { result, rerender } = renderHook(
         (props) => useMultipleChoiceTest(props),
