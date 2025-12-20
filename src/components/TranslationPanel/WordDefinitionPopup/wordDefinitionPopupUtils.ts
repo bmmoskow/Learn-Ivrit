@@ -96,11 +96,11 @@ export const mapCachedDataToDefinition = (cachedData: {
   word_with_vowels: string;
   definition: string;
   transliteration: string;
-  examples: any;
+  examples: unknown;
   notes: string | null;
-  forms: any;
+  forms: unknown;
   short_english: string;
-}): { data: any; shortEnglish: string } => {
+}): { data: unknown; shortEnglish: string } => {
   return {
     data: {
       wordWithVowels: cachedData.word_with_vowels,
@@ -116,8 +116,8 @@ export const mapCachedDataToDefinition = (cachedData: {
 };
 
 export const mapApiResponseToDefinition = (
-  apiData: any
-): { data: any; shortEnglish: string } => {
+  apiData: unknown
+): { data: unknown; shortEnglish: string } => {
   let shortEnglish =
     apiData.definition && apiData.definition.trim() !== ""
       ? apiData.definition.trim()

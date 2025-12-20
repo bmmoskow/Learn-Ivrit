@@ -5,8 +5,6 @@ import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator/requestDeduplicator";
 import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks";
 import {
-  stripHtml,
-  removeTrope,
   cleanWord,
   getSentenceContext,
   generateContentHash,
@@ -395,7 +393,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       });
 
       setEnglishText(translation);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to translate. Please try again.");
       console.error("Translation error:", err);
     } finally {
@@ -480,7 +478,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       setBibleLoaded(false);
       setCurrentBibleRef(null);
       setCurrentSource("Image OCR");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to process image. Please try again.");
       console.error("Image OCR error:", err);
     } finally {

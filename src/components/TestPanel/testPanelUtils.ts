@@ -247,7 +247,7 @@ export function hasMoreQuestions(
 /**
  * Maps RPC response to WordWithStats format
  */
-export function mapRpcWordToWordWithStats(word: any): WordWithStats {
+export function mapRpcWordToWordWithStats(word: Record<string, unknown> & { stats?: unknown }): WordWithStats {
   return {
     ...word,
     statistics: word.stats,

@@ -43,11 +43,11 @@ describe('useTranslationPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    (supabase.auth.getSession as any).mockResolvedValue({ data: { session: null } });
-    (supabase.auth.onAuthStateChange as any).mockReturnValue({
+    (supabase.auth.getSession).mockResolvedValue({ data: { session: null } });
+    (supabase.auth.onAuthStateChange).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
-    (global.fetch as any).mockReset();
+    (global.fetch).mockReset();
   });
 
   describe('initial state', () => {
@@ -263,7 +263,7 @@ describe('useTranslationPanel', () => {
     });
 
     it('sets error on fetch failure', async () => {
-      (global.fetch as any).mockRejectedValue(new Error('Network error'));
+      (global.fetch).mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
@@ -292,7 +292,7 @@ describe('useTranslationPanel', () => {
     });
 
     it('sets error on fetch failure', async () => {
-      (global.fetch as any).mockRejectedValue(new Error('Network error'));
+      (global.fetch).mockRejectedValue(new Error('Network error'));
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
@@ -310,8 +310,8 @@ describe('useTranslationPanel', () => {
     });
 
     it('sets loading state during fetch', async () => {
-      let resolvePromise: (value: any) => void;
-      (global.fetch as any).mockImplementation(() => new Promise((resolve) => {
+      let resolvePromise: (value: unknown) => void;
+      (global.fetch).mockImplementation(() => new Promise((resolve) => {
         resolvePromise = resolve;
       }));
 
@@ -341,7 +341,7 @@ describe('useTranslationPanel', () => {
     });
 
     it('sets bibleLoaded and currentBibleRef on success', async () => {
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch).mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ he: ['בראשית', 'ברא', 'אלהים'] }),
       });

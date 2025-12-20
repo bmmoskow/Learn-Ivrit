@@ -16,6 +16,7 @@ export const stripHtml = (text: string): string => {
   const decoded = temp.textContent || temp.innerText || "";
 
   // Remove any remaining HTML tags and control characters
+  // eslint-disable-next-line no-control-regex
   return decoded.replace(/<[^>]*>/g, "").replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
 };
 
@@ -34,7 +35,7 @@ export const removeTrope = (text: string): string => {
 export const cleanWord = (word: string): string => {
   let cleaned = word.trim();
   // Remove punctuation but preserve Hebrew marks: geresh (׳) and gershayim (״)
-  cleaned = cleaned.replace(/[.,!?;:"'()\[\]{}،؛؟]/g, "");
+  cleaned = cleaned.replace(/[.,!?;:"'()[\]{}،؛؟]/g, "");
   return cleaned;
 };
 

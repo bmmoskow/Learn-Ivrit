@@ -132,7 +132,7 @@ export function useWordDefinitionPopup({
         return { data, shortEnglish };
       });
 
-      let relatedWords = (data.forms || []).map((form: any) => ({
+      let relatedWords = (data.forms || []).map((form: unknown) => ({
         hebrew: form.hebrew,
         english: form.transliteration,
         relationship: form.relationship,
@@ -162,7 +162,7 @@ export function useWordDefinitionPopup({
       if (user) {
         checkIfSaved(newDefinition.wordWithVowels);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to load definition");
       console.error("Definition error:", err);
     } finally {
@@ -214,7 +214,7 @@ export function useWordDefinitionPopup({
 
       setSaved(true);
       onWordSaved();
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err.code === "23505") {
         setError("Word already in vocabulary");
         setSaved(true);
