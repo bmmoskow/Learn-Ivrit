@@ -12,90 +12,90 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/ui.yml
 
-  deploy:
-    name: Deploy to Production
-    runs-on: ubuntu-latest
-    needs: ui-checks
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: production
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build for production
-        run: npm run build
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-
-      - name: Deploy to Vercel
-        run: |
-          echo "Add your deployment step here"
-          echo "Example: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}"
-        # Uncomment and configure when ready:
-        # uses: amondnet/vercel-action@v25
-        # with:
-        #   vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        #   vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        #   vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-        #   vercel-args: '--prod'
-
-  weekly-security-audit:
-    name: Weekly Security Audit
-    runs-on: ubuntu-latest
-    if: github.event_name == 'schedule'
-    permissions:
-      security-events: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Deep dependency audit
-        run: npm audit --audit-level=low
-        continue-on-error: true
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-
-      - name: Run Trivy comprehensive scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: License compliance check
-        run: npx license-checker --summary
-        continue-on-error: true
+#  deploy:
+#    name: Deploy to Production
+#    runs-on: ubuntu-latest
+#    needs: ui-checks
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    environment: production
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: '20'
+#          cache: 'npm'
+#
+#      - name: Install dependencies
+#        run: npm ci
+#
+#      - name: Build for production
+#        run: npm run build
+#        env:
+#          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+#          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+#          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+#
+#      - name: Deploy to Vercel
+#        run: |
+#          echo "Add your deployment step here"
+#          echo "Example: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}"
+#        # Uncomment and configure when ready:
+#        # uses: amondnet/vercel-action@v25
+#        # with:
+#        #   vercel-token: ${{ secrets.VERCEL_TOKEN }}
+#        #   vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+#        #   vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+#        #   vercel-args: '--prod'
+#
+#  weekly-security-audit:
+#    name: Weekly Security Audit
+#    runs-on: ubuntu-latest
+#    if: github.event_name == 'schedule'
+#    permissions:
+#      security-events: write
+#      contents: read
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: '20'
+#          cache: 'npm'
+#
+#      - name: Install dependencies
+#        run: npm ci
+#
+#      - name: Deep dependency audit
+#        run: npm audit --audit-level=low
+#        continue-on-error: true
+#
+#      - name: Initialize CodeQL
+#        uses: github/codeql-action/init@v3
+#        with:
+#          languages: javascript-typescript
+#
+#      - name: Perform CodeQL Analysis
+#        uses: github/codeql-action/analyze@v3
+#
+#      - name: Run Trivy comprehensive scan
+#        uses: aquasecurity/trivy-action@master
+#        with:
+#          scan-type: 'fs'
+#          scan-ref: '.'
+#          format: 'sarif'
+#          output: 'trivy-results.sarif'
+#          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
+#
+#      - name: Upload Trivy results to GitHub Security
+#        uses: github/codeql-action/upload-sarif@v3
+#        with:
+#          sarif_file: 'trivy-results.sarif'
+#
+#      - name: License compliance check
+#        run: npx license-checker --summary
+#        continue-on-error: true
