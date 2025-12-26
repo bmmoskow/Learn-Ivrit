@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,7 @@ const RATE_LIMITS = {
 };
 
 async function checkRateLimit(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<{ allowed: boolean; error?: string }> {
@@ -82,7 +82,7 @@ async function checkRateLimit(
 }
 
 async function logRequest(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<void> {
@@ -139,7 +139,9 @@ function extractArticleStructuredData(html: string): { title?: string; descripti
           result.articleBody = jsonData.articleBody;
         }
       }
-    } catch (e) {}
+    } catch {
+      // Ignore parsing errors
+    }
   }
 
   if (!result.title) {
@@ -408,7 +410,7 @@ Deno.serve(async (req: Request) => {
         throw new Error("GEMINI_API_KEY environment variable is not set");
       }
 
-      const { word, targetLanguage }: DefinitionRequest = await req.json();
+      const { word }: DefinitionRequest = await req.json();
 
       const rateLimitCheck = await checkRateLimit(supabase, user.id, "word_definition");
       if (!rateLimitCheck.allowed) {
@@ -748,9 +750,10 @@ FORMS:
         },
       });
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : "An error occurred";
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: {
         ...corsHeaders,

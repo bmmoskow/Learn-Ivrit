@@ -71,7 +71,7 @@ export function useMultipleChoiceTest({
           console.error("Error fetching distractor pool:", error);
           setOptions([correctAnswer]);
         } else if (vocabData && vocabData.length > 0) {
-          const allTranslations = vocabData.map((word: any) => word.english_translation);
+          const allTranslations = vocabData.map((word: { english_translation: string }) => word.english_translation);
           const generatedOptions = generateOptions(
             correctAnswer,
             allTranslations,

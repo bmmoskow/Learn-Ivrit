@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   calculateWeight,
   createWeightedWords,
@@ -321,7 +321,7 @@ describe("adaptiveAlgorithmUtils", () => {
         }),
       ];
 
-      let selectedCount = { "word-1": 0, "word-2": 0 };
+      const selectedCount = { "word-1": 0, "word-2": 0 };
 
       for (let i = 0; i < 100; i++) {
         const result = selectTestWords(words, 1);

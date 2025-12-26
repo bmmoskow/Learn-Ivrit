@@ -1,4 +1,5 @@
 import type { WordWithStats } from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
+import type { Tables } from "../../../supabase/types";
 
 export type TestType = "flashcard" | "multiple_choice" | "fill_in_blank";
 
@@ -247,9 +248,9 @@ export function hasMoreQuestions(
 /**
  * Maps RPC response to WordWithStats format
  */
-export function mapRpcWordToWordWithStats(word: any): WordWithStats {
+export function mapRpcWordToWordWithStats(word: Record<string, unknown> & { stats?: unknown }): WordWithStats {
   return {
     ...word,
-    statistics: word.stats,
-  };
+    statistics: word.stats as Tables<"word_statistics"> | undefined,
+  } as WordWithStats;
 }
