@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor, act } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useMultipleChoiceTest } from "./useMultipleChoiceTest";
 import type { TestQuestion } from "../testPanelUtils";
 
@@ -117,7 +117,7 @@ describe("useMultipleChoiceTest", () => {
       expect(result.current.selectedAnswer).toBeNull();
       expect(result.current.showFeedback).toBe(false);
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
     });
@@ -147,7 +147,7 @@ describe("useMultipleChoiceTest", () => {
         })
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -180,7 +180,7 @@ describe("useMultipleChoiceTest", () => {
         })
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -211,7 +211,7 @@ describe("useMultipleChoiceTest", () => {
         })
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -236,7 +236,7 @@ describe("useMultipleChoiceTest", () => {
         })
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -486,7 +486,7 @@ describe("useMultipleChoiceTest", () => {
         }
       );
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -518,7 +518,7 @@ describe("useMultipleChoiceTest", () => {
         onAnswer: vi.fn(),
       });
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.selectedAnswer).toBeNull();
         expect(result.current.showFeedback).toBe(false);
       });

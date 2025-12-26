@@ -96,11 +96,11 @@ export const mapCachedDataToDefinition = (cachedData: {
   word_with_vowels: string;
   definition: string;
   transliteration: string;
-  examples: any;
+  examples: Json;
   notes: string | null;
-  forms: any;
+  forms: Json;
   short_english: string;
-}): { data: any; shortEnglish: string } => {
+}): { data: CachedData; shortEnglish: string } => {
   return {
     data: {
       wordWithVowels: cachedData.word_with_vowels,

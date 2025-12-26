@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, waitFor } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 import { useBookmarks } from "./useBookmarks";
 import { supabase } from "../../../supabase/client";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
@@ -15,8 +15,17 @@ vi.mock("../../contexts/AuthContext/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
 
+type MockUser = {
+    id: string,
+    email: string,
+    app_metadata: string[],
+    user_metadata: string[],
+    aud: string,
+    created_at: string,
+};
+
 describe("useBookmarks", () => {
-  const mockUser = {
+  const mockUser : MockUser = {
     id: "user-1",
     email: "test@example.com",
     app_metadata: {},
@@ -70,7 +79,7 @@ describe("useBookmarks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(useAuth).mockReturnValue({
-      user: mockUser as any,
+      user: mockUser,
       isGuest: false,
       loading: false,
       signUp: vi.fn(),
@@ -132,7 +141,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -158,7 +167,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -178,7 +187,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -219,7 +228,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -260,7 +269,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -283,7 +292,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -315,7 +324,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -356,7 +365,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -380,7 +389,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -404,7 +413,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -432,7 +441,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -455,7 +464,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -480,7 +489,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -503,7 +512,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -549,7 +558,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 

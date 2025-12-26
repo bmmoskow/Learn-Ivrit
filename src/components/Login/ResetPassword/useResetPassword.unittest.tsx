@@ -126,7 +126,7 @@ describe('useResetPassword', () => {
 
   describe('handleSubmit success', () => {
     it('calls supabase updateUser with password and returns true on success', async () => {
-      vi.mocked(supabase.auth.updateUser).mockResolvedValue({ error: null });
+      vi.mocked(supabase.auth.updateUser).mockResolvedValue({ data: { user: null }, error: null } as UserResponse);
 
       const { result } = renderHook(() => useResetPassword());
 
@@ -149,7 +149,7 @@ describe('useResetPassword', () => {
     });
 
     it('clears window.location.hash on success', async () => {
-      vi.mocked(supabase.auth.updateUser).mockResolvedValue({ error: null });
+      vi.mocked(supabase.auth.updateUser).mockResolvedValue({ data: { user: null }, error: null } as any);
       window.location.hash = 'reset-password';
 
       const { result } = renderHook(() => useResetPassword());
@@ -170,8 +170,14 @@ describe('useResetPassword', () => {
   describe('handleSubmit failure', () => {
     it('sets error on supabase error and returns false', async () => {
       vi.mocked(supabase.auth.updateUser).mockResolvedValue({
-        error: { message: 'Password is too weak' },
-      });
+        data: { user: null },
+        error: {
+          message: 'Password is too weak',
+          name: 'AuthError',
+          status: 400,
+          code: 'weak_password'
+        } as any,
+      } as any);
 
       const { result } = renderHook(() => useResetPassword());
 
@@ -211,7 +217,7 @@ describe('useResetPassword', () => {
 
   describe('loading state', () => {
     it('sets loading state during submit', async () => {
-      let resolveUpdate: (value: unknown) => void;
+      let resolveUpdate: ((value: any) => void) | undefined;
       vi.mocked(supabase.auth.updateUser).mockImplementation(
         () => new Promise((resolve) => {
           resolveUpdate = resolve;
@@ -233,7 +239,7 @@ describe('useResetPassword', () => {
       expect(result.current.loading).toBe(true);
 
       await act(async () => {
-        resolveUpdate!({ error: null });
+        resolveUpdate!({ data: { user: null }, error: null });
         await submitPromise;
       });
 
