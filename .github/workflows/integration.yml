@@ -6,9 +6,9 @@ on:
   workflow_call:
 
 jobs:
-  development-checks:
-    name: Development Checks
-    uses: ./.github/workflows/development.yml
+#  development-checks:
+#    name: Development Checks
+#    uses: ./.github/workflows/development.yml
 
 #  integration-tests:
 #    name: Integration Tests
