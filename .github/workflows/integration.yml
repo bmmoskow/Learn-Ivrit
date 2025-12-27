@@ -5,6 +5,8 @@ on:
     branches: [integration]
   workflow_call:
 
+permissions:
+  contents: write
 jobs:
   development-checks:
     name: Development Checks

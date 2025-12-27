@@ -6,6 +6,8 @@ on:
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sundays at midnight UTC
 
+permissions:
+  contents: write
 jobs:
   ui-checks:
     name: UI Checks
