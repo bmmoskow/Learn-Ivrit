@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [development]
   workflow_call:
+    inputs:
+      branch_name:
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -22,6 +26,9 @@ jobs:
   base-checks:
     name: Base Checks
     uses: ./.github/workflows/base-checks.yml
+    with:
+      # Pass the current branch name dynamically to an input named 'branch_name'
+      branch_name: ${{ github.head_ref || github.ref_name }}
 
 #  unit-tests:
 #    name: Unit Tests
