@@ -21,13 +21,13 @@ jobs:
           echo "Running inside of integration.yml - part 0"
           echo "The current branch name is ${{ github.ref }}"
           echo "The current branch name is ${{ github.ref_name }}"
+          echo "The current branch name is ${{ inputs.branch_name }}"
 
   development-checks:
     name: Development Checks
     uses: ./.github/workflows/development.yml
     with:
-      # Pass the current branch name dynamically to an input named 'branch_name'
-      branch_name: ${{ github.head_ref || github.ref_name }}
+      ref: ${{ inputs.branch_name }}
 
 #  integration-tests:
 #    name: Integration Tests
@@ -61,6 +61,7 @@ jobs:
           echo "Running inside of integration.yml"
           echo "The current branch name is ${{ github.ref }}"
           echo "The current branch name is ${{ github.ref_name }}"
+          echo "The current branch name is ${{ inputs.branch_name }}"
 
   promote-to-ui:
     name: Promote to UI
