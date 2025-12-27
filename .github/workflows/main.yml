@@ -7,10 +7,10 @@ on:
     - cron: '0 0 * * 0'  # Weekly on Sundays at midnight UTC
 
 jobs:
-#  ui-checks:
-#    name: UI Checks
-#    if: github.event_name == 'push'
-#    uses: ./.github/workflows/ui.yml
+  ui-checks:
+    name: UI Checks
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/ui.yml
 
 #  deploy:
 #    name: Deploy to Production

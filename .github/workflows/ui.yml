@@ -6,9 +6,9 @@ on:
   workflow_call:
 
 jobs:
-#  integration-checks:
-#    name: Integration Checks
-#    uses: ./.github/workflows/integration.yml
+  integration-checks:
+    name: Integration Checks
+    uses: ./.github/workflows/integration.yml
 
 #  e2e-tests:
 #    name: E2E Tests
