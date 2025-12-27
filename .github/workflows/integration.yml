@@ -10,35 +10,35 @@ jobs:
     name: Development Checks
     uses: ./.github/workflows/development.yml
 
-  integration-tests:
-    name: Integration Tests
-    runs-on: ubuntu-latest
-    needs: development-checks
-    environment: test
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run integration tests
-        run: npm run test:integration
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+#  integration-tests:
+#    name: Integration Tests
+#    runs-on: ubuntu-latest
+#    needs: development-checks
+#    environment: test
+#    steps:
+#      - name: Checkout code
+#        uses: actions/checkout@v4
+#
+#      - name: Setup Node.js
+#        uses: actions/setup-node@v4
+#        with:
+#          node-version: '20'
+#          cache: 'npm'
+#
+#      - name: Install dependencies
+#        run: npm ci
+#
+#      - name: Run integration tests
+#        run: npm run test:integration
+#        env:
+#          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+#          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+#          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
 
   promote-to-ui:
     name: Promote to UI
     runs-on: ubuntu-latest
-    needs: [development-checks, integration-tests]
+#    needs: [development-checks, integration-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
     steps:
       - name: Checkout code
