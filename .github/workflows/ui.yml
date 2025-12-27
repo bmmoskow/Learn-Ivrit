@@ -2,7 +2,7 @@ name: UI
 
 on:
   push:
-    branches: [ui]
+    branches: [integration, ui]
   workflow_call:
 
 permissions:
