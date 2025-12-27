@@ -1,7 +1,7 @@
 type RequestKey = string;
 
 class RequestDeduplicator {
-  private inFlightRequests: Map<RequestKey, Promise<any>> = new Map();
+  private inFlightRequests: Map<RequestKey, Promise<unknown>> = new Map();
 
   async dedupe<T>(
     key: RequestKey,
@@ -27,6 +27,6 @@ class RequestDeduplicator {
 
 export const requestDeduplicator = new RequestDeduplicator();
 
-export function createRequestKey(endpoint: string, params?: Record<string, any>): string {
+export function createRequestKey(endpoint: string, params?: Record<string, unknown>): string {
   return params ? `${endpoint}-${JSON.stringify(params)}` : endpoint;
 }

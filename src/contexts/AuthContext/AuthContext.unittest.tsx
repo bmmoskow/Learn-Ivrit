@@ -32,21 +32,21 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 // Helper to wait for async state updates
 const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
-// Custom waitFor helper that triggers React updates
-const waitForCondition = async (callback: () => void, timeout = 1000) => {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    try {
-      callback();
-      return;
-    } catch {
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
-      });
-    }
-  }
-  callback(); // Final attempt, will throw if still failing
-};
+// Custom waitFor helper that triggers React updates (currently unused but kept for potential future use)
+// const _waitForCondition = async (callback: () => void, timeout = 1000) => {
+//   const start = Date.now();
+//   while (Date.now() - start < timeout) {
+//     try {
+//       callback();
+//       return;
+//     } catch {
+//       await act(async () => {
+//         await new Promise(resolve => setTimeout(resolve, 10));
+//       });
+//     }
+//   }
+//   callback(); // Final attempt, will throw if still failing
+// };
 
 describe('AuthContext', () => {
   beforeEach(() => {
@@ -431,8 +431,8 @@ describe('AuthContext', () => {
     });
 
     it('upserts profile on SIGNED_IN event', async () => {
-      let authCallback: (event: string, session: any) => void;
-      (supabase.auth.onAuthStateChange as any).mockImplementation((callback: any) => {
+      let authCallback: (event: string, session: unknown) => void;
+      (supabase.auth.onAuthStateChange as any).mockImplementation((callback: (event: string, session: unknown) => void) => {
         authCallback = callback;
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
@@ -440,7 +440,7 @@ describe('AuthContext', () => {
       const mockUpsert = vi.fn().mockResolvedValue({ error: null });
       (supabase.from as any).mockReturnValue({ upsert: mockUpsert, insert: vi.fn() });
 
-      const { result } = renderHook(() => useAuth(), { wrapper });
+      renderHook(() => useAuth(), { wrapper });
 
       await act(async () => {
         await flushPromises();

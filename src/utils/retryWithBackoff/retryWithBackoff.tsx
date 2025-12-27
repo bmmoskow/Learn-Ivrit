@@ -1,22 +1,25 @@
 /**
  * Determines if an error is retryable (5xx or network error)
  */
-export function isRetryableError(error: any): boolean {
+export function isRetryableError(error: unknown): boolean {
   if (!error) return false;
 
   // Network errors (no response)
-  if (error.message?.includes('fetch') || error.message?.includes('network')) {
-    return true;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const errorMessage = String(error.message);
+    if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+      return true;
+    }
   }
 
   // Supabase/HTTP status codes
-  const status = error.status || error.statusCode;
-  if (status && status >= 500 && status < 600) {
+  const status = error && typeof error === 'object' && ('status' in error ? error.status : 'statusCode' in error ? error.statusCode : undefined);
+  if (status && typeof status === 'number' && status >= 500 && status < 600) {
     return true;
   }
 
   // Check for common 5xx error messages
-  const message = error.message?.toLowerCase() || '';
+  const message = (error && typeof error === 'object' && 'message' in error ? String(error.message) : '').toLowerCase();
   if (message.includes('internal server error') ||
       message.includes('service unavailable') ||
       message.includes('gateway timeout') ||
@@ -40,12 +43,12 @@ export async function retryWithBackoff<T>(
 ): Promise<T> {
   const { maxRetries = 3, initialDelayMs = 500, maxDelayMs = 5000 } = options;
 
-  let lastError: any;
+  let lastError: unknown;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
 
       // Don't retry if it's not a retryable error or we're out of retries
@@ -59,7 +62,8 @@ export async function retryWithBackoff<T>(
         maxDelayMs
       );
 
-      console.warn(`Retryable error (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${Math.round(delay)}ms:`, error.message);
+      const errorMessage = error && typeof error === 'object' && 'message' in error ? String(error.message) : 'Unknown error';
+      console.warn(`Retryable error (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${Math.round(delay)}ms:`, errorMessage);
 
       await new Promise(resolve => setTimeout(resolve, delay));
     }

@@ -26,9 +26,9 @@ export function calculateWeight(word: WordWithStats): number {
 
   const stats = word.statistics;
 
-  const errorRate = stats.total_attempts > 0 ? stats.incorrect_count / stats.total_attempts : 0;
+  const errorRate = (stats.total_attempts ?? 0) > 0 ? (stats.incorrect_count ?? 0) / (stats.total_attempts ?? 1) : 0;
 
-  const isMastered = stats.consecutive_correct >= 5;
+  const isMastered = (stats.consecutive_correct ?? 0) >= 5;
   if (isMastered) {
     return 10;
   }
@@ -46,7 +46,7 @@ export function calculateWeight(word: WordWithStats): number {
     }
   }
 
-  const confidencePenalty = (100 - stats.confidence_score) / 100;
+  const confidencePenalty = (100 - (stats.confidence_score ?? 0)) / 100;
 
   return baseWeight * errorMultiplier * recencyMultiplier * (1 + confidencePenalty);
 }
