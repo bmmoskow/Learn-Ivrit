@@ -10,6 +10,15 @@ on:
 permissions:
   contents: write
 jobs:
+  display-branch-inside-development0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display current branch name inside development at startup
+        run:
+          echo "Running inside of development.yml"
+          echo "The current branch name is ${{ github.ref }}"
+          echo "The current branch name is ${{ github.ref_name }}"
+
   base-checks:
     name: Base Checks
     uses: ./.github/workflows/base-checks.yml
@@ -37,7 +46,7 @@ jobs:
   display-branch-inside-development:
     runs-on: ubuntu-latest
     steps:
-      - name: Display current branch name
+      - name: Display current branch name inside development
         run:
           echo "Running inside of development.yml"
           echo "The current branch name is ${{ github.ref }}"
