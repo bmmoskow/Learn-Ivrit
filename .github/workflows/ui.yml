@@ -5,6 +5,8 @@ on:
     branches: [ui]
   workflow_call:
 
+permissions:
+  contents: write
 jobs:
   integration-checks:
     name: Integration Checks
