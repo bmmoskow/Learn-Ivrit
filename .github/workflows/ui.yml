@@ -90,6 +90,7 @@ jobs:
   promote-to-main:
     name: Promote to Main
     runs-on: ubuntu-latest
+    needs: [integration-checks]
 #    needs: [integration-checks, e2e-tests, deep-security-scan]
     if: github.event_name == 'push' && github.ref == 'refs/heads/ui'
     steps:

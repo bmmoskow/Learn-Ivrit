@@ -36,6 +36,7 @@ jobs:
   promote-to-integration:
     name: Promote to Integration
     runs-on: ubuntu-latest
+    needs: [base-checks]
 #    needs: [base-checks, unit-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/development'
     steps:
