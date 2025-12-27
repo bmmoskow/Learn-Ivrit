@@ -8,6 +8,16 @@ on:
 permissions:
   contents: write
 jobs:
+
+  display-branch-inside-intgration0:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display current branch name inside integration
+        run:
+          echo "Running inside of integration.yml - part 0"
+          echo "The current branch name is ${{ github.ref }}"
+          echo "The current branch name is ${{ github.ref_name }}"
+
   development-checks:
     name: Development Checks
     uses: ./.github/workflows/development.yml
@@ -39,7 +49,7 @@ jobs:
   display-branch-inside-intgration:
     runs-on: ubuntu-latest
     steps:
-      - name: Display current branch name
+      - name: Display current branch name inside integration
         run:
           echo "Running inside of integration.yml"
           echo "The current branch name is ${{ github.ref }}"
