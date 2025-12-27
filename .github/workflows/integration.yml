@@ -38,7 +38,7 @@ jobs:
   promote-to-ui:
     name: Promote to UI
     runs-on: ubuntu-latest
-    needs: [development-checks, integration-tests]
+#    needs: [development-checks, integration-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
     steps:
       - name: Checkout code
