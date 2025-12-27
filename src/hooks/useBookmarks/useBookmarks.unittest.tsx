@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, waitFor } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 import { useBookmarks } from "./useBookmarks";
 import { supabase } from "../../../supabase/client";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
@@ -15,8 +15,24 @@ vi.mock("../../contexts/AuthContext/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
 
+type MockUser = {
+    id: string,
+    email: string,
+    app_metadata: string[],
+    user_metadata: string[],
+    aud: string,
+    created_at: string,
+};
+
 describe("useBookmarks", () => {
-  const mockUser = { id: "user-1" };
+  const mockUser : MockUser = {
+    id: "user-1",
+    email: "test@example.com",
+    app_metadata: {},
+    user_metadata: {},
+    aud: "authenticated",
+    created_at: new Date().toISOString(),
+  };
 
   const mockFolders: BookmarkFolder[] = [
     {
@@ -62,10 +78,19 @@ describe("useBookmarks", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (useAuth as any).mockReturnValue({ user: mockUser });
+    vi.mocked(useAuth).mockReturnValue({
+      user: mockUser,
+      isGuest: false,
+      loading: false,
+      signUp: vi.fn(),
+      signIn: vi.fn(),
+      signInAsGuest: vi.fn(),
+      signOut: vi.fn(),
+      resetPassword: vi.fn(),
+    });
   });
 
-  const mockSupabaseQuery = (data: any, error: any = null) => {
+  const mockSupabaseQuery = (data: unknown, error: unknown = null) => {
     const queryMock = {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
@@ -75,13 +100,22 @@ describe("useBookmarks", () => {
       update: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data, error }),
     };
-    (supabase.from as any).mockReturnValue(queryMock);
+    vi.mocked(supabase.from).mockReturnValue(queryMock as any);
     return queryMock;
   };
 
   describe("initial state", () => {
     it("initializes with empty arrays", () => {
-      (useAuth as any).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       expect(result.current.folders).toEqual([]);
@@ -94,9 +128,9 @@ describe("useBookmarks", () => {
       const queryMock = mockSupabaseQuery(null);
       queryMock.order.mockImplementation((field) => {
         if (field === "name") {
-          const tableName = (supabase.from as any).mock.calls[
-            (supabase.from as any).mock.calls.length - 1
-          ][0];
+          const tableName = vi.mocked(supabase.from).mock.calls[
+            vi.mocked(supabase.from).mock.calls.length - 1
+          ][0] as string;
           return Promise.resolve({
             data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
             error: null,
@@ -107,7 +141,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -133,7 +167,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -153,7 +187,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -166,7 +200,16 @@ describe("useBookmarks", () => {
     });
 
     it("returns null when user is not logged in", async () => {
-      (useAuth as any).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       const folder = await result.current.createFolder("Test");
@@ -185,7 +228,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -198,7 +241,16 @@ describe("useBookmarks", () => {
     });
 
     it("returns false when user is not logged in", async () => {
-      (useAuth as any).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       const success = await result.current.deleteFolder("f1");
@@ -217,7 +269,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -240,7 +292,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -272,7 +324,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -285,7 +337,16 @@ describe("useBookmarks", () => {
     });
 
     it("returns null when user is not logged in", async () => {
-      (useAuth as any).mockReturnValue({ user: null });
+      vi.mocked(useAuth).mockReturnValue({
+        user: null,
+        isGuest: false,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
       const { result } = renderHook(() => useBookmarks());
 
       const bookmark = await result.current.createBookmark("Test", "text", null);
@@ -304,7 +365,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -328,7 +389,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -352,7 +413,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -369,9 +430,9 @@ describe("useBookmarks", () => {
     it("returns bookmarks in specified folder", async () => {
       const queryMock = mockSupabaseQuery(null);
       queryMock.order.mockImplementation(() => {
-        const tableName = (supabase.from as any).mock.calls[
-          (supabase.from as any).mock.calls.length - 1
-        ][0];
+        const tableName = vi.mocked(supabase.from).mock.calls[
+          vi.mocked(supabase.from).mock.calls.length - 1
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -380,7 +441,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -392,9 +453,9 @@ describe("useBookmarks", () => {
     it("returns bookmarks with no folder", async () => {
       const queryMock = mockSupabaseQuery(null);
       queryMock.order.mockImplementation(() => {
-        const tableName = (supabase.from as any).mock.calls[
-          (supabase.from as any).mock.calls.length - 1
-        ][0];
+        const tableName = vi.mocked(supabase.from).mock.calls[
+          vi.mocked(supabase.from).mock.calls.length - 1
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -403,7 +464,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -417,9 +478,9 @@ describe("useBookmarks", () => {
     it("returns subfolders of specified parent", async () => {
       const queryMock = mockSupabaseQuery(null);
       queryMock.order.mockImplementation(() => {
-        const tableName = (supabase.from as any).mock.calls[
-          (supabase.from as any).mock.calls.length - 1
-        ][0];
+        const tableName = vi.mocked(supabase.from).mock.calls[
+          vi.mocked(supabase.from).mock.calls.length - 1
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -428,7 +489,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -440,9 +501,9 @@ describe("useBookmarks", () => {
     it("returns root folders", async () => {
       const queryMock = mockSupabaseQuery(null);
       queryMock.order.mockImplementation(() => {
-        const tableName = (supabase.from as any).mock.calls[
-          (supabase.from as any).mock.calls.length - 1
-        ][0];
+        const tableName = vi.mocked(supabase.from).mock.calls[
+          vi.mocked(supabase.from).mock.calls.length - 1
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -451,7 +512,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 
@@ -486,9 +547,9 @@ describe("useBookmarks", () => {
     it("reloads folders and bookmarks", async () => {
       const queryMock = mockSupabaseQuery(null);
       queryMock.order.mockImplementation(() => {
-        const tableName = (supabase.from as any).mock.calls[
-          (supabase.from as any).mock.calls.length - 1
-        ][0];
+        const tableName = vi.mocked(supabase.from).mock.calls[
+          vi.mocked(supabase.from).mock.calls.length - 1
+        ][0] as string;
         return Promise.resolve({
           data: tableName === "bookmark_folders" ? mockFolders : mockBookmarks,
           error: null,
@@ -497,7 +558,7 @@ describe("useBookmarks", () => {
 
       const { result } = renderHook(() => useBookmarks());
 
-      await waitFor(() => {
+      await vi.waitFor(() => {
         expect(result.current.loading).toBe(false);
       });
 

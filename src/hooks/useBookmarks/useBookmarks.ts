@@ -51,7 +51,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("bookmark_folders" as any)
+      .from("bookmark_folders")
       .select("*")
       .eq("user_id", user.id)
       .order("name");
@@ -68,7 +68,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("bookmarks" as any)
+      .from("bookmarks")
       .select("*")
       .eq("user_id", user.id)
       .order("name");
@@ -101,7 +101,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from("bookmark_folders" as any)
+      .from("bookmark_folders")
       .insert({
         user_id: user.id,
         name,
@@ -125,7 +125,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return false;
 
     const { error } = await supabase
-      .from("bookmark_folders" as any)
+      .from("bookmark_folders")
       .delete()
       .eq("id", folderId)
       .eq("user_id", user.id);
@@ -145,7 +145,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return false;
 
     const { error } = await supabase
-      .from("bookmark_folders" as any)
+      .from("bookmark_folders")
       .update({ name: newName })
       .eq("id", folderId)
       .eq("user_id", user.id);
@@ -169,7 +169,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from("bookmarks" as any)
+      .from("bookmarks")
       .insert({
         user_id: user.id,
         folder_id: folderId,
@@ -195,7 +195,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return false;
 
     const { error } = await supabase
-      .from("bookmarks" as any)
+      .from("bookmarks")
       .delete()
       .eq("id", bookmarkId)
       .eq("user_id", user.id);
@@ -214,7 +214,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return false;
 
     const { error } = await supabase
-      .from("bookmarks" as any)
+      .from("bookmarks")
       .update({ name: newName })
       .eq("id", bookmarkId)
       .eq("user_id", user.id);
@@ -233,7 +233,7 @@ export function useBookmarks(): UseBookmarksReturn {
     if (!user) return false;
 
     const { error } = await supabase
-      .from("bookmarks" as any)
+      .from("bookmarks")
       .update({ folder_id: newFolderId })
       .eq("id", bookmarkId)
       .eq("user_id", user.id);

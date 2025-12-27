@@ -4,7 +4,6 @@ import { WordDefinitionPopupProps } from "./wordDefinitionPopupUtils";
 
 export function WordDefinitionPopup({
   word,
-  sentence,
   position,
   onClose,
   onWordSaved,

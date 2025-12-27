@@ -64,7 +64,7 @@ export function useResetPassword(): UseResetPasswordReturn {
 
       window.location.hash = "";
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "Failed to update password");
       return false;
     } finally {

@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useBookmarks, BookmarkFolder, Bookmark } from "../../../hooks/useBookmarks/useBookmarks";
+import { useBookmarks, BookmarkFolder } from "../../../hooks/useBookmarks/useBookmarks";
 import { validateBookmarkName, validateFolderName, toggleFolderInSet } from "./saveBookmarkDialogUtils";
 
 export interface UseSaveBookmarkDialogProps {
@@ -41,7 +41,7 @@ export function useSaveBookmarkDialog({
   onClose,
   onSaved,
 }: UseSaveBookmarkDialogProps): UseSaveBookmarkDialogReturn {
-  const { folders, createFolder, createBookmark, getSubfolders } = useBookmarks();
+  const { createFolder, createBookmark, getSubfolders } = useBookmarks();
 
   const [bookmarkName, setBookmarkName] = useState("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
