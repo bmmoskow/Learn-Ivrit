@@ -2,6 +2,10 @@ name: Base Checks
 
 on:
   workflow_call:
+    inputs:
+      branch_name:
+        required: true
+        type: string
   workflow_dispatch:
 
 jobs:
