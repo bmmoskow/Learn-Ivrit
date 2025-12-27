@@ -34,6 +34,14 @@ jobs:
 #
 #      - name: Run unit tests
 #        run: npm run test:unit
+  display-branch-inside-development:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display current branch name
+        run:
+          echo "Running inside of development.yml"
+          echo "The current branch name is ${{ github.ref }}"
+          echo "The current branch name is ${{ github.ref_name }}"
 
   promote-to-integration:
     name: Promote to Integration
