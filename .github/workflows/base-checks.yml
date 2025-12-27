@@ -55,6 +55,7 @@ jobs:
           echo "Running inside of base-checks.yml"
           echo "The current branch name is ${{ github.ref }}"
           echo "The current branch name is ${{ github.ref_name }}"
+          echo "The current branch name is ${{ inputs.branch_name }}"
 
   build:
     name: Build
