@@ -7,6 +7,8 @@ on:
     branches: [development]
   workflow_call:
 
+permissions:
+  contents: write
 jobs:
   base-checks:
     name: Base Checks
