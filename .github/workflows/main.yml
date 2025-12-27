@@ -2,7 +2,7 @@ name: Production
 
 on:
   push:
-    branches: [main]
+    branches: [ui, main]
   schedule:
     - cron: '0 0 * * 0'  # Weekly on Sundays at midnight UTC
 
