@@ -14,6 +14,13 @@ on:
 permissions:
   contents: write
 jobs:
+  set-branch-name:
+    runs-on: ubuntu-latest
+    steps:
+      - name: set branch-name
+        run:
+          branch_name=${branch_name:=${{ inputs.branch_name }} || ${{ github.head_ref || github.ref_name }} }
+
   display-branch-inside-development0:
     runs-on: ubuntu-latest
     steps:
@@ -23,6 +30,7 @@ jobs:
           echo "The current branch name is ${{ github.ref }}"
           echo "The current branch name is ${{ github.ref_name }}"
           echo "The current branch name is ${{ inputs.branch_name }}"
+          echo "The current branch name is ${{ branch_name }}"
 
   base-checks:
     name: Base Checks
@@ -50,6 +58,7 @@ jobs:
 #
 #      - name: Run unit tests
 #        run: npm run test:unit
+
   display-branch-inside-development:
     runs-on: ubuntu-latest
     steps:
@@ -59,6 +68,7 @@ jobs:
           echo "The current branch name is ${{ github.ref }}"
           echo "The current branch name is ${{ github.ref_name }}"
           echo "The current branch name is ${{ inputs.branch_name }}"
+          echo "The current branch name is ${{ branch_name }}"
 
   promote-to-integration:
     name: Promote to Integration
