@@ -4,6 +4,10 @@ on:
   push:
     branches: [integration, ui]
   workflow_call:
+    inputs:
+      branch_name:
+        required: true
+        type: string
 
 permissions:
   contents: write
