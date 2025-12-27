@@ -205,8 +205,8 @@ describe('useBookmarkManager', () => {
         hebrew_text: 'שלום',
         source: 'Genesis 1:1',
         folder_id: null,
-        created_at: null,
-        updated_at: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
       act(() => {

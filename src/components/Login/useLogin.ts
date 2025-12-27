@@ -58,7 +58,7 @@ export function useLogin(): UseLoginReturn {
     try {
       const { error } = await signIn(email, password);
       if (error) throw error;
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "An error occurred");
     } finally {
       setLoading(false);
@@ -76,7 +76,7 @@ export function useLogin(): UseLoginReturn {
       setIsSignUp(false);
       setPassword("");
       setFullName("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "An error occurred");
     } finally {
       setLoading(false);
@@ -92,7 +92,7 @@ export function useLogin(): UseLoginReturn {
       if (error) throw error;
       setMessage("Password reset link sent to your email. Click the link in the email to reset your password.");
       setEmail("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err.message || "An error occurred");
     } finally {
       setLoading(false);

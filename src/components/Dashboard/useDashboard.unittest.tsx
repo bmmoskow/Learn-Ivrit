@@ -1,11 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { ReactNode } from "react";
 import { useDashboard } from "./useDashboard";
 import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
-
-const mockUser = { id: "test-user-id", email: "test@example.com" };
-const mockSession = { user: mockUser };
 
 // Mock Supabase client - must mock the path used by AuthContext
 vi.mock("../../../supabase/client", () => ({

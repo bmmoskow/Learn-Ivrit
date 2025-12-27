@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { VocabularyList } from './VocabularyList';
 import { supabase } from '@/lib/supabase';
@@ -161,7 +161,7 @@ describe('VocabularyList Integration Tests', () => {
   it('should verify RLS policies are enforced', async () => {
     await supabase.auth.signOut();
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('vocabulary')
       .select('*');
 

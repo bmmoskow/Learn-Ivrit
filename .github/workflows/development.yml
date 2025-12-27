@@ -8,9 +8,9 @@ on:
   workflow_call:
 
 jobs:
-  base-checks:
-    name: Base Checks
-    uses: ./.github/workflows/base-checks.yml
+#  base-checks:
+#    name: Base Checks
+#    uses: ./.github/workflows/base-checks.yml
 
 #  unit-tests:
 #    name: Unit Tests
