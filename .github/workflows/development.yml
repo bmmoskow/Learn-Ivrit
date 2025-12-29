@@ -20,7 +20,8 @@ jobs:
       - name: set branch-name
         run:
 #          branch_name=${branch_name:=${{ inputs.branch_name }} || ${{ github.head_ref || github.ref_name }} }
-          ${branch_name:=${{ inputs.branch_name }} || ${{ github.head_ref || github.ref_name }} }
+#          ${branch_name:=${{ inputs.branch_name }} || ${{ github.head_ref || github.ref_name }} }
+          branch_name="${inputs.branch_name:-${github.head_ref:-$github.ref_name}}"
           echo ${{ branch_name }}
 
   display-branch-inside-development0:
