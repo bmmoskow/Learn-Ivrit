@@ -9,8 +9,6 @@ import {
   createTestStatistics,
   calculateScorePercentage,
   countCorrectAnswers,
-  calculateTestDuration,
-  calculateResponseTime,
   updateQuestionWithAnswer,
   hasMoreQuestions,
   mapRpcWordToWordWithStats,

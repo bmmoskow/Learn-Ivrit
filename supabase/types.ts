@@ -8,6 +8,85 @@ export type Database = {
   };
   public: {
     Tables: {
+      bookmark_folders: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          parent_folder_id: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          parent_folder_id?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          parent_folder_id?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bookmark_folders_parent_folder_id_fkey";
+            columns: ["parent_folder_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmark_folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      bookmarks: {
+        Row: {
+          created_at: string;
+          english_translation: string | null;
+          folder_id: string | null;
+          hebrew_text: string;
+          id: string;
+          name: string;
+          source: string | null;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          english_translation?: string | null;
+          folder_id?: string | null;
+          hebrew_text: string;
+          id?: string;
+          name: string;
+          source?: string | null;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          english_translation?: string | null;
+          folder_id?: string | null;
+          hebrew_text?: string;
+          id?: string;
+          name?: string;
+          source?: string | null;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "bookmarks_folder_id_fkey";
+            columns: ["folder_id"];
+            isOneToOne: false;
+            referencedRelation: "bookmark_folders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       gemini_api_rate_limits: {
         Row: {
           created_at: string;

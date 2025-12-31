@@ -1,3 +1,5 @@
+import { Json } from "@/integrations/supabase/types";
+
 export type Example = {
   hebrew: string;
   english: string;
@@ -18,6 +20,16 @@ export type Definition = {
   notes?: string;
   relatedWords?: RelatedWord[];
   shortEnglish?: string;
+};
+
+export type CachedData = {
+  wordWithVowels: string;
+  definition: string;
+  transliteration: string;
+  examples: Json;
+  notes: string;
+  forms: Json;
+  shortEnglish: string;
 };
 
 export type WordDefinitionPopupProps = {
@@ -79,7 +91,7 @@ export const truncateShortEnglish = (text: string, maxLength: number = 40): stri
 export const calculatePopupPosition = (
   position: { x: number; y: number },
   windowWidth: number,
-  windowHeight: number
+  windowHeight: number,
 ): { left: string; top: string; maxHeight: number } => {
   const maxPopupHeight = windowHeight - 100;
   const minTop = 50;
@@ -96,11 +108,11 @@ export const mapCachedDataToDefinition = (cachedData: {
   word_with_vowels: string;
   definition: string;
   transliteration: string;
-  examples: any;
+  examples: Json;
   notes: string | null;
-  forms: any;
+  forms: Json;
   short_english: string;
-}): { data: any; shortEnglish: string } => {
+}): { data: CachedData; shortEnglish: string } => {
   return {
     data: {
       wordWithVowels: cachedData.word_with_vowels,
@@ -116,11 +128,12 @@ export const mapCachedDataToDefinition = (cachedData: {
 };
 
 export const mapApiResponseToDefinition = (
-  apiData: any
-): { data: any; shortEnglish: string } => {
+  apiData: Record<string, unknown>,
+): { data: Record<string, unknown>; shortEnglish: string } => {
+  const dataWithDef = apiData as { definition?: string };
   let shortEnglish =
-    apiData.definition && apiData.definition.trim() !== ""
-      ? apiData.definition.trim()
+    dataWithDef.definition && dataWithDef.definition.trim() !== ""
+      ? dataWithDef.definition.trim()
       : "Translation unavailable";
 
   shortEnglish = truncateShortEnglish(shortEnglish);
