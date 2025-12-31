@@ -1,3 +1,5 @@
+import { Json } from "@/integrations/supabase/types";
+
 export type Example = {
   hebrew: string;
   english: string;
@@ -18,6 +20,16 @@ export type Definition = {
   notes?: string;
   relatedWords?: RelatedWord[];
   shortEnglish?: string;
+};
+
+export type CachedData = {
+  wordWithVowels: string;
+  definition: string;
+  transliteration: string;
+  examples: Json;
+  notes: string;
+  forms: Json;
+  shortEnglish: string;
 };
 
 export type WordDefinitionPopupProps = {
@@ -79,7 +91,7 @@ export const truncateShortEnglish = (text: string, maxLength: number = 40): stri
 export const calculatePopupPosition = (
   position: { x: number; y: number },
   windowWidth: number,
-  windowHeight: number
+  windowHeight: number,
 ): { left: string; top: string; maxHeight: number } => {
   const maxPopupHeight = windowHeight - 100;
   const minTop = 50;
@@ -116,7 +128,7 @@ export const mapCachedDataToDefinition = (cachedData: {
 };
 
 export const mapApiResponseToDefinition = (
-  apiData: Record<string, unknown>
+  apiData: Record<string, unknown>,
 ): { data: Record<string, unknown>; shortEnglish: string } => {
   const dataWithDef = apiData as { definition?: string };
   let shortEnglish =
