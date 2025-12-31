@@ -5,16 +5,30 @@ on:
     branches: [integration, ui]
   workflow_call:
     inputs:
-      branch_name:
-        required: true
-        type: string
+      skip_promote:
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 jobs:
+  display-context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display context
+        run: |
+          echo "Running inside of ui.yml"
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "skip_promote: ${{ inputs.skip_promote }}"
+
   integration-checks:
     name: Integration Checks
     uses: ./.github/workflows/integration.yml
+    with:
+      skip_promote: true
 
 #  e2e-tests:
 #    name: E2E Tests
@@ -97,8 +111,8 @@ jobs:
     name: Promote to Main
     runs-on: ubuntu-latest
     needs: [integration-checks]
-#    needs: [integration-checks, e2e-tests, deep-security-scan]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/ui'
+    #    needs: [integration-checks, e2e-tests, deep-security-scan]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ui' && inputs.skip_promote != true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

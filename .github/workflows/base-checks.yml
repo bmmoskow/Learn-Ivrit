@@ -3,9 +3,10 @@ name: Base Checks
 on:
   workflow_call:
     inputs:
-      branch_name:
-        required: true
-        type: string
+      skip_promote:
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
 
 jobs:
@@ -50,12 +51,13 @@ jobs:
   display-branch-inside-base-checks:
     runs-on: ubuntu-latest
     steps:
-      - name: Display current branch name
-        run:
+      - name: Display context
+        run: |
           echo "Running inside of base-checks.yml"
-          echo "The current branch name is ${{ github.ref }}"
-          echo "The current branch name is ${{ github.ref_name }}"
-          echo "The current branch name is ${{ inputs.branch_name }}"
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "skip_promote: ${{ inputs.skip_promote }}"
 
   build:
     name: Build
