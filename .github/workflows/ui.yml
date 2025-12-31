@@ -2,7 +2,7 @@ name: UI
 
 on:
   push:
-    branches: [integration, ui]
+    branches: [ui]
   workflow_call:
     inputs:
       skip_promote:
