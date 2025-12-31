@@ -2,7 +2,7 @@ name: Integration
 
 on:
   push:
-    branches: [development, integration]
+    branches: [integration]
   workflow_call:
     inputs:
       skip_promote:
@@ -62,7 +62,7 @@ jobs:
           echo "Running inside of integration.yml"
           echo "The current branch name is ${{ github.ref }}"
           echo "The current branch name is ${{ github.ref_name }}"
-          echo "The current branch name is ${{ inputs.branch_name }}"
+          echo "The current branch name is ${{ inputs.skip_promote }}"
 
   promote-to-ui:
     name: Promote to UI
