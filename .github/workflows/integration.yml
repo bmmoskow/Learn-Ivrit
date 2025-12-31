@@ -54,15 +54,6 @@ jobs:
 #          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
 #          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 #          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-  display-branch-inside-intgration:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Display current branch name inside integration
-        run:
-          echo "Running inside of integration.yml"
-          echo "The current branch name is ${{ github.ref }}"
-          echo "The current branch name is ${{ github.ref_name }}"
-          echo "The current branch name is ${{ inputs.skip_promote }}"
 
   promote-to-ui:
     name: Promote to UI
@@ -75,6 +66,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Merge to ui
         run: |
