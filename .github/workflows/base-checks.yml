@@ -48,17 +48,6 @@ jobs:
 #      - name: Run TypeScript type checking
 #        run: npm run typecheck
 #
-  display-branch-inside-base-checks:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Display context
-        run: |
-          echo "Running inside of base-checks.yml"
-          echo "github.ref: ${{ github.ref }}"
-          echo "github.ref_name: ${{ github.ref_name }}"
-          echo "github.event_name: ${{ github.event_name }}"
-          echo "skip_promote: ${{ inputs.skip_promote }}"
-
   build:
     name: Build
     runs-on: ubuntu-latest
