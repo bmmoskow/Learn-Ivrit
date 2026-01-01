@@ -15,17 +15,6 @@ on:
 permissions:
   contents: write
 jobs:
-  display-context:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Display context
-        run: |
-          echo "Running inside of development.yml"
-          echo "github.ref: ${{ github.ref }}"
-          echo "github.ref_name: ${{ github.ref_name }}"
-          echo "github.event_name: ${{ github.event_name }}"
-          echo "skip_promote: ${{ inputs.skip_promote }}"
-
   base-checks:
     name: Base Checks
     uses: ./.github/workflows/base-checks.yml
