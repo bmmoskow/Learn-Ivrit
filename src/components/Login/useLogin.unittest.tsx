@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { ReactNode } from "react";
 import { useLogin } from "./useLogin";
 import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
-import type { AuthError } from "@supabase/supabase-js";
+import type { AuthError, User, Session, AuthTokenResponsePassword } from "@supabase/supabase-js";
 
 // Helper to create mock AuthError
 const createMockAuthError = (message: string, status: number): AuthError => {
@@ -13,6 +13,32 @@ const createMockAuthError = (message: string, status: number): AuthError => {
   error.code = "auth_error";
   return error;
 };
+
+// Helper to create mock user
+const createMockUser = (): User => ({
+  id: "user-123",
+  email: "test@example.com",
+  app_metadata: {},
+  user_metadata: {},
+  aud: "authenticated",
+  created_at: new Date().toISOString(),
+});
+
+// Helper to create mock session
+const createMockSession = (): Session => ({
+  access_token: "mock-token",
+  token_type: "bearer",
+  expires_in: 3600,
+  expires_at: Date.now() / 1000 + 3600,
+  refresh_token: "mock-refresh",
+  user: createMockUser(),
+});
+
+// Helper to create success auth response
+const createSuccessAuthResponse = (): AuthTokenResponsePassword => ({
+  data: { user: createMockUser(), session: createMockSession() },
+  error: null,
+});
 
 // Helper for mock subscription
 const createMockSubscription = () => ({
@@ -76,7 +102,7 @@ describe("useLogin", () => {
 
   describe("handleSignIn", () => {
     it("calls supabase signInWithPassword with email and password", async () => {
-      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue({ data: { user: null, session: null }, error: null });
+      vi.mocked(supabase.auth.signInWithPassword).mockResolvedValue(createSuccessAuthResponse());
 
       const { result } = renderHook(() => useLogin(), { wrapper });
 
@@ -121,7 +147,7 @@ describe("useLogin", () => {
     it("retries on 5xx error then succeeds", async () => {
       vi.mocked(supabase.auth.signInWithPassword)
         .mockRejectedValueOnce({ status: 500, message: "Internal Server Error" })
-        .mockResolvedValue({ data: { user: null, session: null }, error: null });
+        .mockResolvedValue(createSuccessAuthResponse());
 
       const { result } = renderHook(() => useLogin(), { wrapper });
 
@@ -161,7 +187,7 @@ describe("useLogin", () => {
     });
 
     it("sets loading state during sign in", async () => {
-      let resolveSignIn: (value: { data: { user: null; session: null }; error: null }) => void;
+      let resolveSignIn: (value: AuthTokenResponsePassword) => void;
       vi.mocked(supabase.auth.signInWithPassword).mockImplementation(
         () =>
           new Promise((resolve) => {
@@ -184,7 +210,7 @@ describe("useLogin", () => {
       expect(result.current.loading).toBe(true);
 
       await act(async () => {
-        resolveSignIn!({ data: { user: null, session: null }, error: null });
+        resolveSignIn!(createSuccessAuthResponse());
         await signInPromise;
       });
 

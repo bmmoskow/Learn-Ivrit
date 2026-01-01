@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import type { AuthError, UserResponse } from "@supabase/supabase-js";
+import type { AuthError, UserResponse, User } from "@supabase/supabase-js";
 import { useResetPassword } from "./useResetPassword";
 
 // Mock the Supabase client
@@ -15,9 +15,19 @@ vi.mock("../../../../supabase/client", () => ({
 // Import the mocked supabase after mocking
 import { supabase } from "../../../../supabase/client";
 
+// Helper to create a mock user
+const createMockUser = (): User => ({
+  id: "user-123",
+  email: "test@example.com",
+  app_metadata: {},
+  user_metadata: {},
+  aud: "authenticated",
+  created_at: new Date().toISOString(),
+});
+
 // Helper to create success response
 const createSuccessResponse = (): UserResponse => ({
-  data: { user: null },
+  data: { user: createMockUser() },
   error: null,
 });
 
