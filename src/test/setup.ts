@@ -1,5 +1,6 @@
-import '@testing-library/react';
-import { vi } from 'vitest';
+import "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { vi } from "vitest";
 
 // Mock localStorage for jsdom
 const localStorageMock = {
@@ -11,7 +12,7 @@ const localStorageMock = {
   key: vi.fn(),
 };
 
-Object.defineProperty(globalThis, 'localStorage', {
+Object.defineProperty(globalThis, "localStorage", {
   value: localStorageMock,
   writable: true,
 });
