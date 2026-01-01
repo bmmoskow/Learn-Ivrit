@@ -101,7 +101,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -136,7 +136,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -200,7 +200,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 500,
         statusText: 'Internal Server Error',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -225,7 +225,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -264,7 +264,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -294,7 +294,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const onAnswer = vi.fn();
 
@@ -334,7 +334,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const onAnswer = vi.fn();
 
@@ -372,7 +372,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const onAnswer = vi.fn();
 
@@ -409,7 +409,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -438,7 +438,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result } = renderHook(() =>
         useMultipleChoiceTest({
@@ -472,7 +472,7 @@ describe("useMultipleChoiceTest", () => {
         count: null,
         status: 200,
         statusText: 'OK',
-      } as any);
+      } as unknown as Awaited<ReturnType<typeof supabase.rpc>>);
 
       const { result, rerender } = renderHook(
         (props) => useMultipleChoiceTest(props),
