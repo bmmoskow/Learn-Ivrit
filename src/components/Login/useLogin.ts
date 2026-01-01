@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 
+const getErrorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof err.message === "string") {
+    return err.message;
+  }
+  return fallback;
+};
+
 export interface UseLoginState {
   email: string;
   password: string;
@@ -59,7 +67,7 @@ export function useLogin(): UseLoginReturn {
       const { error } = await signIn(email, password);
       if (error) throw error;
     } catch (err: unknown) {
-      setError(err.message || "An error occurred");
+      setError(getErrorMessage(err, "An error occurred"));
     } finally {
       setLoading(false);
     }
@@ -77,7 +85,7 @@ export function useLogin(): UseLoginReturn {
       setPassword("");
       setFullName("");
     } catch (err: unknown) {
-      setError(err.message || "An error occurred");
+      setError(getErrorMessage(err, "An error occurred"));
     } finally {
       setLoading(false);
     }
@@ -93,7 +101,7 @@ export function useLogin(): UseLoginReturn {
       setMessage("Password reset link sent to your email. Click the link in the email to reset your password.");
       setEmail("");
     } catch (err: unknown) {
-      setError(err.message || "An error occurred");
+      setError(getErrorMessage(err, "An error occurred"));
     } finally {
       setLoading(false);
     }

@@ -1,8 +1,5 @@
-import { describe, it, expect, vi, beforeEach, waitFor } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useBookmarks } from "./useBookmarks";
-import { supabase } from "../../../supabase/client";
-import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import type { BookmarkFolder, Bookmark } from "./bookmarksUtils";
 
 vi.mock("../../../supabase/client", () => ({
@@ -15,11 +12,21 @@ vi.mock("../../contexts/AuthContext/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
 
+let useBookmarks: typeof import("./useBookmarks").useBookmarks;
+let supabase: typeof import("../../../supabase/client").supabase;
+let useAuth: typeof import("../../contexts/AuthContext/AuthContext").useAuth;
+
+beforeAll(async () => {
+  ({ useBookmarks } = await import("./useBookmarks"));
+  ({ supabase } = await import("../../../supabase/client"));
+  ({ useAuth } = await import("../../contexts/AuthContext/AuthContext"));
+});
+
 type MockUser = {
     id: string,
     email: string,
-    app_metadata: string[],
-    user_metadata: string[],
+    app_metadata: Record<string, unknown>,
+    user_metadata: Record<string, unknown>,
     aud: string,
     created_at: string,
 };
@@ -100,7 +107,7 @@ describe("useBookmarks", () => {
       update: vi.fn().mockReturnThis(),
       single: vi.fn().mockResolvedValue({ data, error }),
     };
-    vi.mocked(supabase.from).mockReturnValue(queryMock as any);
+    vi.mocked(supabase.from).mockReturnValue(queryMock as unknown as ReturnType<typeof supabase.from>);
     return queryMock;
   };
 

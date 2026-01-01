@@ -1,4 +1,4 @@
-import { Json } from "@/integrations/supabase/types";
+import { Json } from "../../../../supabase/types";
 
 export type Example = {
   hebrew: string;

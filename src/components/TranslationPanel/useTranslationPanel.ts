@@ -97,10 +97,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   const loadSavedWords = useCallback(async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("vocabulary_words")
-      .select("hebrew_word")
-      .eq("user_id", user.id);
+    const { data, error } = await supabase.from("vocabulary_words").select("hebrew_word").eq("user_id", user.id);
 
     if (!error && data) {
       setSavedWords(new Set(data.map((w) => w.hebrew_word)));
@@ -119,6 +116,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     } else if (!hebrewText.trim()) {
       setEnglishText("");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hebrewText]);
 
   const loadFromUrl = async () => {
@@ -514,10 +512,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     fileInputRef.current?.click();
   };
 
-  const syncedParagraphs = useMemo(
-    () => syncParagraphs(hebrewText, englishText),
-    [hebrewText, englishText]
-  );
+  const syncedParagraphs = useMemo(() => syncParagraphs(hebrewText, englishText), [hebrewText, englishText]);
 
   return {
     // State

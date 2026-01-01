@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase } from '../../../supabase/client';
@@ -14,7 +15,7 @@ type AuthContextType = {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -22,20 +23,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for guest mode in localStorage FIRST (before Supabase config check)
+    const guestMode = localStorage.getItem('guestMode');
+    if (guestMode === 'true') {
+      setIsGuest(true);
+      setLoading(false);
+      return;
+    }
+
     // Check if Supabase is properly configured
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn('Supabase not configured - authentication will not work, but guest mode is available');
-      setLoading(false);
-      return;
-    }
-
-    // Check for guest mode in localStorage
-    const guestMode = localStorage.getItem('guestMode');
-    if (guestMode === 'true') {
-      setIsGuest(true);
       setLoading(false);
       return;
     }
