@@ -44,9 +44,7 @@ const localStorageMock = {
 
 Object.defineProperty(window, "localStorage", { value: localStorageMock });
 
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <AuthProvider>{children}</AuthProvider>
-);
+const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
 describe("useTestPanel", () => {
   beforeEach(() => {

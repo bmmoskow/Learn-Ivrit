@@ -2,6 +2,26 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useFillInBlankTest } from "./useFillInBlankTest";
 import type { TestQuestion } from "../testPanelUtils";
+import type { FormEvent } from "react";
+
+// Helper to create a mock form event
+const createMockFormEvent = (): FormEvent<HTMLFormElement> => ({
+  preventDefault: vi.fn(),
+  stopPropagation: vi.fn(),
+  nativeEvent: new Event("submit"),
+  currentTarget: document.createElement("form"),
+  target: document.createElement("form"),
+  bubbles: true,
+  cancelable: true,
+  defaultPrevented: false,
+  eventPhase: 0,
+  isTrusted: true,
+  timeStamp: Date.now(),
+  type: "submit",
+  isDefaultPrevented: () => false,
+  isPropagationStopped: () => false,
+  persist: () => {},
+});
 
 describe("useFillInBlankTest", () => {
   const mockOnAnswer = vi.fn();
@@ -92,7 +112,7 @@ describe("useFillInBlankTest", () => {
       const { result } = renderHook(() => useFillInBlankTest(defaultProps));
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.showFeedback).toBe(false);
@@ -107,7 +127,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.showFeedback).toBe(false);
@@ -122,7 +142,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.showFeedback).toBe(true);
@@ -136,7 +156,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.isCorrect).toBe(true);
@@ -150,7 +170,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.isCorrect).toBe(false);
@@ -164,7 +184,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(mockOnAnswer).not.toHaveBeenCalled();
@@ -184,7 +204,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       act(() => {
@@ -192,7 +212,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       act(() => {
@@ -210,7 +230,7 @@ describe("useFillInBlankTest", () => {
           ...defaultProps,
           questionNumber: 5,
           totalQuestions: 5,
-        })
+        }),
       );
 
       act(() => {
@@ -218,7 +238,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.isProcessing).toBe(true);
@@ -232,7 +252,7 @@ describe("useFillInBlankTest", () => {
       });
 
       act(() => {
-        result.current.handleSubmit({ preventDefault: vi.fn() } as any);
+        result.current.handleSubmit(createMockFormEvent());
       });
 
       expect(result.current.isProcessing).toBe(false);
@@ -241,10 +261,7 @@ describe("useFillInBlankTest", () => {
 
   describe("question change", () => {
     it("resets state when question changes", () => {
-      const { result, rerender } = renderHook(
-        (props) => useFillInBlankTest(props),
-        { initialProps: defaultProps }
-      );
+      const { result, rerender } = renderHook((props) => useFillInBlankTest(props), { initialProps: defaultProps });
 
       act(() => {
         result.current.setUserInput("hello");
