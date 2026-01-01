@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
-import type { Session, User, AuthChangeEvent } from "@supabase/supabase-js";
+import type { Session, User, AuthChangeEvent, AuthTokenResponsePassword, AuthError } from "@supabase/supabase-js";
 
 // Mock the Supabase client
 vi.mock("../../../supabase/client", () => ({
@@ -34,6 +34,43 @@ const mockResetPasswordForEmail = vi.mocked(supabase.auth.resetPasswordForEmail)
 const mockGetSession = vi.mocked(supabase.auth.getSession);
 const mockOnAuthStateChange = vi.mocked(supabase.auth.onAuthStateChange);
 const mockFrom = vi.mocked(supabase.from);
+
+// Helper to create mock user
+const createMockUser = (overrides: Partial<User> = {}): User => ({
+  id: "user-123",
+  email: "test@example.com",
+  app_metadata: {},
+  user_metadata: {},
+  aud: "authenticated",
+  created_at: new Date().toISOString(),
+  ...overrides,
+});
+
+// Helper to create mock session
+const createMockSession = (user?: User): Session => ({
+  access_token: "mock-token",
+  token_type: "bearer",
+  expires_in: 3600,
+  expires_at: Date.now() / 1000 + 3600,
+  refresh_token: "mock-refresh",
+  user: user ?? createMockUser(),
+});
+
+// Helper to create success auth response
+const createSuccessAuthResponse = (): AuthTokenResponsePassword => ({
+  data: { user: createMockUser(), session: createMockSession() },
+  error: null,
+});
+
+const createMockAuthError = (message: string, overrides: Partial<AuthError> = {}): AuthError =>
+  ({
+    name: "AuthError",
+    message,
+    status: 400,
+    code: "test_error",
+    ...overrides,
+  }) as AuthError;
+
 
 const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
@@ -152,7 +189,7 @@ describe("AuthContext", () => {
 
   describe("signIn", () => {
     it("calls supabase signInWithPassword", async () => {
-      mockSignInWithPassword.mockResolvedValue({ data: { user: null, session: null }, error: null });
+      mockSignInWithPassword.mockResolvedValue(createSuccessAuthResponse());
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -171,20 +208,14 @@ describe("AuthContext", () => {
     });
 
     it("returns error on failure", async () => {
-      const mockError = {
-        message: "Invalid credentials",
+      const authError = createMockAuthError("Invalid credentials", {
         status: 401,
-        name: "AuthError",
         code: "invalid_credentials",
-        __isAuthError: true,
-      };
+      });
+
       mockSignInWithPassword.mockResolvedValue({
         data: { user: null, session: null },
-        error: mockError as unknown as ReturnType<typeof mockSignInWithPassword> extends Promise<infer R>
-          ? R extends { error: infer E }
-            ? E
-            : never
-          : never,
+        error: authError,
       });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
@@ -193,18 +224,17 @@ describe("AuthContext", () => {
         await flushPromises();
       });
 
-      let response: { error?: { message: string } };
-      await act(async () => {
-        response = await result.current.signIn("test@example.com", "wrong");
+      const response = await act(async () => {
+        return await result.current.signIn("test@example.com", "wrong");
       });
 
-      expect(response!.error?.message).toEqual(mockError.message);
+      expect(response?.error?.message).toEqual(authError.message);
     });
 
     it("retries on 5xx error", async () => {
       mockSignInWithPassword
         .mockRejectedValueOnce({ status: 500 })
-        .mockResolvedValue({ data: { user: null, session: null }, error: null });
+        .mockResolvedValue(createSuccessAuthResponse());
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -247,20 +277,14 @@ describe("AuthContext", () => {
     });
 
     it("returns error on failure", async () => {
-      const mockError = {
-        message: "Email already exists",
+      const authError = createMockAuthError("Email already exists", {
         status: 400,
-        name: "AuthError",
         code: "email_exists",
-        __isAuthError: true,
-      };
+      });
+
       mockSignUp.mockResolvedValue({
         data: { user: null, session: null },
-        error: mockError as unknown as ReturnType<typeof mockSignUp> extends Promise<infer R>
-          ? R extends { error: infer E }
-            ? E
-            : never
-          : never,
+        error: authError,
       });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
@@ -269,12 +293,11 @@ describe("AuthContext", () => {
         await flushPromises();
       });
 
-      let response: { error?: { message: string } };
-      await act(async () => {
-        response = await result.current.signUp("existing@example.com", "password");
+      const response = await act(async () => {
+        return await result.current.signUp("existing@example.com", "password");
       });
 
-      expect(response!.error?.message).toEqual(mockError.message);
+      expect(response?.error?.message).toEqual(authError.message);
     });
 
     it("retries on 5xx error", async () => {
@@ -374,20 +397,14 @@ describe("AuthContext", () => {
     });
 
     it("returns error on failure", async () => {
-      const mockError = {
-        message: "User not found",
+      const authError = createMockAuthError("User not found", {
         status: 404,
-        name: "AuthError",
         code: "user_not_found",
-        __isAuthError: true,
-      };
+      });
+
       mockResetPasswordForEmail.mockResolvedValue({
         data: null,
-        error: mockError as unknown as ReturnType<typeof mockResetPasswordForEmail> extends Promise<infer R>
-          ? R extends { error: infer E }
-            ? E
-            : never
-          : never,
+        error: authError,
       });
 
       const { result } = renderHook(() => useAuth(), { wrapper });
@@ -396,12 +413,11 @@ describe("AuthContext", () => {
         await flushPromises();
       });
 
-      let response: { error?: { message: string } };
-      await act(async () => {
-        response = await result.current.resetPassword("unknown@example.com");
+      const response = await act(async () => {
+        return await result.current.resetPassword("unknown@example.com");
       });
 
-      expect(response!.error?.message).toEqual(mockError.message);
+      expect(response?.error?.message).toEqual(authError.message);
     });
 
     it("retries on 5xx error", async () => {

@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { supabase } from "../../../../supabase/client";
 
+const getErrorMessage = (err: unknown, fallback: string): string => {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === "object" && "message" in err && typeof err.message === "string") {
+    return err.message;
+  }
+  return fallback;
+};
+
 export type UseResetPasswordState = {
   password: string;
   confirmPassword: string;
@@ -65,7 +73,7 @@ export function useResetPassword(): UseResetPasswordReturn {
       window.location.hash = "";
       return true;
     } catch (err: unknown) {
-      setError(err.message || "Failed to update password");
+      setError(getErrorMessage(err, "Failed to update password"));
       return false;
     } finally {
       setLoading(false);
