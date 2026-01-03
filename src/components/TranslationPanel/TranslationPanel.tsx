@@ -1,13 +1,21 @@
+import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { WordDefinitionPopup } from "./WordDefinitionPopup/WordDefinitionPopup";
 import { BookmarkManager } from "./BookmarkManager/BookmarkManager";
 import { SaveBookmarkDialog } from "./SaveBookmarkDialog/SaveBookmarkDialog";
+import { PassageGenerator } from "./PassageGenerator/PassageGenerator";
 import { useTranslationPanel } from "./useTranslationPanel";
 import { TranslationPanelUI } from "./TranslationPanelUI";
 
 export function TranslationPanel() {
   const { isGuest } = useAuth();
   const hook = useTranslationPanel();
+  const [showPassageGenerator, setShowPassageGenerator] = useState(false);
+
+  const handlePassageGenerated = (passage: string) => {
+    hook.setHebrewText(passage);
+    setShowPassageGenerator(false);
+  };
 
   return (
     <>
@@ -36,6 +44,7 @@ export function TranslationPanel() {
         setShowBibleInput={hook.setShowBibleInput}
         setShowBookmarkManager={hook.setShowBookmarkManager}
         setShowSaveBookmark={hook.setShowSaveBookmark}
+        setShowPassageGenerator={setShowPassageGenerator}
         loadFromUrl={hook.loadFromUrl}
         loadFromBible={hook.loadFromBible}
         navigateChapter={hook.navigateChapter}
@@ -60,10 +69,7 @@ export function TranslationPanel() {
       )}
 
       {hook.showBookmarkManager && (
-        <BookmarkManager
-          onLoadBookmark={hook.handleLoadBookmark}
-          onClose={() => hook.setShowBookmarkManager(false)}
-        />
+        <BookmarkManager onLoadBookmark={hook.handleLoadBookmark} onClose={() => hook.setShowBookmarkManager(false)} />
       )}
 
       {hook.showSaveBookmark && (
@@ -74,6 +80,12 @@ export function TranslationPanel() {
           onSaved={() => {}}
         />
       )}
+
+      <PassageGenerator
+        isOpen={showPassageGenerator}
+        onClose={() => setShowPassageGenerator(false)}
+        onPassageGenerated={handlePassageGenerated}
+      />
     </>
   );
 }
