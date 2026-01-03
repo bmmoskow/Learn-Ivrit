@@ -1,0 +1,10 @@
+project_id = "your-project-id"
+
+[functions.gemini-translate]
+verify_jwt = false
+
+[functions.sefaria-fetch]
+verify_jwt = false
+
+[functions.generate-hebrew-passage]
+verify_jwt = false

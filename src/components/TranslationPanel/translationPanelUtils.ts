@@ -121,7 +121,7 @@ export const canNavigatePrev = (currentBibleRef: { book: string; chapter: number
  */
 export const canNavigateNext = (
   currentBibleRef: { book: string; chapter: number } | null,
-  bibleBooks: { name: string; chapters: number }[]
+  bibleBooks: { name: string; chapters: number }[],
 ): boolean => {
   if (!currentBibleRef) return false;
   const currentBook = bibleBooks.find((b) => b.name === currentBibleRef.book);

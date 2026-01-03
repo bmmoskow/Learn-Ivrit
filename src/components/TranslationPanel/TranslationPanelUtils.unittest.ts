@@ -1,15 +1,53 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
+  stripHtml,
   removeTrope,
   cleanWord,
   getSentenceContext,
+  generateContentHash,
   syncParagraphs,
   formatBibleVerses,
   canNavigatePrev,
   canNavigateNext,
 } from "./translationPanelUtils";
-
 describe("translationPanelUtils", () => {
+  describe("stripHtml", () => {
+    let mockDiv: { innerHTML: string; textContent: string };
+
+    beforeEach(() => {
+      mockDiv = { innerHTML: "", textContent: "" };
+      vi.spyOn(document, "createElement").mockReturnValue(mockDiv as unknown as HTMLElement);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("removes HTML tags from text", () => {
+      mockDiv.textContent = "Hello World";
+      const result = stripHtml("<p>Hello World</p>");
+      expect(result).toBe("Hello World");
+    });
+
+    it("decodes HTML entities", () => {
+      mockDiv.textContent = "Hello & World";
+      const result = stripHtml("Hello &amp; World");
+      expect(result).toBe("Hello & World");
+    });
+
+    it("handles empty string", () => {
+      mockDiv.textContent = "";
+      const result = stripHtml("");
+      expect(result).toBe("");
+    });
+
+    it("removes control characters", () => {
+      mockDiv.textContent = "Hello\u0000World";
+      const result = stripHtml("Hello\u0000World");
+      expect(result).toBe("HelloWorld");
+    });
+  });
+
   describe("removeTrope", () => {
     it("removes Hebrew cantillation marks from text", () => {
       // Text with cantillation marks (U+05B4 is a vowel, U+0591 is trope)
@@ -72,6 +110,31 @@ describe("translationPanelUtils", () => {
 
     it("handles empty text", () => {
       expect(getSentenceContext("", "word")).toBe("");
+    });
+  });
+
+  describe("generateContentHash", () => {
+    it("generates consistent hash for same input", async () => {
+      const hash1 = await generateContentHash("שלום עולם");
+      const hash2 = await generateContentHash("שלום עולם");
+      expect(hash1).toBe(hash2);
+    });
+
+    it("generates different hashes for different inputs", async () => {
+      const hash1 = await generateContentHash("שלום");
+      const hash2 = await generateContentHash("עולם");
+      expect(hash1).not.toBe(hash2);
+    });
+
+    it("returns 64 character hex string", async () => {
+      const hash = await generateContentHash("test");
+      expect(hash).toHaveLength(64);
+      expect(/^[0-9a-f]+$/.test(hash)).toBe(true);
+    });
+
+    it("handles empty string", async () => {
+      const hash = await generateContentHash("");
+      expect(hash).toHaveLength(64);
     });
   });
 
