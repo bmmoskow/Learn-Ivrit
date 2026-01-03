@@ -1,4 +1,17 @@
-import { Languages, Copy, X, Loader2, BookPlus, Link as LinkIcon, ChevronLeft, ChevronRight, Book, Upload, Bookmark, BookmarkPlus } from "lucide-react";
+import {
+  Languages,
+  Copy,
+  X,
+  Loader2,
+  BookPlus,
+  Link as LinkIcon,
+  ChevronLeft,
+  ChevronRight,
+  Book,
+  Upload,
+  Bookmark,
+  BookmarkPlus,
+} from "lucide-react";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { SyncedParagraph } from "./translationPanelUtils";
 
@@ -30,6 +43,7 @@ interface TranslationPanelUIProps {
   setShowBibleInput: (show: boolean) => void;
   setShowBookmarkManager: (show: boolean) => void;
   setShowSaveBookmark: (show: boolean) => void;
+  setShowPassageGenerator: (show: boolean) => void;
 
   // Actions
   loadFromUrl: () => void;
@@ -70,6 +84,7 @@ export function TranslationPanelUI({
   setShowBibleInput,
   setShowBookmarkManager,
   setShowSaveBookmark,
+  setShowPassageGenerator,
   loadFromUrl,
   loadFromBible,
   navigateChapter,
@@ -167,24 +182,14 @@ export function TranslationPanelUI({
                 </button>
               </>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
             <button
               onClick={triggerFileInput}
               disabled={processingImage}
               className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
               title="Upload image with Hebrew text"
             >
-              {processingImage ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Upload className="w-5 h-5" />
-              )}
+              {processingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
             </button>
             <button
               onClick={() => handleCopy(hebrewText)}
@@ -383,13 +388,24 @@ export function TranslationPanelUI({
                 >
                   load from URL
                 </span>
-                , or{" "}
+                ,{" "}
                 <span
                   className="text-purple-600 underline cursor-pointer pointer-events-auto"
                   onClick={() => setShowBibleInput(true)}
                 >
                   load from Bible
                 </span>
+                {!isGuest && (
+                  <>
+                    , or{" "}
+                    <span
+                      className="text-amber-600 underline cursor-pointer pointer-events-auto"
+                      onClick={() => setShowPassageGenerator(true)}
+                    >
+                      generate with AI
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           )}
