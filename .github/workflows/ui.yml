@@ -13,6 +13,17 @@ on:
 permissions:
   contents: write
 jobs:
+  display-context:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Display context
+        run: |
+          echo "Running inside of ui.yml"
+          echo "github.ref: ${{ github.ref }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "skip_promote: ${{ inputs.skip_promote }}"
+
   integration-checks:
     name: Integration Checks
     uses: ./.github/workflows/integration.yml
@@ -109,11 +120,17 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
 
+      - name: Get original merge message
+        id: get-message
+        run: |
+          ORIGINAL_MSG=$(git log -1 --format=%s HEAD)
+          echo "message=$ORIGINAL_MSG" >> $GITHUB_OUTPUT
+
       - name: Merge to main
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin main:main
           git checkout main
-          git merge --no-ff origin/ui -m "Auto-promote from ui to main"
+          git merge --no-ff origin/ui -m "${{ steps.get-message.outputs.message }}"
           git push origin main

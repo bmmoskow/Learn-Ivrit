@@ -54,11 +54,17 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.PAT_TOKEN }}
 
+      - name: Get original merge message
+        id: get-message
+        run: |
+          ORIGINAL_MSG=$(git log -1 --format=%s HEAD)
+          echo "message=$ORIGINAL_MSG" >> $GITHUB_OUTPUT
+
       - name: Merge to integration
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin integration:integration
           git checkout integration
-          git merge --no-ff origin/development -m "Auto-promote from development to integration"
+          git merge --no-ff origin/development -m "${{ steps.get-message.outputs.message }}"
           git push origin integration
