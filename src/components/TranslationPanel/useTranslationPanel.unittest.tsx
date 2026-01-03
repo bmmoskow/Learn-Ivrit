@@ -401,5 +401,260 @@ describe("useTranslationPanel", () => {
       // Should not crash, no change expected
       expect(result.current.currentBibleRef).toBeNull();
     });
+
+    it("navigates to previous chapter when possible", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ he: ["פסוק ראשון"] }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      // First load chapter 5
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(5);
+      });
+
+      await act(async () => {
+        await result.current.loadFromBible();
+      });
+
+      expect(result.current.currentBibleRef).toEqual({ book: "Genesis", chapter: 5 });
+
+      // Navigate to previous
+      await act(async () => {
+        result.current.navigateChapter("prev");
+      });
+
+      // Should have called fetch for chapter 4
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("navigates to next chapter when possible", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ he: ["פסוק ראשון"] }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      // First load chapter 1
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(1);
+      });
+
+      await act(async () => {
+        await result.current.loadFromBible();
+      });
+
+      // Navigate to next
+      await act(async () => {
+        result.current.navigateChapter("next");
+      });
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("handleWordClick", () => {
+    it("sets selectedWord with cleaned word and sentence context", () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setHebrewText("שלום עולם. זה משפט שני.");
+      });
+
+      const mockEvent = {
+        target: {
+          textContent: "שלום",
+          getBoundingClientRect: () => ({ left: 100, width: 50, bottom: 200 }),
+        },
+      } as unknown as React.MouseEvent<HTMLSpanElement>;
+
+      act(() => {
+        result.current.handleWordClick(mockEvent);
+      });
+
+      expect(result.current.selectedWord).toEqual({
+        word: "שלום",
+        sentence: "שלום עולם",
+        position: { x: 125, y: 205 },
+      });
+    });
+
+    it("does nothing for empty word", () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      const mockEvent = {
+        target: {
+          textContent: "",
+          getBoundingClientRect: () => ({ left: 100, width: 50, bottom: 200 }),
+        },
+      } as unknown as React.MouseEvent<HTMLSpanElement>;
+
+      act(() => {
+        result.current.handleWordClick(mockEvent);
+      });
+
+      expect(result.current.selectedWord).toBeNull();
+    });
+  });
+
+  describe("loadSavedWords", () => {
+    it("does nothing when user is not logged in", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        await result.current.loadSavedWords();
+      });
+
+      expect(result.current.savedWords.size).toBe(0);
+    });
+  });
+
+  describe("loadFromUrl success", () => {
+    it("loads content and updates state on success", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ content: "תוכן מהאתר" }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/hebrew");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.hebrewText).toBe("תוכן מהאתר");
+      expect(result.current.showUrlInput).toBe(false);
+      expect(result.current.urlInput).toBe("");
+      expect(result.current.currentSource).toBe("https://example.com/hebrew");
+      expect(result.current.bibleLoaded).toBe(false);
+    });
+  });
+
+  describe("triggerFileInput", () => {
+    it("calls click on fileInputRef when available", () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      // fileInputRef is null by default, so this should not throw
+      act(() => {
+        result.current.triggerFileInput();
+      });
+
+      // No error means success - ref.current is null so click() is not called
+      expect(result.current.fileInputRef.current).toBeNull();
+    });
+  });
+
+  describe("error state", () => {
+    it("sets error on non-ok response from loadFromUrl", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: "Custom error message" }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/bad");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Failed to load content from URL. Please check the URL and try again.");
+    });
+
+    it("sets error on non-ok response from loadFromBible", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({}),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(1);
+      });
+
+      await act(async () => {
+        await result.current.loadFromBible();
+      });
+
+      expect(result.current.error).toBe("Failed to load Bible chapter. Please try again.");
+    });
+  });
+
+  describe("canNavigatePrev with bible ref", () => {
+    it("returns true when on chapter > 1", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ he: ["text"] }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(5);
+      });
+
+      await act(async () => {
+        await result.current.loadFromBible();
+      });
+
+      expect(result.current.canNavigatePrev()).toBe(true);
+    });
+
+    it("returns false when on chapter 1", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ he: ["text"] }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(1);
+      });
+
+      await act(async () => {
+        await result.current.loadFromBible();
+      });
+
+      expect(result.current.canNavigatePrev()).toBe(false);
+    });
+  });
+
+  describe("canNavigateNext with bible ref", () => {
+    it("returns true when not on last chapter", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ he: ["text"] }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(1);
+      });
+
+      await act(async () => {
+        await result.current.loadFromBible();
+      });
+
+      expect(result.current.canNavigateNext()).toBe(true);
+    });
   });
 });
