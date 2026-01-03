@@ -11,7 +11,6 @@ import {
   Upload,
   Bookmark,
   BookmarkPlus,
-  Sparkles,
 } from "lucide-react";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { SyncedParagraph } from "./translationPanelUtils";

@@ -12,12 +12,10 @@ import {
 } from "./translationPanelUtils";
 describe("translationPanelUtils", () => {
   describe("stripHtml", () => {
-    let originalDocument: typeof document;
     let mockDiv: { innerHTML: string; textContent: string };
 
     beforeEach(() => {
       mockDiv = { innerHTML: "", textContent: "" };
-      originalDocument = global.document;
       vi.spyOn(document, "createElement").mockReturnValue(mockDiv as unknown as HTMLElement);
     });
 

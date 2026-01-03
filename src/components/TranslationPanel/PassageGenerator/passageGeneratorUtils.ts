@@ -1,5 +1,3 @@
-import { Tables } from "@/integrations/supabase/types";
-
 export type AgeLevel = number | "adult" | "professional" | "academic";
 
 export interface VocabularyWord {

@@ -4,7 +4,6 @@ import {
   SPECIAL_AGE_LEVELS,
   MIN_AGE,
   MAX_NUMERIC_AGE,
-  getAgeLevelLabel,
 } from "./passageGeneratorUtils";
 
 interface PassageGeneratorUIProps {
