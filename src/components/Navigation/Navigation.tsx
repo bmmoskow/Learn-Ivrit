@@ -1,4 +1,4 @@
-import { useAuth } from "../contexts/AuthContext/AuthContext";
+import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { Home, Languages, BookOpen, GraduationCap, LogOut, User } from "lucide-react";
 
 type NavigationProps = {
@@ -60,16 +60,16 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           </div>
         </div>
 
-        <div className="md:hidden flex gap-2 pb-3 overflow-x-auto">
+        <div className="md:hidden grid grid-cols-2 gap-2 pb-3">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => onViewChange(item.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium whitespace-nowrap transition ${
+              className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
                 currentView === item.id ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              <item.icon className="w-5 h-5" />
+              <item.icon className="w-4 h-4" />
               {item.label}
             </button>
           ))}
