@@ -9,8 +9,45 @@ import {
   formatBibleVerses,
   canNavigatePrev,
   canNavigateNext,
+  detectLanguage,
+  isHebrewText,
 } from "./translationPanelUtils";
 describe("translationPanelUtils", () => {
+  describe("detectLanguage", () => {
+    it("detects Hebrew text as hebrew-to-english direction", () => {
+      expect(detectLanguage("שלום עולם")).toBe("hebrew-to-english");
+      expect(detectLanguage("בראשית ברא אלהים")).toBe("hebrew-to-english");
+    });
+
+    it("detects English text as english-to-hebrew direction", () => {
+      expect(detectLanguage("Hello world")).toBe("english-to-hebrew");
+      expect(detectLanguage("This is English text")).toBe("english-to-hebrew");
+    });
+
+    it("handles mixed text with more Hebrew", () => {
+      expect(detectLanguage("שלום hello עולם")).toBe("hebrew-to-english");
+    });
+
+    it("handles mixed text with more English", () => {
+      expect(detectLanguage("Hello שלום world and more")).toBe("english-to-hebrew");
+    });
+
+    it("defaults to hebrew-to-english for equal or empty text", () => {
+      expect(detectLanguage("")).toBe("hebrew-to-english");
+      expect(detectLanguage("123")).toBe("hebrew-to-english"); // no letters
+    });
+  });
+
+  describe("isHebrewText", () => {
+    it("returns true for Hebrew text", () => {
+      expect(isHebrewText("שלום")).toBe(true);
+    });
+
+    it("returns false for English text", () => {
+      expect(isHebrewText("Hello")).toBe(false);
+    });
+  });
+
   describe("stripHtml", () => {
     let mockDiv: { innerHTML: string; textContent: string };
 

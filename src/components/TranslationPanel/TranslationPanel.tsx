@@ -21,6 +21,9 @@ export function TranslationPanel() {
     <>
       <TranslationPanelUI
         hebrewText={hook.hebrewText}
+        sourceText={hook.sourceText}
+        translatedText={hook.translatedText}
+        translationDirection={hook.translationDirection}
         translating={hook.translating}
         error={hook.error}
         savedWords={hook.savedWords}
@@ -36,7 +39,7 @@ export function TranslationPanel() {
         processingImage={hook.processingImage}
         isGuest={isGuest}
         syncedParagraphs={hook.syncedParagraphs}
-        setHebrewText={hook.setHebrewText}
+        setSourceText={hook.setSourceText}
         setUrlInput={hook.setUrlInput}
         setShowUrlInput={hook.setShowUrlInput}
         setSelectedBook={hook.setSelectedBook}

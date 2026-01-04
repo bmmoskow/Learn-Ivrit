@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,7 @@ const RATE_LIMITS = {
 };
 
 async function checkRateLimit(
-  supabase: SupabaseClient,
+  supabase: ReturnType<typeof createClient>,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<{ allowed: boolean; error?: string }> {
@@ -82,7 +82,7 @@ async function checkRateLimit(
 }
 
 async function logRequest(
-  supabase: SupabaseClient,
+  supabase: ReturnType<typeof createClient>,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<void> {
@@ -140,7 +140,7 @@ function extractArticleStructuredData(html: string): { title?: string; descripti
         }
       }
     } catch {
-      // Ignore parsing errors
+      // Ignore JSON parse errors for structured data extraction
     }
   }
 
@@ -280,9 +280,11 @@ Deno.serve(async (req: Request) => {
 
       // Cache lookup is now done on frontend for faster retrieval
       // Edge function only handles cache misses (actual translation)
-      const contentHash = await hashText(text);
+      // Include direction in hash for separate caching of each translation direction
+      const cacheKey = `${sourceLanguage}->${targetLanguage}:${text}`;
+      const contentHash = await hashText(cacheKey);
       const textLength = text.length;
-      console.log("Translating text - hash:", contentHash, "length:", textLength);
+      console.log(`Translating ${sourceLanguage} to ${targetLanguage} - hash:`, contentHash, "length:", textLength);
 
       await logRequest(supabase, user.id, "passage_translation");
 
@@ -383,7 +385,7 @@ Deno.serve(async (req: Request) => {
 
       const { error: insertError } = await supabase.from("translation_cache").insert({
         content_hash: contentHash,
-        hebrew_text: text.substring(0, 5000),
+        hebrew_text: text.substring(0, 5000), // Store source text (could be Hebrew or English)
         translation: translation,
         text_length: textLength,
         cached_at: new Date().toISOString(),
@@ -752,8 +754,8 @@ FORMS:
     }
   } catch (error: unknown) {
     console.error("Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "An error occurred";
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    const message = error instanceof Error ? error.message : "An unknown error occurred";
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: {
         ...corsHeaders,
