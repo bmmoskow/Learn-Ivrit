@@ -106,12 +106,42 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   const hebrewText = translationDirection === "hebrew-to-english" ? sourceText : translatedText;
   const englishText = translationDirection === "hebrew-to-english" ? translatedText : sourceText;
 
-  // Setter that maintains backward compatibility
-  const setHebrewText = useCallback((text: string) => {
-    // When setting Hebrew text directly (e.g., from Bible), force Hebrew→English direction
+  /**
+   * Centralized helper for importing Hebrew content from any source
+   * (Bible, bookmarks, URL extraction, OCR, AI passages).
+   * Handles: setting direction, updating source text, clearing translation, and triggering translation.
+   */
+  const importHebrewContent = useCallback((text: string, options?: {
+    source?: string | null;
+    cachedTranslation?: string | null;
+    clearBibleState?: boolean;
+  }) => {
+    const { source = null, cachedTranslation = null, clearBibleState = true } = options || {};
+
     setTranslationDirection("hebrew-to-english");
     setSourceText(text);
+    setCurrentSource(source);
+
+    if (clearBibleState) {
+      setBibleLoaded(false);
+      setCurrentBibleRef(null);
+    }
+
+    if (cachedTranslation) {
+      setTranslatedText(cachedTranslation);
+    } else {
+      setTranslatedText("");
+      if (text.trim()) {
+        translateText(text, "hebrew-to-english");
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Setter that maintains backward compatibility (for PassageGenerator)
+  const setHebrewText = useCallback((text: string) => {
+    importHebrewContent(text);
+  }, [importHebrewContent]);
 
   const loadSavedWords = useCallback(async () => {
     if (!user) return;
@@ -235,19 +265,9 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       const extractedText = typeof content === "string" ? content : "";
       console.log("Hebrew text loaded, length:", extractedText.length);
 
-      // Imported URL content should behave like Bible/bookmarks/OCR: force direction + trigger translation
-      setTranslationDirection("hebrew-to-english");
-      setSourceText(extractedText);
-      setTranslatedText("");
-      if (extractedText.trim()) {
-        translateText(extractedText, "hebrew-to-english");
-      }
-
+      importHebrewContent(extractedText, { source: url });
       setShowUrlInput(false);
       setUrlInput("");
-      setBibleLoaded(false);
-      setCurrentBibleRef(null);
-      setCurrentSource(url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load content from URL. Please check the URL and try again.");
       console.error("URL extraction error:", err);
@@ -328,21 +348,14 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       const hebrewVerses = data.he || [];
       const formattedHebrewText = formatBibleVerses(hebrewVerses);
 
-      // Set state directly (not via setHebrewText to avoid re-detecting direction)
-      setTranslationDirection("hebrew-to-english");
-      setSourceText(formattedHebrewText);
-
-      if (cachedTranslation) {
-        setTranslatedText(cachedTranslation);
-      } else if (formattedHebrewText.trim()) {
-        // No cached translation - trigger translation
-        translateText(formattedHebrewText, "hebrew-to-english");
-      }
-
+      importHebrewContent(formattedHebrewText, {
+        source: `${bookToLoad} ${chapterToLoad}`,
+        cachedTranslation,
+        clearBibleState: false
+      });
       setShowBibleInput(false);
       setBibleLoaded(true);
       setCurrentBibleRef({ book: bookToLoad, chapter: chapterToLoad });
-      setCurrentSource(`${bookToLoad} ${chapterToLoad}`);
     } catch (err) {
       setError("Failed to load Bible chapter. Please try again.");
       console.error("Bible loading error:", err);
@@ -535,18 +548,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       const data = await response.json();
       console.log("OCR completed, text length:", data.hebrewText?.length);
 
-      // OCR always returns Hebrew
-      setTranslationDirection("hebrew-to-english");
-      setSourceText(data.hebrewText || "");
-      setTranslatedText("");
-
-      if ((data.hebrewText || "").trim()) {
-        translateText(data.hebrewText, "hebrew-to-english");
-      }
-
-      setBibleLoaded(false);
-      setCurrentBibleRef(null);
-      setCurrentSource("Image OCR");
+      importHebrewContent(data.hebrewText || "", { source: "Image OCR" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to process image. Please try again.");
       console.error("Image OCR error:", err);
@@ -563,19 +565,8 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   };
 
   const handleLoadBookmark = (bookmark: BookmarkType) => {
-    // Force Hebrew→English direction for bookmarks (they store Hebrew text)
-    setTranslationDirection("hebrew-to-english");
-    setSourceText(bookmark.hebrew_text);
-    setTranslatedText("");
-    setCurrentSource(bookmark.source);
-    setBibleLoaded(false);
-    setCurrentBibleRef(null);
+    importHebrewContent(bookmark.hebrew_text, { source: bookmark.source });
     setShowBookmarkManager(false);
-
-    // Trigger translation
-    if (bookmark.hebrew_text.trim()) {
-      translateText(bookmark.hebrew_text, "hebrew-to-english");
-    }
   };
 
   const clearAll = () => {
