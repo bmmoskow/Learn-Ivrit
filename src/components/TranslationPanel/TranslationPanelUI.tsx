@@ -11,13 +11,17 @@ import {
   Upload,
   Bookmark,
   BookmarkPlus,
+  ArrowRightLeft,
 } from "lucide-react";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
-import { SyncedParagraph } from "./translationPanelUtils";
+import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 
 interface TranslationPanelUIProps {
   // State
   hebrewText: string;
+  sourceText: string;
+  translatedText: string;
+  translationDirection: TranslationDirection;
   translating: boolean;
   error: string;
   savedWords: Set<string>;
@@ -35,7 +39,7 @@ interface TranslationPanelUIProps {
   syncedParagraphs: SyncedParagraph[] | null;
 
   // Setters
-  setHebrewText: (text: string) => void;
+  setSourceText: (text: string) => void;
   setUrlInput: (url: string) => void;
   setShowUrlInput: (show: boolean) => void;
   setSelectedBook: (book: string) => void;
@@ -60,7 +64,8 @@ interface TranslationPanelUIProps {
 }
 
 export function TranslationPanelUI({
-  hebrewText,
+  sourceText,
+  translationDirection,
   translating,
   error,
   savedWords,
@@ -76,7 +81,7 @@ export function TranslationPanelUI({
   processingImage,
   isGuest,
   syncedParagraphs,
-  setHebrewText,
+  setSourceText,
   setUrlInput,
   setShowUrlInput,
   setSelectedBook,
@@ -97,53 +102,104 @@ export function TranslationPanelUI({
   triggerFileInput,
   fileInputRef,
 }: TranslationPanelUIProps) {
+  const isHebrewToEnglish = translationDirection === "hebrew-to-english";
   const renderSyncedText = () => {
-    if (!syncedParagraphs) return null;
+    // If we have sourceText but no syncedParagraphs yet (translation pending), render a pending state
+    if (!syncedParagraphs) {
+      // Show source text immediately with translation placeholder
+      const sourceIsHebrew = isHebrewToEnglish;
+      return (
+        <div className="grid grid-cols-2 gap-6">
+          <div className={`prose max-w-none ${sourceIsHebrew ? "text-right" : ""}`} dir={sourceIsHebrew ? "rtl" : "ltr"}>
+            <p className="whitespace-pre-wrap">{sourceText}</p>
+          </div>
+          <div className={`prose max-w-none ${!sourceIsHebrew ? "text-right" : ""}`} dir={!sourceIsHebrew ? "rtl" : "ltr"}>
+            <p className="whitespace-pre-wrap">
+              <span className="text-gray-400">{translating ? "Translating..." : "Translation will appear here..."}</span>
+            </p>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-6">
         {syncedParagraphs.map(({ hebrew, english, index: paraIndex }) => {
-          const words = hebrew.split(/(\s+|\n)/);
+          // For Hebrew→English: Hebrew is source (left), English is translation (right)
+          // For English→Hebrew: English is source (left), Hebrew is translation (right)
+          const leftText = isHebrewToEnglish ? hebrew : english;
+          const rightText = isHebrewToEnglish ? english : hebrew;
+          const leftIsHebrew = isHebrewToEnglish;
+          const rightIsHebrew = !isHebrewToEnglish;
+
+          const renderClickableHebrew = (text: string, isTranslation: boolean) => {
+            if (!text.trim()) {
+              if (!isTranslation) return <p className="whitespace-pre-wrap" />;
+
+              return (
+                <p className="whitespace-pre-wrap">
+                  <span className="text-gray-400">{translating ? "Translating..." : "Translation will appear here..."}</span>
+                </p>
+              );
+            }
+
+            const words = text.split(/(\s+|\n)/);
+            return (
+              <p className="whitespace-pre-wrap">
+                {words.map((word, index) => {
+                  if (word === "\n") return <br key={index} />;
+
+                  const trimmedWord = word.trim();
+                  if (!trimmedWord) return <span key={index}>{word}</span>;
+
+                  const isSaved = savedWords.has(trimmedWord);
+
+                  return (
+                    <span
+                      key={index}
+                      onClick={handleWordClick}
+                      className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
+                        isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
+                      }`}
+                    >
+                      {word}
+                    </span>
+                  );
+                })}
+              </p>
+            );
+          };
+
+          const renderPlainText = (text: string, isTranslation: boolean) => (
+            <p className="whitespace-pre-wrap">
+              {translating && isTranslation ? (
+                <span className="text-gray-400">Translating...</span>
+              ) : text ? (
+                text
+              ) : isTranslation ? (
+                <span className="text-gray-400">Translation will appear here...</span>
+              ) : null}
+            </p>
+          );
 
           return (
             <div key={paraIndex} className="grid grid-cols-2 gap-6">
-              {/* Hebrew side */}
-              <div className="text-xl leading-relaxed" dir="rtl" lang="he">
-                <p className="whitespace-pre-wrap">
-                  {words.map((word, index) => {
-                    if (word === "\n") return <br key={index} />;
-
-                    const trimmedWord = word.trim();
-                    if (!trimmedWord) return <span key={index}>{word}</span>;
-
-                    const isSaved = savedWords.has(trimmedWord);
-
-                    return (
-                      <span
-                        key={index}
-                        onClick={handleWordClick}
-                        className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                          isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
-                        }`}
-                      >
-                        {word}
-                      </span>
-                    );
-                  })}
-                </p>
+              {/* Left side */}
+              <div
+                className="text-xl leading-relaxed"
+                dir={leftIsHebrew ? "rtl" : "ltr"}
+                lang={leftIsHebrew ? "he" : "en"}
+              >
+                {leftIsHebrew ? renderClickableHebrew(leftText, false) : renderPlainText(leftText, false)}
               </div>
 
-              {/* English side */}
-              <div className="text-xl leading-relaxed">
-                <p className="whitespace-pre-wrap">
-                  {translating ? (
-                    <span className="text-gray-400">Translating...</span>
-                  ) : english ? (
-                    english
-                  ) : (
-                    <span className="text-gray-400">Translation will appear here...</span>
-                  )}
-                </p>
+              {/* Right side */}
+              <div
+                className="text-xl leading-relaxed"
+                dir={rightIsHebrew ? "rtl" : "ltr"}
+                lang={rightIsHebrew ? "he" : "en"}
+              >
+                {rightIsHebrew ? renderClickableHebrew(rightText, true) : renderPlainText(rightText, true)}
               </div>
             </div>
           );
@@ -161,6 +217,12 @@ export function TranslationPanelUI({
               <Languages className="w-5 h-5 text-blue-600" />
               Translation Panel
             </h2>
+            {sourceText && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+                <ArrowRightLeft className="w-4 h-4" />
+                <span>{isHebrewToEnglish ? "Hebrew → English" : "English → Hebrew"}</span>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             {!isGuest && (
@@ -174,7 +236,7 @@ export function TranslationPanelUI({
                 </button>
                 <button
                   onClick={() => setShowSaveBookmark(true)}
-                  disabled={!hebrewText}
+                  disabled={!sourceText}
                   className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Save bookmark"
                 >
@@ -192,16 +254,16 @@ export function TranslationPanelUI({
               {processingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
             </button>
             <button
-              onClick={() => handleCopy(hebrewText)}
-              disabled={!hebrewText}
+              onClick={() => handleCopy(sourceText)}
+              disabled={!sourceText}
               className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Copy Hebrew text"
+              title="Copy source text"
             >
               <Copy className="w-5 h-5" />
             </button>
             <button
               onClick={clearAll}
-              disabled={!hebrewText}
+              disabled={!sourceText}
               className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
               title="Clear all"
             >
@@ -242,7 +304,7 @@ export function TranslationPanelUI({
           </div>
         )}
 
-        {hebrewText && !isGuest && !bibleLoaded && (
+        {sourceText && !isGuest && !bibleLoaded && (
           <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800 flex items-center gap-2">
               <BookPlus className="w-4 h-4" />
@@ -250,7 +312,7 @@ export function TranslationPanelUI({
             </p>
           </div>
         )}
-        {hebrewText && isGuest && !bibleLoaded && (
+        {sourceText && isGuest && !bibleLoaded && (
           <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <p className="text-sm text-gray-600 flex items-center gap-2">
               <BookPlus className="w-4 h-4" />
@@ -260,7 +322,7 @@ export function TranslationPanelUI({
         )}
 
         <div className="flex-1 min-h-[500px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition">
-          {hebrewText ? (
+          {sourceText ? (
             renderSyncedText()
           ) : showBibleInput ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
@@ -366,15 +428,14 @@ export function TranslationPanelUI({
           ) : (
             <div className="relative h-full">
               <textarea
-                value={hebrewText}
-                onChange={(e) => setHebrewText(e.target.value)}
+                value={sourceText}
+                onChange={(e) => setSourceText(e.target.value)}
                 placeholder=""
                 className="w-full h-full resize-none outline-none text-xl"
-                dir="rtl"
-                lang="he"
+                dir="auto"
               />
               <div className="absolute top-2 left-2 text-gray-400 pointer-events-none text-sm leading-relaxed">
-                Paste Hebrew text here,{" "}
+                Paste Hebrew or English text here,{" "}
                 <span
                   className="text-green-600 underline cursor-pointer pointer-events-auto"
                   onClick={triggerFileInput}
@@ -411,20 +472,20 @@ export function TranslationPanelUI({
           )}
         </div>
 
-        {!hebrewText && !showUrlInput && (
+        {!sourceText && !showUrlInput && (
           <div className="mt-4 space-y-3">
             <div className="flex gap-2">
               <button
-                onClick={() => setHebrewText("שלום עולם")}
+                onClick={() => setSourceText("שלום עולם")}
                 className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
               >
                 Try "שלום עולם"
               </button>
               <button
-                onClick={() => setHebrewText("אני לומד עברית")}
+                onClick={() => setSourceText("Hello world")}
                 className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
               >
-                Try "אני לומד עברית"
+                Try "Hello world"
               </button>
             </div>
           </div>
