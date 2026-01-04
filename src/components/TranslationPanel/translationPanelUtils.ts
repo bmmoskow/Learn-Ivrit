@@ -6,6 +6,29 @@
  * VITE_SUPABASE_URL. Keeping pure functions here allows unit testing without mocking Supabase.
  */
 
+export type TranslationDirection = "hebrew-to-english" | "english-to-hebrew";
+
+/**
+ * Detect whether text is primarily Hebrew or English based on character analysis
+ * Returns the detected translation direction
+ */
+export const detectLanguage = (text: string): TranslationDirection => {
+  // Count Hebrew characters (including vowel points)
+  const hebrewChars = (text.match(/[\u0590-\u05FF]/g) || []).length;
+  // Count Latin alphabet characters
+  const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
+
+  // If more Hebrew than Latin, assume Hebrew input → translate to English
+  return hebrewChars >= latinChars ? "hebrew-to-english" : "english-to-hebrew";
+};
+
+/**
+ * Check if text contains primarily Hebrew characters
+ */
+export const isHebrewText = (text: string): boolean => {
+  return detectLanguage(text) === "hebrew-to-english";
+};
+
 /**
  * Remove HTML tags and decode HTML entities from text
  */
@@ -85,7 +108,7 @@ export const syncParagraphs = (hebrewText: string, englishText: string): SyncedP
     const extraEnglish = englishParagraphs.slice(hebrewParagraphs.length).join("\n\n");
     if (hebrewParagraphs.length > 0 && extraEnglish.trim()) {
       englishParagraphs[hebrewParagraphs.length - 1] =
-        englishParagraphs[hebrewParagraphs.length - 1] + "\n\n" + extraEnglish;
+        (englishParagraphs[hebrewParagraphs.length - 1] || "") + "\n\n" + extraEnglish;
       englishParagraphs.length = hebrewParagraphs.length;
     }
   }
