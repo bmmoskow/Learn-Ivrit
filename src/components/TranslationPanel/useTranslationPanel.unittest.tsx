@@ -266,6 +266,19 @@ describe("useTranslationPanel", () => {
     });
 
     it("sets error on fetch failure", async () => {
+      // Need a session for loadFromUrl to attempt the API call
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+          },
+        },
+        error: null,
+      });
       mockFetch.mockRejectedValue(new Error("Network error"));
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -278,8 +291,132 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toBe("Failed to load content from URL. Please check the URL and try again.");
+      expect(result.current.error).toBe("Network error");
       expect(result.current.loadingUrl).toBe(false);
+    });
+
+    it("requires authentication and uses session access_token", async () => {
+      const testToken = "my-secure-session-token";
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: testToken,
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ content: "שלום עולם" }),
+      } as unknown as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/hebrew-article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      // Verify the Authorization header uses the session token, NOT the anon key
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/extract-url"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${testToken}`,
+          }),
+        }),
+      );
+    });
+
+    it("shows login required error when no session exists", async () => {
+      // No session
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/hebrew-article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("You must be logged in to extract content from URLs");
+      expect(result.current.loadingUrl).toBe(false);
+      // Should not have called fetch since no session
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("loads content successfully and auto-triggers translation", async () => {
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "valid-token",
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      mockFetch.mockImplementation((input) => {
+        const url = String(input);
+
+        if (url.includes("/gemini-translate/extract-url")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: "בראשית ברא אלהים" }),
+          } as unknown as Response);
+        }
+
+        if (url.includes("/gemini-translate/translate")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ translation: "In the beginning God created" }),
+          } as unknown as Response);
+        }
+
+        throw new Error(`Unexpected fetch URL in test: ${url}`);
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://hebrew-news.com/article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.hebrewText).toBe("בראשית ברא אלהים");
+
+      await vi.waitFor(() => {
+        expect(result.current.englishText).toBe("In the beginning God created");
+      });
+
+      // Ensure the translate endpoint was called (regression for "stuck on placeholder")
+      expect(mockFetch.mock.calls.some(([u]) => String(u).includes("/gemini-translate/translate"))).toBe(true);
+
+      expect(result.current.error).toBe("");
+      expect(result.current.loadingUrl).toBe(false);
+      expect(result.current.showUrlInput).toBe(false);
+      expect(result.current.urlInput).toBe("");
+      expect(result.current.currentSource).toBe("https://hebrew-news.com/article");
     });
   });
 
@@ -516,10 +653,35 @@ describe("useTranslationPanel", () => {
 
   describe("loadFromUrl success", () => {
     it("loads content and updates state on success", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ content: "תוכן מהאתר" }),
-      } as unknown as Response);
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "refresh-token",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user-id", app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      mockFetch.mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/gemini-translate/extract-url")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: "תוכן מהאתר" }),
+          } as unknown as Response);
+        }
+        if (url.includes("/gemini-translate/translate")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ translation: "Content from website" }),
+          } as unknown as Response);
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
@@ -531,7 +693,9 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.hebrewText).toBe("תוכן מהאתר");
+      await vi.waitFor(() => {
+        expect(result.current.hebrewText).toBe("תוכן מהאתר");
+      });
       expect(result.current.showUrlInput).toBe(false);
       expect(result.current.urlInput).toBe("");
       expect(result.current.currentSource).toBe("https://example.com/hebrew");
@@ -555,9 +719,22 @@ describe("useTranslationPanel", () => {
 
   describe("error state", () => {
     it("sets error on non-ok response from loadFromUrl", async () => {
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "refresh-token",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user-id", app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "" },
+          },
+        },
+        error: null,
+      });
+
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () => Promise.resolve({ error: "Custom error message" }),
+        json: () => Promise.resolve({ error: "Unable to extract content from this URL" }),
       } as unknown as Response);
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -570,7 +747,7 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toBe("Failed to load content from URL. Please check the URL and try again.");
+      expect(result.current.error).toBe("Unable to extract content from this URL");
     });
 
     it("sets error on non-ok response from loadFromBible", async () => {
@@ -1186,6 +1363,63 @@ describe("syncedParagraphs edge cases", () => {
 
         expect(result.current.syncedParagraphs).toBeNull();
         expect(result.current.translationDirection).toBe("hebrew-to-english");
+      });
+    });
+
+    describe("translateText action exposure", () => {
+      it("exposes translateText for external callers (passage generator pattern)", async () => {
+        // Mock a logged-in session (translateText requires auth)
+        mockGetSession.mockResolvedValue({
+          data: {
+            session: {
+              access_token: "test-token",
+              refresh_token: "test-refresh",
+              expires_in: 3600,
+              token_type: "bearer",
+              user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            },
+          },
+          error: null,
+        });
+
+        // Mock successful translation response BEFORE rendering
+        // Use mockResolvedValue (not mockResolvedValueOnce) to avoid flakiness if other
+        // tests have in-flight fetches that resolve during this test run.
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ translation: "This is a test" }),
+        } as Response);
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // Verify translateText is exposed
+        expect(typeof result.current.translateText).toBe("function");
+
+        // Simulate what TranslationPanel.handlePassageGenerated does
+        await act(async () => {
+          result.current.setHebrewText("זוהי בדיקה");
+          // This should trigger translation (same pattern as bookmarks, Bible, OCR)
+          await result.current.translateText("זוהי בדיקה", "hebrew-to-english");
+        });
+
+        // Translation should have been triggered
+        expect(mockFetch).toHaveBeenCalled();
+
+        // Wait for state update to propagate
+        await vi.waitFor(() => {
+          expect(result.current.translatedText).toBe("This is a test");
+        });
+      });
+
+      it("translateText handles empty text gracefully", async () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        await act(async () => {
+          await result.current.translateText("", "hebrew-to-english");
+        });
+
+        // Should not call fetch for empty text
+        expect(mockFetch).not.toHaveBeenCalled();
       });
     });
   });

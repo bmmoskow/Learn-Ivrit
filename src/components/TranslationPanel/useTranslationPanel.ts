@@ -63,6 +63,7 @@ export interface UseTranslationPanelReturn {
   setSelectedWord: (word: SelectedWord | null) => void;
 
   // Actions
+  translateText: (text: string, direction: TranslationDirection) => Promise<void>;
   loadFromUrl: () => Promise<void>;
   loadFromBible: (book?: string, chapter?: number) => Promise<void>;
   navigateChapter: (direction: "prev" | "next") => void;
@@ -188,12 +189,20 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
         if (!content) {
           console.log("Fetching URL content from API");
+
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session) {
+            throw new Error("You must be logged in to extract content from URLs");
+          }
+
           const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
 
           const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+              Authorization: `Bearer ${session.access_token}`,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ url }),
@@ -223,15 +232,24 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         return content;
       });
 
-      console.log("Hebrew text loaded, length:", content?.length);
-      setHebrewText(content);
+      const extractedText = typeof content === "string" ? content : "";
+      console.log("Hebrew text loaded, length:", extractedText.length);
+
+      // Imported URL content should behave like Bible/bookmarks/OCR: force direction + trigger translation
+      setTranslationDirection("hebrew-to-english");
+      setSourceText(extractedText);
+      setTranslatedText("");
+      if (extractedText.trim()) {
+        translateText(extractedText, "hebrew-to-english");
+      }
+
       setShowUrlInput(false);
       setUrlInput("");
       setBibleLoaded(false);
       setCurrentBibleRef(null);
       setCurrentSource(url);
     } catch (err) {
-      setError("Failed to load content from URL. Please check the URL and try again.");
+      setError(err instanceof Error ? err.message : "Failed to load content from URL. Please check the URL and try again.");
       console.error("URL extraction error:", err);
     } finally {
       setLoadingUrl(false);
@@ -615,6 +633,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     setSelectedWord,
 
     // Actions
+    translateText,
     loadFromUrl,
     loadFromBible,
     navigateChapter,
