@@ -1188,5 +1188,62 @@ describe("syncedParagraphs edge cases", () => {
         expect(result.current.translationDirection).toBe("hebrew-to-english");
       });
     });
+
+    describe("translateText action exposure", () => {
+      it("exposes translateText for external callers (passage generator pattern)", async () => {
+        // Mock a logged-in session (translateText requires auth)
+        mockGetSession.mockResolvedValue({
+          data: {
+            session: {
+              access_token: "test-token",
+              refresh_token: "test-refresh",
+              expires_in: 3600,
+              token_type: "bearer",
+              user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            },
+          },
+          error: null,
+        });
+
+        // Mock successful translation response BEFORE rendering
+        // Use mockResolvedValue (not mockResolvedValueOnce) to avoid flakiness if other
+        // tests have in-flight fetches that resolve during this test run.
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ translation: "This is a test" }),
+        } as Response);
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // Verify translateText is exposed
+        expect(typeof result.current.translateText).toBe("function");
+
+        // Simulate what TranslationPanel.handlePassageGenerated does
+        await act(async () => {
+          result.current.setHebrewText("זוהי בדיקה");
+          // This should trigger translation (same pattern as bookmarks, Bible, OCR)
+          await result.current.translateText("זוהי בדיקה", "hebrew-to-english");
+        });
+
+        // Translation should have been triggered
+        expect(mockFetch).toHaveBeenCalled();
+
+        // Wait for state update to propagate
+        await vi.waitFor(() => {
+          expect(result.current.translatedText).toBe("This is a test");
+        });
+      });
+
+      it("translateText handles empty text gracefully", async () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        await act(async () => {
+          await result.current.translateText("", "hebrew-to-english");
+        });
+
+        // Should not call fetch for empty text
+        expect(mockFetch).not.toHaveBeenCalled();
+      });
+    });
   });
 });

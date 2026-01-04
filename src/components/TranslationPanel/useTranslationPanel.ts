@@ -63,6 +63,7 @@ export interface UseTranslationPanelReturn {
   setSelectedWord: (word: SelectedWord | null) => void;
 
   // Actions
+  translateText: (text: string, direction: TranslationDirection) => Promise<void>;
   loadFromUrl: () => Promise<void>;
   loadFromBible: (book?: string, chapter?: number) => Promise<void>;
   navigateChapter: (direction: "prev" | "next") => void;
@@ -615,6 +616,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     setSelectedWord,
 
     // Actions
+    translateText,
     loadFromUrl,
     loadFromBible,
     navigateChapter,
