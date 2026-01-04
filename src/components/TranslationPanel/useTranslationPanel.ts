@@ -12,7 +12,9 @@ import {
   formatBibleVerses,
   canNavigatePrev as utilCanNavigatePrev,
   canNavigateNext as utilCanNavigateNext,
+  detectLanguage,
   SyncedParagraph,
+  TranslationDirection,
 } from "./translationPanelUtils";
 
 export interface SelectedWord {
@@ -25,6 +27,9 @@ export interface UseTranslationPanelReturn {
   // State
   hebrewText: string;
   englishText: string;
+  sourceText: string;
+  translatedText: string;
+  translationDirection: TranslationDirection;
   translating: boolean;
   error: string;
   selectedWord: SelectedWord | null;
@@ -46,6 +51,7 @@ export interface UseTranslationPanelReturn {
   syncedParagraphs: SyncedParagraph[] | null;
 
   // Setters
+  setSourceText: (text: string) => void;
   setHebrewText: (text: string) => void;
   setUrlInput: (url: string) => void;
   setShowUrlInput: (show: boolean) => void;
@@ -73,8 +79,9 @@ export interface UseTranslationPanelReturn {
 
 export function useTranslationPanel(): UseTranslationPanelReturn {
   const { user, isGuest } = useAuth();
-  const [hebrewText, setHebrewText] = useState("");
-  const [englishText, setEnglishText] = useState("");
+  const [sourceText, setSourceText] = useState("");
+  const [translatedText, setTranslatedText] = useState("");
+  const [translationDirection, setTranslationDirection] = useState<TranslationDirection>("hebrew-to-english");
   const [translating, setTranslating] = useState(false);
   const [error, setError] = useState("");
   const [selectedWord, setSelectedWord] = useState<SelectedWord | null>(null);
@@ -94,6 +101,17 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   const [currentSource, setCurrentSource] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Computed: derive Hebrew/English based on direction
+  const hebrewText = translationDirection === "hebrew-to-english" ? sourceText : translatedText;
+  const englishText = translationDirection === "hebrew-to-english" ? translatedText : sourceText;
+
+  // Setter that maintains backward compatibility
+  const setHebrewText = useCallback((text: string) => {
+    // When setting Hebrew text directly (e.g., from Bible), force Hebrew→English direction
+    setTranslationDirection("hebrew-to-english");
+    setSourceText(text);
+  }, []);
+
   const loadSavedWords = useCallback(async () => {
     if (!user) return;
 
@@ -109,15 +127,29 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     loadSavedWords();
   }, [loadSavedWords]);
 
-  // Translate when Hebrew text changes
-  useEffect(() => {
-    if (hebrewText.trim() && !englishText) {
-      translateText();
-    } else if (!hebrewText.trim()) {
-      setEnglishText("");
+  // Handle source text changes - detect language and translate
+  const handleSourceTextChange = useCallback((text: string) => {
+    // Immediately update source text
+    setSourceText(text);
+
+    // Clear translation when source changes
+    setTranslatedText("");
+
+    if (text.trim()) {
+      // Detect language and set direction
+      const detectedDirection = detectLanguage(text);
+      setTranslationDirection(detectedDirection);
+      translateText(text, detectedDirection);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hebrewText]);
+  }, []);
+
+  // Keep the simpler effect for clearing only
+  useEffect(() => {
+    if (!sourceText.trim()) {
+      setTranslatedText("");
+    }
+  }, [sourceText]);
 
   const loadFromUrl = async () => {
     if (!urlInput.trim()) return;
@@ -214,7 +246,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
     setLoadingBible(true);
     setError("");
-    setEnglishText("");
+    setTranslatedText("");
 
     try {
       const reference = `${bookToLoad}.${chapterToLoad}`;
@@ -276,12 +308,17 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       });
 
       const hebrewVerses = data.he || [];
-      const hebrewText = formatBibleVerses(hebrewVerses);
+      const formattedHebrewText = formatBibleVerses(hebrewVerses);
 
-      setHebrewText(hebrewText);
+      // Set state directly (not via setHebrewText to avoid re-detecting direction)
+      setTranslationDirection("hebrew-to-english");
+      setSourceText(formattedHebrewText);
 
       if (cachedTranslation) {
-        setEnglishText(cachedTranslation);
+        setTranslatedText(cachedTranslation);
+      } else if (formattedHebrewText.trim()) {
+        // No cached translation - trigger translation
+        translateText(formattedHebrewText, "hebrew-to-english");
       }
 
       setShowBibleInput(false);
@@ -316,17 +353,24 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   const canNavigatePrev = () => utilCanNavigatePrev(currentBibleRef);
   const canNavigateNext = () => utilCanNavigateNext(currentBibleRef, BIBLE_BOOKS);
 
-  const translateText = async () => {
-    if (!hebrewText.trim()) return;
+  const translateText = async (text?: string, direction?: TranslationDirection) => {
+    const textToTranslate = (text || sourceText).trim();
+    const currentDirection = direction || translationDirection;
+
+    if (!textToTranslate) return;
+
+    const sourceLanguage = currentDirection === "hebrew-to-english" ? "Hebrew" : "English";
+    const targetLanguage = currentDirection === "hebrew-to-english" ? "English" : "Hebrew";
 
     setTranslating(true);
     setError("");
 
     try {
-      const textToTranslate = hebrewText.trim();
-      const contentHash = await generateContentHash(textToTranslate);
+      // Include direction in cache key
+      const cacheKey = `${sourceLanguage}->${targetLanguage}:${textToTranslate}`;
+      const contentHash = await generateContentHash(cacheKey);
 
-      console.log("Generated content_hash:", contentHash);
+      console.log(`Translating ${sourceLanguage} to ${targetLanguage}, hash:`, contentHash);
 
       const requestKey = createRequestKey("translate", { contentHash });
 
@@ -362,8 +406,8 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
           },
           body: JSON.stringify({
             text: textToTranslate,
-            targetLanguage: "English",
-            sourceLanguage: "Hebrew",
+            targetLanguage,
+            sourceLanguage,
           }),
         });
 
@@ -378,7 +422,8 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         const responseData = await response.json();
         console.log("Translation received, length:", responseData.translation?.length);
 
-        if (bibleLoaded && currentBibleRef && !isGuest && user) {
+        // Cache Bible translations to Sefaria cache
+        if (bibleLoaded && currentBibleRef && !isGuest && user && currentDirection === "hebrew-to-english") {
           const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
           supabase
             .from("sefaria_cache")
@@ -390,7 +435,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         return responseData.translation;
       });
 
-      setEnglishText(translation);
+      setTranslatedText(translation);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to translate. Please try again.");
       console.error("Translation error:", err);
@@ -472,7 +517,15 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       const data = await response.json();
       console.log("OCR completed, text length:", data.hebrewText?.length);
 
-      setHebrewText(data.hebrewText);
+      // OCR always returns Hebrew
+      setTranslationDirection("hebrew-to-english");
+      setSourceText(data.hebrewText || "");
+      setTranslatedText("");
+
+      if ((data.hebrewText || "").trim()) {
+        translateText(data.hebrewText, "hebrew-to-english");
+      }
+
       setBibleLoaded(false);
       setCurrentBibleRef(null);
       setCurrentSource("Image OCR");
@@ -492,17 +545,25 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   };
 
   const handleLoadBookmark = (bookmark: BookmarkType) => {
-    setHebrewText(bookmark.hebrew_text);
-    setEnglishText("");
+    // Force Hebrew→English direction for bookmarks (they store Hebrew text)
+    setTranslationDirection("hebrew-to-english");
+    setSourceText(bookmark.hebrew_text);
+    setTranslatedText("");
     setCurrentSource(bookmark.source);
     setBibleLoaded(false);
     setCurrentBibleRef(null);
     setShowBookmarkManager(false);
+
+    // Trigger translation
+    if (bookmark.hebrew_text.trim()) {
+      translateText(bookmark.hebrew_text, "hebrew-to-english");
+    }
   };
 
   const clearAll = () => {
-    setHebrewText("");
-    setEnglishText("");
+    setSourceText("");
+    setTranslatedText("");
+    setTranslationDirection("hebrew-to-english");
     setBibleLoaded(false);
     setCurrentBibleRef(null);
     setCurrentSource(null);
@@ -518,6 +579,9 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     // State
     hebrewText,
     englishText,
+    sourceText,
+    translatedText,
+    translationDirection,
     translating,
     error,
     selectedWord,
@@ -539,6 +603,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     syncedParagraphs,
 
     // Setters
+    setSourceText: handleSourceTextChange,
     setHebrewText,
     setUrlInput,
     setShowUrlInput,
