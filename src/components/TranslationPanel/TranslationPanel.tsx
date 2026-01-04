@@ -13,13 +13,8 @@ export function TranslationPanel() {
   const [showPassageGenerator, setShowPassageGenerator] = useState(false);
 
   const handlePassageGenerated = (passage: string) => {
-    hook.setHebrewText(passage);
+    hook.setHebrewText(passage); // Now handles translation automatically via importHebrewContent
     setShowPassageGenerator(false);
-
-    // Trigger translation explicitly (same pattern as bookmarks, Bible, OCR)
-    if (passage.trim()) {
-      hook.translateText(passage, "hebrew-to-english");
-    }
   };
 
   return (

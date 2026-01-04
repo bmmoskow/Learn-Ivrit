@@ -42,6 +42,26 @@ const mockOnAuthStateChange = vi.mocked(supabase.auth.onAuthStateChange);
 // Wrapper to provide AuthContext
 const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
+// Helper to mock a successful translation flow (for tests that use setHebrewText which now auto-translates)
+const setupTranslationMocks = () => {
+  mockGetSession.mockResolvedValue({
+    data: {
+      session: {
+        access_token: "test-token",
+        refresh_token: "test-refresh",
+        expires_in: 3600,
+        token_type: "bearer",
+        user: { id: "test-user", app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "" },
+      },
+    },
+    error: null,
+  });
+  mockFetch.mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve({ translation: "Translation result" }),
+  } as Response);
+};
+
 describe("useTranslationPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -79,7 +99,8 @@ describe("useTranslationPanel", () => {
   });
 
   describe("setters", () => {
-    it("setHebrewText updates hebrewText", () => {
+    it("setHebrewText updates hebrewText and triggers translation", () => {
+      setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       act(() => {
@@ -87,6 +108,26 @@ describe("useTranslationPanel", () => {
       });
 
       expect(result.current.hebrewText).toBe("שלום");
+    });
+
+    it("setHebrewText clears bible state and sets source", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      // Manually set some state that should be cleared
+      act(() => {
+        result.current.setSelectedBook("Genesis");
+        result.current.setSelectedChapter(5);
+      });
+
+      await act(async () => {
+        result.current.setHebrewText("טקסט חדש");
+      });
+
+      // importHebrewContent clears bible state by default
+      expect(result.current.bibleLoaded).toBe(false);
+      expect(result.current.currentBibleRef).toBeNull();
+      expect(result.current.translationDirection).toBe("hebrew-to-english");
     });
 
     it("setUrlInput updates urlInput", () => {
@@ -515,6 +556,7 @@ describe("useTranslationPanel", () => {
     });
 
     it("computes synced paragraphs when hebrewText is set", () => {
+      setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       act(() => {
@@ -597,6 +639,7 @@ describe("useTranslationPanel", () => {
 
   describe("handleWordClick", () => {
     it("sets selectedWord with cleaned word and sentence context", () => {
+      setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       act(() => {
@@ -1109,6 +1152,7 @@ describe("useTranslationPanel", () => {
 
 describe("syncedParagraphs edge cases", () => {
     it("handles single paragraph with translation", () => {
+      setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       act(() => {
@@ -1121,6 +1165,7 @@ describe("syncedParagraphs edge cases", () => {
     });
 
     it("returns multiple synced paragraphs for multi-paragraph text", () => {
+      setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       act(() => {
@@ -1232,6 +1277,7 @@ describe("syncedParagraphs edge cases", () => {
 
     describe("setHebrewText forces hebrew-to-english direction", () => {
       it("resets direction to hebrew-to-english when setHebrewText is called", () => {
+        setupTranslationMocks();
         const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
         // First set to english-to-hebrew via setSourceText
@@ -1396,10 +1442,9 @@ describe("syncedParagraphs edge cases", () => {
         expect(typeof result.current.translateText).toBe("function");
 
         // Simulate what TranslationPanel.handlePassageGenerated does
+        // Note: setHebrewText now automatically triggers translation via importHebrewContent
         await act(async () => {
           result.current.setHebrewText("זוהי בדיקה");
-          // This should trigger translation (same pattern as bookmarks, Bible, OCR)
-          await result.current.translateText("זוהי בדיקה", "hebrew-to-english");
         });
 
         // Translation should have been triggered
