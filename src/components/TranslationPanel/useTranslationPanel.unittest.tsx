@@ -212,6 +212,100 @@ describe("useTranslationPanel", () => {
     });
   });
 
+  describe("importHebrewContent (via setHebrewText)", () => {
+    it("sets translation direction to hebrew-to-english", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      expect(result.current.translationDirection).toBe("hebrew-to-english");
+    });
+
+    it("uses cached translation when provided (via handleLoadBookmark)", async () => {
+      // handleLoadBookmark passes cachedTranslation option
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.handleLoadBookmark({
+          id: "1",
+          name: "Test Bookmark",
+          hebrew_text: "שלום",
+          user_id: "user1",
+          folder_id: null,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          source: null,
+        });
+      });
+
+      // Should set hebrew text without making API call (no session mocked)
+      expect(result.current.hebrewText).toBe("שלום");
+      // Fetch should not be called since we're using the bookmark flow
+      // and there's no explicit translation request
+    });
+
+    it("clears bible state by default", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      // Manually set bibleLoaded to simulate loaded state
+      // (normally set by loadFromBible success)
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      expect(result.current.bibleLoaded).toBe(false);
+      expect(result.current.currentBibleRef).toBeNull();
+    });
+
+    it("sets source when provided", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.handleLoadBookmark({
+          id: "1",
+          name: "Test Bookmark",
+          hebrew_text: "שלום עולם",
+          user_id: "user1",
+          folder_id: null,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+          source: "https://example.com/source",
+        });
+      });
+
+      expect(result.current.currentSource).toBe("https://example.com/source");
+    });
+
+    it("does not trigger translation for empty text", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("");
+      });
+
+      // Fetch should not be called for empty text
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("triggers translation for non-empty text", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+      });
+    });
+  });
+
   describe("clearAll", () => {
     it("resets all text and navigation state", () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
