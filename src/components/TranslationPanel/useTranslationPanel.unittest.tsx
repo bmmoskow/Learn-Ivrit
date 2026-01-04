@@ -930,7 +930,7 @@ describe("useTranslationPanel", () => {
     });
   });
 
-  describe("syncedParagraphs edge cases", () => {
+describe("syncedParagraphs edge cases", () => {
     it("handles single paragraph with translation", () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
@@ -953,6 +953,240 @@ describe("useTranslationPanel", () => {
       expect(result.current.syncedParagraphs).toHaveLength(3);
       expect(result.current.syncedParagraphs![0].hebrew).toBe("פסקה א");
       expect(result.current.syncedParagraphs![2].hebrew).toBe("פסקה ג");
+    });
+  });
+
+  describe("bidirectional translation", () => {
+    describe("translationDirection state", () => {
+      it("has initial direction of hebrew-to-english", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+      });
+    });
+
+    describe("setSourceText with language detection", () => {
+      it("sets direction to hebrew-to-english for Hebrew input", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("שלום עולם");
+        });
+
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+        expect(result.current.sourceText).toBe("שלום עולם");
+      });
+
+      it("sets direction to english-to-hebrew for English input", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("Hello world");
+        });
+
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+        expect(result.current.sourceText).toBe("Hello world");
+      });
+
+      it("clears translatedText when source changes", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("Initial text");
+        });
+
+        // Change source text
+        act(() => {
+          result.current.setSourceText("New text");
+        });
+
+        expect(result.current.translatedText).toBe("");
+      });
+
+      it("detects mixed text with majority Hebrew as hebrew-to-english", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("שלום hello עולם טוב");
+        });
+
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+      });
+
+      it("detects mixed text with majority English as english-to-hebrew", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("Hello שלום world and more English");
+        });
+
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+      });
+    });
+
+    describe("hebrewText and englishText computed values", () => {
+      it("hebrewText is sourceText when direction is hebrew-to-english", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("שלום עולם");
+        });
+
+        expect(result.current.hebrewText).toBe("שלום עולם");
+        expect(result.current.englishText).toBe("");
+      });
+
+      it("hebrewText is translatedText when direction is english-to-hebrew", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("Hello world");
+        });
+
+        // In english-to-hebrew, Hebrew is the translation target
+        expect(result.current.sourceText).toBe("Hello world");
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+        // englishText should be the source
+        expect(result.current.englishText).toBe("Hello world");
+        // hebrewText should be empty (no translation yet)
+        expect(result.current.hebrewText).toBe("");
+      });
+    });
+
+    describe("setHebrewText forces hebrew-to-english direction", () => {
+      it("resets direction to hebrew-to-english when setHebrewText is called", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // First set to english-to-hebrew via setSourceText
+        act(() => {
+          result.current.setSourceText("Hello world");
+        });
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+
+        // Now use setHebrewText which should force hebrew-to-english
+        act(() => {
+          result.current.setHebrewText("עברית");
+        });
+
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+        expect(result.current.hebrewText).toBe("עברית");
+      });
+    });
+
+    describe("Bible loading resets to hebrew-to-english", () => {
+      it("loads Bible verses as Hebrew source (hebrew-to-english direction)", async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ he: ["בראשית"] }),
+        } as unknown as Response);
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // First set to english direction
+        act(() => {
+          result.current.setSourceText("English text");
+        });
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+
+        // Load Bible
+        act(() => {
+          result.current.setSelectedBook("Genesis");
+          result.current.setSelectedChapter(1);
+        });
+
+        await act(async () => {
+          await result.current.loadFromBible();
+        });
+
+        // Should reset to hebrew-to-english
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+        expect(result.current.hebrewText).toContain("בראשית");
+      });
+    });
+
+    describe("bookmark loading resets to hebrew-to-english", () => {
+      it("loads bookmark as Hebrew source (hebrew-to-english direction)", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // First set to english direction
+        act(() => {
+          result.current.setSourceText("English text");
+        });
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+
+        // Load bookmark
+        const bookmark = {
+          id: "123",
+          user_id: "user-1",
+          name: "Test",
+          hebrew_text: "שמע ישראל",
+          source: null,
+          folder_id: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        act(() => {
+          result.current.handleLoadBookmark(bookmark);
+        });
+
+        // Should reset to hebrew-to-english
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+        expect(result.current.hebrewText).toBe("שמע ישראל");
+      });
+    });
+
+    describe("clearAll resets direction", () => {
+      it("resets translationDirection to hebrew-to-english on clearAll", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // Set to english-to-hebrew
+        act(() => {
+          result.current.setSourceText("English text");
+        });
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+
+        // Clear all
+        act(() => {
+          result.current.clearAll();
+        });
+
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+        expect(result.current.sourceText).toBe("");
+        expect(result.current.translatedText).toBe("");
+      });
+    });
+
+    describe("syncedParagraphs with different directions", () => {
+      it("returns null when sourceText is empty regardless of input language", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        // Set and then clear English text
+        act(() => {
+          result.current.setSourceText("Hello");
+        });
+        act(() => {
+          result.current.setSourceText("");
+        });
+
+        expect(result.current.syncedParagraphs).toBeNull();
+      });
+
+      it("handles empty source after direction change", () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        act(() => {
+          result.current.setSourceText("English text");
+        });
+        expect(result.current.translationDirection).toBe("english-to-hebrew");
+
+        act(() => {
+          result.current.clearAll();
+        });
+
+        expect(result.current.syncedParagraphs).toBeNull();
+        expect(result.current.translationDirection).toBe("hebrew-to-english");
+      });
     });
   });
 });
