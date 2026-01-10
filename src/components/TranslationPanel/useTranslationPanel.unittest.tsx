@@ -478,11 +478,34 @@ describe("useTranslationPanel", () => {
       );
     });
 
-    it("shows login required error when no session exists", async () => {
-      // No session
+    it("allows guests to load URL content using anon key", async () => {
+      // No session - guest mode
       mockGetSession.mockResolvedValue({
         data: { session: null },
         error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockImplementation((input) => {
+        const url = String(input);
+
+        if (url.includes("/gemini-translate/extract-url")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: "טקסט עברי מהאתר" }),
+          } as unknown as Response);
+        }
+
+        if (url.includes("/gemini-translate/translate")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ translation: "Hebrew text from website" }),
+          } as unknown as Response);
+        }
+
+        throw new Error(`Unexpected fetch URL in test: ${url}`);
       });
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -495,17 +518,29 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toBe("You must be logged in to extract content from URLs");
+      // Verify fetch was called with anon key for guest
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/extract-url"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-anon-key",
+          }),
+        }),
+      );
+
+      expect(result.current.hebrewText).toBe("טקסט עברי מהאתר");
+      expect(result.current.error).toBe("");
       expect(result.current.loadingUrl).toBe(false);
-      // Should not have called fetch since no session
-      expect(mockFetch).not.toHaveBeenCalled();
+
+      vi.unstubAllEnvs();
     });
 
-    it("loads content successfully and auto-triggers translation", async () => {
+    it("uses session token for authenticated users loading URLs", async () => {
+      const testToken = "valid-token";
       mockGetSession.mockResolvedValue({
         data: {
           session: {
-            access_token: "valid-token",
+            access_token: testToken,
             refresh_token: "test-refresh",
             expires_in: 3600,
             token_type: "bearer",
@@ -545,6 +580,16 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
+      // Verify fetch was called with session token for authenticated user
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/extract-url"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${testToken}`,
+          }),
+        }),
+      );
+
       expect(result.current.hebrewText).toBe("בראשית ברא אלהים");
 
       await vi.waitFor(() => {
@@ -559,6 +604,37 @@ describe("useTranslationPanel", () => {
       expect(result.current.showUrlInput).toBe(false);
       expect(result.current.urlInput).toBe("");
       expect(result.current.currentSource).toBe("https://hebrew-news.com/article");
+    });
+
+    it("handles rate limit errors for guest URL loading", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: () => Promise.resolve({ error: "Rate limit exceeded. Try again later." }),
+      } as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/hebrew-article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Rate limit exceeded. Try again later.");
+      expect(result.current.loadingUrl).toBe(false);
+
+      vi.unstubAllEnvs();
     });
   });
 
