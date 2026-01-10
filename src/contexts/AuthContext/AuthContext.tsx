@@ -33,7 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Check if Supabase is properly configured
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    // This app uses the anon key for the browser client
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn('Supabase not configured - authentication will not work, but guest mode is available');

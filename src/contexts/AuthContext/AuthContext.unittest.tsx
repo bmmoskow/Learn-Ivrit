@@ -99,7 +99,7 @@ describe("AuthContext", () => {
     localStorage.clear();
     // Mock env vars so AuthContext doesn't early-return before checking guest mode
     vi.stubEnv("VITE_SUPABASE_URL", "http://test.supabase.co");
-    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "test-key");
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn(), id: "test-sub", callback: vi.fn() } },
@@ -108,6 +108,48 @@ describe("AuthContext", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  describe("environment variable check", () => {
+    it("uses VITE_SUPABASE_ANON_KEY not VITE_SUPABASE_PUBLISHABLE_KEY", async () => {
+      // Ensure only anon key is set, not publishable key
+      vi.unstubAllEnvs();
+      vi.stubEnv("VITE_SUPABASE_URL", "http://test.supabase.co");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      // Explicitly do NOT set VITE_SUPABASE_PUBLISHABLE_KEY
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // Auth should initialize properly and call getSession
+      expect(mockGetSession).toHaveBeenCalled();
+      expect(result.current.loading).toBe(false);
+    });
+
+    it("falls back to guest mode warning when VITE_SUPABASE_ANON_KEY is missing", async () => {
+      // Explicitly stub anon key as empty to simulate missing config
+      vi.stubEnv("VITE_SUPABASE_URL", "http://test.supabase.co");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+
+      const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        "Supabase not configured - authentication will not work, but guest mode is available"
+      );
+      expect(mockGetSession).not.toHaveBeenCalled();
+      expect(result.current.loading).toBe(false);
+
+      consoleWarnSpy.mockRestore();
+    });
   });
 
   describe("initial state", () => {
