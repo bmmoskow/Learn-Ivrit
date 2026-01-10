@@ -28,6 +28,13 @@ vi.mock("../../../supabase/client", () => ({
   },
 }));
 
+// Mock getAuthHeader - this creates a passthrough that uses the mocked supabase
+// We re-export the real implementation which will use the mocked supabase.auth.getSession
+vi.mock("../../utils/auth/getAuthHeader", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/auth/getAuthHeader")>();
+  return actual;
+});
+
 // Mock fetch for edge function calls
 const mockFetch = vi.fn() as Mock<typeof fetch>;
 global.fetch = mockFetch;

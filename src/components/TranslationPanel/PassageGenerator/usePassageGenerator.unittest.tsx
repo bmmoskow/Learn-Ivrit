@@ -16,6 +16,12 @@ vi.mock("@/contexts/AuthContext/AuthContext", () => ({
   useAuth: vi.fn(),
 }));
 
+// Mock getAuthHeader utility
+const mockGetAuthHeader = vi.fn();
+vi.mock("@/utils/auth/getAuthHeader", () => ({
+  getAuthHeader: () => mockGetAuthHeader(),
+}));
+
 // Mock fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -230,11 +236,8 @@ describe("usePassageGenerator", () => {
       }),
     } as unknown as ReturnType<typeof supabase.from>);
 
-    // Must mock session for authenticated flow
-    vi.mocked(supabase.auth.getSession).mockResolvedValue({
-      data: { session: { access_token: "test-token" } },
-      error: null,
-    } as Awaited<ReturnType<typeof supabase.auth.getSession>>);
+    // Mock auth header for authenticated user
+    mockGetAuthHeader.mockResolvedValue("Bearer test-token");
 
     const generatedPassage = "שָׁלוֹם לְכֻלָּם! זֶה סִפּוּר קָצָר.";
     mockFetch.mockResolvedValue({
@@ -269,7 +272,9 @@ describe("usePassageGenerator", () => {
 
   it("generatePassage allows guests to generate without vocabulary", async () => {
     vi.mocked(useAuth).mockReturnValue(createMockAuthReturn(null, true));
-    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+
+    // Mock auth header for guest
+    mockGetAuthHeader.mockResolvedValue("Bearer test-anon-key");
 
     const generatedPassage = "שָׁלוֹם לְכֻלָּם! זֶה סִפּוּר עַל חַיּוֹת.";
     mockFetch.mockResolvedValue({
@@ -327,10 +332,8 @@ describe("usePassageGenerator", () => {
       }),
     } as unknown as ReturnType<typeof supabase.from>);
 
-    vi.mocked(supabase.auth.getSession).mockResolvedValue({
-      data: { session: { access_token: "test-token" } },
-      error: null,
-    } as Awaited<ReturnType<typeof supabase.auth.getSession>>);
+    // Mock auth header for authenticated user
+    mockGetAuthHeader.mockResolvedValue("Bearer test-token");
 
     const generatedPassage = "שָׁלוֹם לְכֻלָּם! זֶה סִפּוּר עַל חַיּוֹת.";
     mockFetch.mockResolvedValue({

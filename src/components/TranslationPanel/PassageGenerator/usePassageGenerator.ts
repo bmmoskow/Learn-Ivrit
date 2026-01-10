@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext/AuthContext";
 import { supabase } from "../../../../supabase/client";
+import { getAuthHeader } from "@/utils/auth/getAuthHeader";
 import {
   AgeLevel,
   VocabularyWord,
@@ -109,18 +110,7 @@ export function usePassageGenerator(
       // Build the prompt (works with empty vocabulary for guests)
       const prompt = buildPassagePrompt(ageLevel, topic, sortedVocabulary);
 
-      // Get auth header - use session token for authenticated users, anon key for guests
-      let authHeader: string;
-      if (user) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("Session expired. Please log in again.");
-        }
-        authHeader = `Bearer ${session.access_token}`;
-      } else {
-        // Guest mode - use anon key
-        authHeader = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
-      }
+      const authHeader = await getAuthHeader();
 
       // Call the edge function
       const response = await fetch(

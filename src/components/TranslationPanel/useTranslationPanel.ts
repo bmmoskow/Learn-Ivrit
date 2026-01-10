@@ -4,6 +4,7 @@ import { supabase } from "../../../supabase/client";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator/requestDeduplicator";
 import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks";
+import { getAuthHeader, getAuthToken } from "../../utils/auth/getAuthHeader";
 import {
   cleanWord,
   getSentenceContext,
@@ -221,19 +222,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         if (!content) {
           console.log("Fetching URL content from API");
 
-          // Get auth header - use session token for authenticated users, anon key for guests
-          let authHeader: string;
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          if (session) {
-            authHeader = `Bearer ${session.access_token}`;
-          } else {
-            // Guest mode - use anon key
-            authHeader = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
-          }
-
+          const authHeader = await getAuthHeader();
           const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
 
           const response = await fetch(apiUrl, {
@@ -429,12 +418,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         console.log("Cache miss, calling edge function for translation");
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
-        // Get session if available (guests can still translate)
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
+        const authToken = await getAuthToken();
 
         const response = await fetch(apiUrl, {
           method: "POST",
@@ -524,19 +508,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
       console.log("Sending image for OCR...");
 
-      // Get auth header - use session token for authenticated users, anon key for guests
-      let authHeader: string;
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        authHeader = `Bearer ${session.access_token}`;
-      } else {
-        // Guest mode - use anon key
-        authHeader = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
-      }
-
+      const authHeader = await getAuthHeader();
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/ocr`;
 
       const response = await fetch(apiUrl, {
