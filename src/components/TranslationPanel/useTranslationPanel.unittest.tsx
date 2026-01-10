@@ -1581,5 +1581,169 @@ describe("syncedParagraphs edge cases", () => {
         expect(mockFetch).not.toHaveBeenCalled();
       });
     });
+
+    describe("handleImageUpload guest access", () => {
+      // Helper to create a mock FileReader that triggers onload asynchronously
+      const createMockFileReader = (mockReadResult: string) => {
+        return class MockFileReader {
+          result: string | null = null;
+          onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+          onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
+
+          readAsDataURL() {
+            // Use queueMicrotask to ensure onload is called after the Promise handlers are set up
+            queueMicrotask(() => {
+              this.result = mockReadResult;
+              if (this.onload) {
+                this.onload({ target: { result: mockReadResult } } as unknown as ProgressEvent<FileReader>);
+              }
+            });
+          }
+        } as unknown as typeof FileReader;
+      };
+
+      it("allows guests to upload images using anon key", async () => {
+        // No session - guest mode
+        mockGetSession.mockResolvedValue({
+          data: { session: null },
+          error: null,
+        });
+
+        // Stub anon key
+        vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+        vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ hebrewText: "שלום עולם מהתמונה" }),
+        } as Response);
+
+        const originalFileReader = global.FileReader;
+        global.FileReader = createMockFileReader("data:image/jpeg;base64,fakebase64data");
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-image-data"], "test.jpg", { type: "image/jpeg" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        global.FileReader = originalFileReader;
+
+        // Verify fetch was called with anon key for guest
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining("/gemini-translate/ocr"),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: "Bearer test-anon-key",
+            }),
+          }),
+        );
+
+        // Verify no error occurred
+        expect(result.current.error).toBe("");
+
+        vi.unstubAllEnvs();
+      });
+
+      it("uses session token for authenticated users uploading images", async () => {
+        const testToken = "authenticated-user-token";
+        mockGetSession.mockResolvedValue({
+          data: {
+            session: {
+              access_token: testToken,
+              refresh_token: "test-refresh",
+              expires_in: 3600,
+              token_type: "bearer",
+              user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            },
+          },
+          error: null,
+        });
+
+        vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ hebrewText: "טקסט עברי" }),
+        } as Response);
+
+        const originalFileReader = global.FileReader;
+        global.FileReader = createMockFileReader("data:image/png;base64,fakebase64data");
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-image-data"], "test.png", { type: "image/png" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        global.FileReader = originalFileReader;
+
+        // Verify fetch was called with session token for authenticated user
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining("/gemini-translate/ocr"),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: `Bearer ${testToken}`,
+            }),
+          }),
+        );
+
+        vi.unstubAllEnvs();
+      });
+
+      it("handles rate limit errors for guest image upload", async () => {
+        mockGetSession.mockResolvedValue({
+          data: { session: null },
+          error: null,
+        });
+
+        vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+        vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 429,
+          json: () => Promise.resolve({ error: "Rate limit exceeded. Try again in 5 minutes." }),
+        } as Response);
+
+        const originalFileReader = global.FileReader;
+        global.FileReader = createMockFileReader("data:image/jpeg;base64,fakebase64data");
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-image-data"], "test.jpg", { type: "image/jpeg" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        global.FileReader = originalFileReader;
+
+        expect(result.current.error).toBe("Rate limit exceeded. Try again in 5 minutes.");
+        expect(result.current.processingImage).toBe(false);
+
+        vi.unstubAllEnvs();
+      });
+
+      it("rejects non-image files", async () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-text-data"], "test.txt", { type: "text/plain" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        expect(result.current.error).toBe("Please upload an image file");
+        expect(mockFetch).not.toHaveBeenCalledWith(
+          expect.stringContaining("/ocr"),
+          expect.anything(),
+        );
+      });
+    });
   });
 });

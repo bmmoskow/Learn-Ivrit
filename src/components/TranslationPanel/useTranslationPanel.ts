@@ -72,6 +72,7 @@ export interface UseTranslationPanelReturn {
   handleWordClick: (e: React.MouseEvent<HTMLSpanElement>) => void;
   handleCopy: (text: string) => void;
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleImageUpload: (file: File) => Promise<void>;
   handleLoadBookmark: (bookmark: BookmarkType) => void;
   clearAll: () => void;
   loadSavedWords: () => Promise<void>;
@@ -517,11 +518,17 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
       console.log("Sending image for OCR...");
 
+      // Get auth header - use session token for authenticated users, anon key for guests
+      let authHeader: string;
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("You must be logged in to use image OCR");
+
+      if (session) {
+        authHeader = `Bearer ${session.access_token}`;
+      } else {
+        // Guest mode - use anon key
+        authHeader = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
       }
 
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/ocr`;
@@ -529,7 +536,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: authHeader,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -633,6 +640,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     handleWordClick,
     handleCopy,
     handleFileSelect,
+    handleImageUpload,
     handleLoadBookmark,
     clearAll,
     loadSavedWords,
