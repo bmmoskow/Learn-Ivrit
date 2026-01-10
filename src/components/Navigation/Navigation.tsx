@@ -62,7 +62,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           {/* Row 1: Hebrew Learner (left) + Email (right) */}
           <div className="flex items-center justify-between h-14">
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              Learn Ivrit
+              Hebrew Learner
             </div>
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
               <User className="w-4 h-4" />
@@ -113,16 +113,16 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
           </div>
 
           {/* Row 2: Nav items */}
-          <div className="flex items-center gap-1 pb-2 overflow-x-auto">
+          <div className="flex items-center justify-center gap-0 pb-2">
             {navItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onViewChange(item.id)}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+                className={`flex items-center gap-0.5 px-1.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
                   currentView === item.id ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                <item.icon className="w-3.5 h-3.5" />
+                <item.icon className="w-3.5 h-3.5 shrink-0" />
                 {item.label}
               </button>
             ))}

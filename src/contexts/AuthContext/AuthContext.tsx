@@ -42,14 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
+    // IMPORTANT: Set up auth listener BEFORE getSession to avoid race conditions
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
         setUser(session?.user ?? null);
+        setLoading(false);
 
         if (event === 'PASSWORD_RECOVERY') {
           window.location.hash = 'reset-password';
@@ -71,6 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       })();
+    });
+
+    // Get initial session after listener is set up
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();

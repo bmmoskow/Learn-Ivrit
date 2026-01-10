@@ -152,6 +152,70 @@ describe("AuthContext", () => {
     });
   });
 
+  describe("auth initialization order", () => {
+    it("sets up onAuthStateChange listener BEFORE calling getSession to prevent race conditions", async () => {
+      // Track the order of calls
+      const callOrder: string[] = [];
+
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        callOrder.push("onAuthStateChange");
+        // Simulate the callback being stored
+        return {
+          data: { subscription: { unsubscribe: vi.fn(), id: "test-sub", callback } },
+        } as ReturnType<typeof supabase.auth.onAuthStateChange>;
+      });
+
+      mockGetSession.mockImplementation(async () => {
+        callOrder.push("getSession");
+        return { data: { session: null }, error: null };
+      });
+
+      renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // Verify onAuthStateChange was called BEFORE getSession
+      expect(callOrder).toEqual(["onAuthStateChange", "getSession"]);
+    });
+
+    it("updates user state when SIGNED_IN event fires after getSession completes", async () => {
+      let authCallback: (event: AuthChangeEvent, session: Session | null) => void;
+
+      mockOnAuthStateChange.mockImplementation((callback) => {
+        authCallback = callback;
+        return {
+          data: { subscription: { unsubscribe: vi.fn(), id: "test-sub", callback } },
+        } as ReturnType<typeof supabase.auth.onAuthStateChange>;
+      });
+
+      // Initially no session
+      mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // User should be null initially
+      expect(result.current.user).toBeNull();
+
+      // Simulate a sign-in event (this would fail if listener was set up after getSession)
+      const mockUser = createMockUser({ id: "new-user", email: "new@example.com" });
+      const mockSession = createMockSession(mockUser);
+
+      await act(async () => {
+        authCallback!("SIGNED_IN", mockSession);
+        await flushPromises();
+      });
+
+      // User should now be updated - this verifies the listener is active
+      expect(result.current.user).toEqual(mockUser);
+    });
+  });
+
   describe("initial state", () => {
     it("starts with no user and loading true", () => {
       const { result } = renderHook(() => useAuth(), { wrapper });
