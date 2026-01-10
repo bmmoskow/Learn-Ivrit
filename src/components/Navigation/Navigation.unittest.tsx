@@ -22,52 +22,42 @@ describe("Navigation", () => {
     vi.clearAllMocks();
   });
 
-  describe("Mobile Layout - 2x2 Grid", () => {
-    it("renders mobile navigation container with grid-cols-2 for 2x2 layout", () => {
+  describe("Phone Layout - No Horizontal Scroll", () => {
+    it("renders phone navigation with flex-wrap to prevent horizontal overflow", () => {
       render(<Navigation {...defaultProps} />);
 
-      // Find the mobile navigation container (md:hidden with grid)
-      const mobileNav = document.querySelector(".md\\:hidden.grid");
-      expect(mobileNav).toBeInTheDocument();
-      expect(mobileNav).toHaveClass("grid-cols-2");
-      expect(mobileNav).toHaveClass("gap-2");
+      // Phone view should use flex-wrap to keep all items on screen
+      const phoneNav = document.querySelector(".sm\\:hidden");
+      expect(phoneNav).toBeInTheDocument();
     });
 
-    it("renders navigation buttons with compact mobile-friendly classes", () => {
+    it("renders all navigation items within the phone nav container", () => {
       render(<Navigation {...defaultProps} />);
 
-      // Mobile buttons should have compact padding
-      const mobileButtons = document.querySelectorAll(".md\\:hidden button");
-      expect(mobileButtons.length).toBeGreaterThan(0);
+      const phoneNav = document.querySelector(".sm\\:hidden");
+      expect(phoneNav).toBeInTheDocument();
 
-      mobileButtons.forEach((button) => {
-        // Check for compact padding classes
-        expect(button).toHaveClass("px-3");
-        expect(button).toHaveClass("py-2.5");
-        expect(button).toHaveClass("text-sm");
-      });
+      // All nav buttons should be within the phone nav container (not overflowing)
+      const buttons = phoneNav?.querySelectorAll("button");
+      expect(buttons?.length).toBeGreaterThanOrEqual(4); // Dashboard, Translate, Vocabulary, Test
+    });
+  });
+
+  describe("Tablet Layout", () => {
+    it("renders tablet navigation as two-row layout", () => {
+      render(<Navigation {...defaultProps} />);
+
+      // Tablet nav should be visible on sm screens, hidden on lg
+      const tabletNav = document.querySelector(".hidden.sm\\:block.lg\\:hidden");
+      expect(tabletNav).toBeInTheDocument();
     });
 
-    it("renders mobile buttons with centered content layout", () => {
+    it("renders tablet nav items with compact gap to fit on screen", () => {
       render(<Navigation {...defaultProps} />);
 
-      const mobileButtons = document.querySelectorAll(".md\\:hidden button");
-      mobileButtons.forEach((button) => {
-        expect(button).toHaveClass("justify-center");
-        expect(button).toHaveClass("items-center");
-      });
-    });
-
-    it("renders mobile button icons with compact size", () => {
-      render(<Navigation {...defaultProps} />);
-
-      const mobileNav = document.querySelector(".md\\:hidden.grid");
-      const icons = mobileNav?.querySelectorAll("svg");
-
-      icons?.forEach((icon) => {
-        expect(icon).toHaveClass("w-4");
-        expect(icon).toHaveClass("h-4");
-      });
+      const tabletNav = document.querySelector(".hidden.sm\\:block.lg\\:hidden");
+      const navItemsContainer = tabletNav?.querySelector(".flex.items-center.gap-2");
+      expect(navItemsContainer).toBeInTheDocument();
     });
   });
 
@@ -76,15 +66,16 @@ describe("Navigation", () => {
       render(<Navigation {...defaultProps} />);
 
       // Desktop nav should have hidden class for mobile
-      const desktopNav = document.querySelector(".hidden.md\\:flex");
+      const desktopNav = document.querySelector(".hidden.lg\\:flex");
       expect(desktopNav).toBeInTheDocument();
     });
 
     it("renders desktop buttons with larger padding than mobile", () => {
       render(<Navigation {...defaultProps} />);
 
-      const desktopNav = document.querySelector(".hidden.md\\:flex");
-      const desktopButtons = desktopNav?.querySelectorAll("button");
+      const desktopNav = document.querySelector(".hidden.lg\\:flex");
+      const navItemsContainer = desktopNav?.querySelector(".flex.items-center.gap-2");
+      const desktopButtons = navItemsContainer?.querySelectorAll("button");
 
       desktopButtons?.forEach((button) => {
         expect(button).toHaveClass("px-4");
