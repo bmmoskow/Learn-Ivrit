@@ -422,17 +422,17 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         console.log("Cache miss, calling edge function for translation");
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
+        // Get session if available (guests can still translate)
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("You must be logged in to translate");
-        }
+
+        const authToken = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

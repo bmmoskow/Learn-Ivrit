@@ -203,7 +203,10 @@ export function VocabularyListUI({
         <div>
           {/* Table Header */}
           <div className="bg-gray-50 border-b border-gray-200 flex items-center font-semibold text-gray-700">
-            <div className="px-4 py-3 text-right text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "200px" }}>
+            <div
+              className="px-4 py-3 text-right text-sm font-semibold text-gray-700 flex-shrink-0"
+              style={{ width: "200px" }}
+            >
               Hebrew
             </div>
             <div className="px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "180px" }}>
@@ -214,16 +217,25 @@ export function VocabularyListUI({
             )}
             {!isGuest && (
               <>
-                <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "120px" }}>
+                <div
+                  className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                  style={{ width: "120px" }}
+                >
                   Stats
                 </div>
-                <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "140px" }}>
+                <div
+                  className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                  style={{ width: "140px" }}
+                >
                   Performance
                 </div>
               </>
             )}
             {!isGuest && (
-              <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "120px" }}>
+              <div
+                className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                style={{ width: "120px" }}
+              >
                 Actions
               </div>
             )}
@@ -241,12 +253,7 @@ export function VocabularyListUI({
                     onCancelEdit={onCancelEdit}
                   />
                 ) : (
-                  <DisplayRow
-                    word={word}
-                    isGuest={isGuest}
-                    onStartEdit={onStartEdit}
-                    onDeleteWord={onDeleteWord}
-                  />
+                  <DisplayRow word={word} isGuest={isGuest} onStartEdit={onStartEdit} onDeleteWord={onDeleteWord} />
                 )}
               </div>
             ))}

@@ -392,11 +392,18 @@ describe("useTranslationPanel", () => {
     it("does nothing when urlInput is empty", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      // Clear any initial translation calls
+      mockFetch.mockClear();
+
       await act(async () => {
         await result.current.loadFromUrl();
       });
 
-      expect(global.fetch).not.toHaveBeenCalled();
+      // Should not call extract-url endpoint when urlInput is empty
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        expect.stringContaining("/extract-url"),
+        expect.anything(),
+      );
       expect(result.current.loadingUrl).toBe(false);
     });
 
@@ -695,13 +702,19 @@ describe("useTranslationPanel", () => {
 
       expect(result.current.currentBibleRef).toEqual({ book: "Genesis", chapter: 5 });
 
+      // Clear previous calls to count only navigation calls
+      mockFetch.mockClear();
+
       // Navigate to previous
       await act(async () => {
         result.current.navigateChapter("prev");
       });
 
-      // Should have called fetch for chapter 4
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Should have called sefaria-fetch for chapter 4
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/sefaria-fetch"),
+        expect.anything(),
+      );
     });
 
     it("navigates to next chapter when possible", async () => {
@@ -722,12 +735,19 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromBible();
       });
 
+      // Clear previous calls to count only navigation calls
+      mockFetch.mockClear();
+
       // Navigate to next
       await act(async () => {
         result.current.navigateChapter("next");
       });
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Should have called sefaria-fetch for chapter 2
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/sefaria-fetch"),
+        expect.anything(),
+      );
     });
   });
 

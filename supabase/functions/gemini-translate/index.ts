@@ -228,36 +228,33 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
+    // Check for authentication (optional - guests allowed for translation)
+    const authHeader = req.headers.get("Authorization");
+    let userId: string | null = null;
 
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
-        status: 401,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
+    if (authHeader && authHeader !== "Bearer null" && authHeader !== "Bearer undefined") {
+      const token = authHeader.replace("Bearer ", "");
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser(token);
+
+      if (!authError && user) {
+        userId = user.id;
+        console.log(`Authenticated request from user: ${userId}`);
+      } else {
+        console.log("Guest mode access (invalid token)");
+      }
+    } else {
+      console.log("Guest mode access (no auth header)");
     }
+
+    // For guests, use a consistent guest identifier for rate limiting
+    const rateLimitId = userId || "guest-user";
 
     if (path.includes("/translate")) {
       const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
@@ -267,7 +264,7 @@ Deno.serve(async (req: Request) => {
       }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, "passage_translation");
+      const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
       if (!rateLimitCheck.allowed) {
         return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
           status: 429,
@@ -286,7 +283,7 @@ Deno.serve(async (req: Request) => {
       const textLength = text.length;
       console.log(`Translating ${sourceLanguage} to ${targetLanguage} - hash:`, contentHash, "length:", textLength);
 
-      await logRequest(supabase, user.id, "passage_translation");
+      await logRequest(supabase, rateLimitId, "passage_translation");
 
       const vowelInstruction =
         targetLanguage === "Hebrew"
@@ -414,7 +411,7 @@ Deno.serve(async (req: Request) => {
 
       const { word }: DefinitionRequest = await req.json();
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, "word_definition");
+      const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "word_definition");
       if (!rateLimitCheck.allowed) {
         return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
           status: 429,
@@ -425,7 +422,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      await logRequest(supabase, user.id, "word_definition");
+      await logRequest(supabase, rateLimitId, "word_definition");
 
       const prompt = `For the Hebrew word "${word}":
 
