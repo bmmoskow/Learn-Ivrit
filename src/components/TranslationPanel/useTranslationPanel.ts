@@ -4,6 +4,7 @@ import { supabase } from "../../../supabase/client";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator/requestDeduplicator";
 import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks";
+import { getAuthHeader, getAuthToken } from "../../utils/auth/getAuthHeader";
 import {
   cleanWord,
   getSentenceContext,
@@ -72,6 +73,7 @@ export interface UseTranslationPanelReturn {
   handleWordClick: (e: React.MouseEvent<HTMLSpanElement>) => void;
   handleCopy: (text: string) => void;
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleImageUpload: (file: File) => Promise<void>;
   handleLoadBookmark: (bookmark: BookmarkType) => void;
   clearAll: () => void;
   loadSavedWords: () => Promise<void>;
@@ -220,19 +222,13 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         if (!content) {
           console.log("Fetching URL content from API");
 
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (!session) {
-            throw new Error("You must be logged in to extract content from URLs");
-          }
-
+          const authHeader = await getAuthHeader();
           const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/extract-url`;
 
           const response = await fetch(apiUrl, {
             method: "POST",
             headers: {
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: authHeader,
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ url }),
@@ -422,17 +418,12 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
         console.log("Cache miss, calling edge function for translation");
         const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
 
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) {
-          throw new Error("You must be logged in to translate");
-        }
+        const authToken = await getAuthToken();
 
         const response = await fetch(apiUrl, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${authToken}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -517,19 +508,13 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
       console.log("Sending image for OCR...");
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("You must be logged in to use image OCR");
-      }
-
+      const authHeader = await getAuthHeader();
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/ocr`;
 
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: authHeader,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -633,6 +618,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     handleWordClick,
     handleCopy,
     handleFileSelect,
+    handleImageUpload,
     handleLoadBookmark,
     clearAll,
     loadSavedWords,
