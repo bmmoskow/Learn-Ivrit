@@ -28,6 +28,13 @@ vi.mock("../../../supabase/client", () => ({
   },
 }));
 
+// Mock getAuthHeader - this creates a passthrough that uses the mocked supabase
+// We re-export the real implementation which will use the mocked supabase.auth.getSession
+vi.mock("../../utils/auth/getAuthHeader", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../utils/auth/getAuthHeader")>();
+  return actual;
+});
+
 // Mock fetch for edge function calls
 const mockFetch = vi.fn() as Mock<typeof fetch>;
 global.fetch = mockFetch;
@@ -392,11 +399,18 @@ describe("useTranslationPanel", () => {
     it("does nothing when urlInput is empty", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      // Clear any initial translation calls
+      mockFetch.mockClear();
+
       await act(async () => {
         await result.current.loadFromUrl();
       });
 
-      expect(global.fetch).not.toHaveBeenCalled();
+      // Should not call extract-url endpoint when urlInput is empty
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        expect.stringContaining("/extract-url"),
+        expect.anything(),
+      );
       expect(result.current.loadingUrl).toBe(false);
     });
 
@@ -471,11 +485,34 @@ describe("useTranslationPanel", () => {
       );
     });
 
-    it("shows login required error when no session exists", async () => {
-      // No session
+    it("allows guests to load URL content using anon key", async () => {
+      // No session - guest mode
       mockGetSession.mockResolvedValue({
         data: { session: null },
         error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockImplementation((input) => {
+        const url = String(input);
+
+        if (url.includes("/gemini-translate/extract-url")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: "טקסט עברי מהאתר" }),
+          } as unknown as Response);
+        }
+
+        if (url.includes("/gemini-translate/translate")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ translation: "Hebrew text from website" }),
+          } as unknown as Response);
+        }
+
+        throw new Error(`Unexpected fetch URL in test: ${url}`);
       });
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -488,17 +525,29 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toBe("You must be logged in to extract content from URLs");
+      // Verify fetch was called with anon key for guest
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/extract-url"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-anon-key",
+          }),
+        }),
+      );
+
+      expect(result.current.hebrewText).toBe("טקסט עברי מהאתר");
+      expect(result.current.error).toBe("");
       expect(result.current.loadingUrl).toBe(false);
-      // Should not have called fetch since no session
-      expect(mockFetch).not.toHaveBeenCalled();
+
+      vi.unstubAllEnvs();
     });
 
-    it("loads content successfully and auto-triggers translation", async () => {
+    it("uses session token for authenticated users loading URLs", async () => {
+      const testToken = "valid-token";
       mockGetSession.mockResolvedValue({
         data: {
           session: {
-            access_token: "valid-token",
+            access_token: testToken,
             refresh_token: "test-refresh",
             expires_in: 3600,
             token_type: "bearer",
@@ -538,6 +587,16 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
+      // Verify fetch was called with session token for authenticated user
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/extract-url"),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${testToken}`,
+          }),
+        }),
+      );
+
       expect(result.current.hebrewText).toBe("בראשית ברא אלהים");
 
       await vi.waitFor(() => {
@@ -552,6 +611,37 @@ describe("useTranslationPanel", () => {
       expect(result.current.showUrlInput).toBe(false);
       expect(result.current.urlInput).toBe("");
       expect(result.current.currentSource).toBe("https://hebrew-news.com/article");
+    });
+
+    it("handles rate limit errors for guest URL loading", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: () => Promise.resolve({ error: "Rate limit exceeded. Try again later." }),
+      } as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/hebrew-article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Rate limit exceeded. Try again later.");
+      expect(result.current.loadingUrl).toBe(false);
+
+      vi.unstubAllEnvs();
     });
   });
 
@@ -695,13 +785,19 @@ describe("useTranslationPanel", () => {
 
       expect(result.current.currentBibleRef).toEqual({ book: "Genesis", chapter: 5 });
 
+      // Clear previous calls to count only navigation calls
+      mockFetch.mockClear();
+
       // Navigate to previous
       await act(async () => {
         result.current.navigateChapter("prev");
       });
 
-      // Should have called fetch for chapter 4
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Should have called sefaria-fetch for chapter 4
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/sefaria-fetch"),
+        expect.anything(),
+      );
     });
 
     it("navigates to next chapter when possible", async () => {
@@ -722,12 +818,19 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromBible();
       });
 
+      // Clear previous calls to count only navigation calls
+      mockFetch.mockClear();
+
       // Navigate to next
       await act(async () => {
         result.current.navigateChapter("next");
       });
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // Should have called sefaria-fetch for chapter 2
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/sefaria-fetch"),
+        expect.anything(),
+      );
     });
   });
 
@@ -1559,6 +1662,170 @@ describe("syncedParagraphs edge cases", () => {
 
         // Should not call fetch for empty text
         expect(mockFetch).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("handleImageUpload guest access", () => {
+      // Helper to create a mock FileReader that triggers onload asynchronously
+      const createMockFileReader = (mockReadResult: string) => {
+        return class MockFileReader {
+          result: string | null = null;
+          onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+          onerror: ((event: ProgressEvent<FileReader>) => void) | null = null;
+
+          readAsDataURL() {
+            // Use queueMicrotask to ensure onload is called after the Promise handlers are set up
+            queueMicrotask(() => {
+              this.result = mockReadResult;
+              if (this.onload) {
+                this.onload({ target: { result: mockReadResult } } as unknown as ProgressEvent<FileReader>);
+              }
+            });
+          }
+        } as unknown as typeof FileReader;
+      };
+
+      it("allows guests to upload images using anon key", async () => {
+        // No session - guest mode
+        mockGetSession.mockResolvedValue({
+          data: { session: null },
+          error: null,
+        });
+
+        // Stub anon key
+        vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+        vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ hebrewText: "שלום עולם מהתמונה" }),
+        } as Response);
+
+        const originalFileReader = global.FileReader;
+        global.FileReader = createMockFileReader("data:image/jpeg;base64,fakebase64data");
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-image-data"], "test.jpg", { type: "image/jpeg" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        global.FileReader = originalFileReader;
+
+        // Verify fetch was called with anon key for guest
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining("/gemini-translate/ocr"),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: "Bearer test-anon-key",
+            }),
+          }),
+        );
+
+        // Verify no error occurred
+        expect(result.current.error).toBe("");
+
+        vi.unstubAllEnvs();
+      });
+
+      it("uses session token for authenticated users uploading images", async () => {
+        const testToken = "authenticated-user-token";
+        mockGetSession.mockResolvedValue({
+          data: {
+            session: {
+              access_token: testToken,
+              refresh_token: "test-refresh",
+              expires_in: 3600,
+              token_type: "bearer",
+              user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            },
+          },
+          error: null,
+        });
+
+        vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          json: () => Promise.resolve({ hebrewText: "טקסט עברי" }),
+        } as Response);
+
+        const originalFileReader = global.FileReader;
+        global.FileReader = createMockFileReader("data:image/png;base64,fakebase64data");
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-image-data"], "test.png", { type: "image/png" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        global.FileReader = originalFileReader;
+
+        // Verify fetch was called with session token for authenticated user
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining("/gemini-translate/ocr"),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              Authorization: `Bearer ${testToken}`,
+            }),
+          }),
+        );
+
+        vi.unstubAllEnvs();
+      });
+
+      it("handles rate limit errors for guest image upload", async () => {
+        mockGetSession.mockResolvedValue({
+          data: { session: null },
+          error: null,
+        });
+
+        vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+        vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status: 429,
+          json: () => Promise.resolve({ error: "Rate limit exceeded. Try again in 5 minutes." }),
+        } as Response);
+
+        const originalFileReader = global.FileReader;
+        global.FileReader = createMockFileReader("data:image/jpeg;base64,fakebase64data");
+
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-image-data"], "test.jpg", { type: "image/jpeg" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        global.FileReader = originalFileReader;
+
+        expect(result.current.error).toBe("Rate limit exceeded. Try again in 5 minutes.");
+        expect(result.current.processingImage).toBe(false);
+
+        vi.unstubAllEnvs();
+      });
+
+      it("rejects non-image files", async () => {
+        const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+        const mockFile = new File(["fake-text-data"], "test.txt", { type: "text/plain" });
+
+        await act(async () => {
+          await result.current.handleImageUpload(mockFile);
+        });
+
+        expect(result.current.error).toBe("Please upload an image file");
+        expect(mockFetch).not.toHaveBeenCalledWith(
+          expect.stringContaining("/ocr"),
+          expect.anything(),
+        );
       });
     });
   });

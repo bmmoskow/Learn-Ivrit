@@ -24,6 +24,33 @@ export interface EditForm {
 
 export const ITEMS_PER_PAGE = 50;
 
+export function createGuestVocabWord(word: { hebrew: string; english: string }, index: number): VocabWithStats {
+  const now = new Date().toISOString();
+  return {
+    id: `guest-${index}`,
+    user_id: "guest",
+    hebrew_word: word.hebrew,
+    english_translation: word.english,
+    definition: word.english,
+    transliteration: null,
+    created_at: now,
+    updated_at: now,
+    statistics: {
+      id: `guest-stats-${index}`,
+      user_id: "guest",
+      word_id: `guest-${index}`,
+      correct_count: 0,
+      incorrect_count: 0,
+      total_attempts: 0,
+      consecutive_correct: 0,
+      last_tested: null,
+      confidence_score: 0,
+      created_at: now,
+      updated_at: now,
+    },
+  };
+}
+
 export const getPerformanceColor = (score: number): string => {
   if (score >= 80) return "bg-green-50 text-green-700 border-green-200";
   if (score >= 60) return "bg-yellow-50 text-yellow-700 border-yellow-200";
@@ -40,10 +67,7 @@ export const calculateTotalPages = (totalCount: number, itemsPerPage: number): n
   return Math.ceil(totalCount / itemsPerPage);
 };
 
-export const calculatePaginationRange = (
-  currentPage: number,
-  itemsPerPage: number
-): { from: number; to: number } => {
+export const calculatePaginationRange = (currentPage: number, itemsPerPage: number): { from: number; to: number } => {
   const from = (currentPage - 1) * itemsPerPage;
   const to = from + itemsPerPage - 1;
   return { from, to };
@@ -52,18 +76,14 @@ export const calculatePaginationRange = (
 export const calculateDisplayRange = (
   currentPage: number,
   itemsPerPage: number,
-  totalCount: number
+  totalCount: number,
 ): { start: number; end: number } => {
   const start = (currentPage - 1) * itemsPerPage + 1;
   const end = Math.min(currentPage * itemsPerPage, totalCount);
   return { start, end };
 };
 
-export const calculatePageNumbers = (
-  currentPage: number,
-  totalPages: number,
-  maxVisible: number = 5
-): number[] => {
+export const calculatePageNumbers = (currentPage: number, totalPages: number, maxVisible: number = 5): number[] => {
   const pages: number[] = [];
   const numPages = Math.min(maxVisible, totalPages);
 
@@ -145,10 +165,7 @@ export const mapViewRowToVocabWithStats = (row: {
     : undefined,
 });
 
-export const mapWordsWithStats = (
-  words: VocabularyWord[],
-  statsMap: Map<string, WordStatistics>
-): VocabWithStats[] => {
+export const mapWordsWithStats = (words: VocabularyWord[], statsMap: Map<string, WordStatistics>): VocabWithStats[] => {
   return words.map((word) => ({
     ...word,
     statistics: statsMap.get(word.id),

@@ -160,39 +160,47 @@ describe("createEditFormFromWord", () => {
 
 describe("isValidNewWord", () => {
   it("returns true for valid form", () => {
-    expect(isValidNewWord({
-      hebrew_word: "שלום",
-      english_translation: "hello",
-      definition: "",
-      transliteration: "",
-    })).toBe(true);
+    expect(
+      isValidNewWord({
+        hebrew_word: "שלום",
+        english_translation: "hello",
+        definition: "",
+        transliteration: "",
+      }),
+    ).toBe(true);
   });
 
   it("returns false when hebrew_word is empty", () => {
-    expect(isValidNewWord({
-      hebrew_word: "",
-      english_translation: "hello",
-      definition: "",
-      transliteration: "",
-    })).toBe(false);
+    expect(
+      isValidNewWord({
+        hebrew_word: "",
+        english_translation: "hello",
+        definition: "",
+        transliteration: "",
+      }),
+    ).toBe(false);
   });
 
   it("returns false when english_translation is empty", () => {
-    expect(isValidNewWord({
-      hebrew_word: "שלום",
-      english_translation: "",
-      definition: "",
-      transliteration: "",
-    })).toBe(false);
+    expect(
+      isValidNewWord({
+        hebrew_word: "שלום",
+        english_translation: "",
+        definition: "",
+        transliteration: "",
+      }),
+    ).toBe(false);
   });
 
   it("returns false when fields are only whitespace", () => {
-    expect(isValidNewWord({
-      hebrew_word: "  ",
-      english_translation: "hello",
-      definition: "",
-      transliteration: "",
-    })).toBe(false);
+    expect(
+      isValidNewWord({
+        hebrew_word: "  ",
+        english_translation: "hello",
+        definition: "",
+        transliteration: "",
+      }),
+    ).toBe(false);
   });
 });
 
