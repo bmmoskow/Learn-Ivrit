@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +16,8 @@ const RATE_LIMITS = {
 };
 
 async function checkRateLimit(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
 ): Promise<{ allowed: boolean; error?: string }> {
   const limits = RATE_LIMITS.passage_generation;
@@ -78,7 +79,8 @@ async function checkRateLimit(
 }
 
 async function logRequest(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
 ): Promise<void> {
   await supabase.from("gemini_api_rate_limits").insert({
@@ -110,24 +112,24 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Validate user
+    // Try to validate user, but allow guest access
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user } } = await supabase.auth.getUser(token);
 
-    if (authError || !user) {
-      console.error("Auth error:", authError);
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Determine rate limit ID - use user.id for authenticated users, 'guest-user' for guests
+    let rateLimitId: string;
+    if (user) {
+      rateLimitId = user.id;
+      console.log(`Passage generation request from user: ${user.id}`);
+    } else {
+      rateLimitId = "guest-user";
+      console.log("Passage generation request from guest user");
     }
 
-    console.log(`Passage generation request from user: ${user.id}`);
-
     // Check rate limit
-    const rateLimitCheck = await checkRateLimit(supabase, user.id);
+    const rateLimitCheck = await checkRateLimit(supabase, rateLimitId);
     if (!rateLimitCheck.allowed) {
-      console.log(`Rate limit exceeded for user: ${user.id}`);
+      console.log(`Rate limit exceeded for: ${rateLimitId}`);
       return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -154,7 +156,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Log the request for rate limiting
-    await logRequest(supabase, user.id);
+    await logRequest(supabase, rateLimitId);
 
     // Call Gemini API
     const geminiResponse = await fetch(

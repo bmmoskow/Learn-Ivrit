@@ -32,7 +32,7 @@ export type UsePassageGeneratorReturn = UsePassageGeneratorState & UsePassageGen
 export function usePassageGenerator(
   onPassageGenerated: (passage: string) => void
 ): UsePassageGeneratorReturn {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [ageLevel, setAgeLevel] = useState<AgeLevel>(12);
   const [topic, setTopic] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -56,8 +56,8 @@ export function usePassageGenerator(
   }, []);
 
   const generatePassage = useCallback(async () => {
-    if (!user) {
-      setError("You must be logged in to generate passages");
+    if (!user && !isGuest) {
+      setError("You must be logged in or use guest mode to generate passages");
       return;
     }
 
@@ -73,45 +73,53 @@ export function usePassageGenerator(
     setGeneratedPassage(null);
 
     try {
-      // Fetch user's vocabulary with statistics
-      const { data: vocabData, error: vocabError } = await supabase
-        .from("vocabulary_with_stats")
-        .select("id, hebrew_word, english_translation, confidence_score, incorrect_count, total_attempts")
-        .eq("user_id", user.id)
-        .limit(100);
+      let sortedVocabulary: VocabularyWord[] = [];
 
-      if (vocabError) {
-        console.error("Error fetching vocabulary:", vocabError);
-        throw new Error("Failed to fetch your vocabulary");
+      // Only fetch vocabulary for authenticated users
+      if (user) {
+        const { data: vocabData, error: vocabError } = await supabase
+          .from("vocabulary_with_stats")
+          .select("id, hebrew_word, english_translation, confidence_score, incorrect_count, total_attempts")
+          .eq("user_id", user.id)
+          .limit(100);
+
+        if (vocabError) {
+          console.error("Error fetching vocabulary:", vocabError);
+          // Don't throw - guests won't have vocabulary, just proceed without it
+        }
+
+        if (vocabData && vocabData.length > 0) {
+          const vocabulary: VocabularyWord[] = vocabData
+            .filter((w): w is typeof w & { id: string; hebrew_word: string; english_translation: string } =>
+              w.id !== null && w.hebrew_word !== null && w.english_translation !== null
+            )
+            .map((w) => ({
+              id: w.id,
+              hebrew_word: w.hebrew_word,
+              english_translation: w.english_translation,
+              confidence_score: w.confidence_score,
+              incorrect_count: w.incorrect_count,
+              total_attempts: w.total_attempts,
+            }));
+
+          sortedVocabulary = sortVocabularyByWeakness(vocabulary);
+        }
       }
 
-      if (!vocabData || vocabData.length === 0) {
-        throw new Error("You need to have some vocabulary words saved to generate personalized passages");
-      }
-
-      // Transform and sort vocabulary by weakness
-      const vocabulary: VocabularyWord[] = vocabData
-        .filter((w): w is typeof w & { id: string; hebrew_word: string; english_translation: string } =>
-          w.id !== null && w.hebrew_word !== null && w.english_translation !== null
-        )
-        .map((w) => ({
-          id: w.id,
-          hebrew_word: w.hebrew_word,
-          english_translation: w.english_translation,
-          confidence_score: w.confidence_score,
-          incorrect_count: w.incorrect_count,
-          total_attempts: w.total_attempts,
-        }));
-
-      const sortedVocabulary = sortVocabularyByWeakness(vocabulary);
-
-      // Build the prompt
+      // Build the prompt (works with empty vocabulary for guests)
       const prompt = buildPassagePrompt(ageLevel, topic, sortedVocabulary);
 
-      // Get session for auth
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Session expired. Please log in again.");
+      // Get auth header - use session token for authenticated users, anon key for guests
+      let authHeader: string;
+      if (user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("Session expired. Please log in again.");
+        }
+        authHeader = `Bearer ${session.access_token}`;
+      } else {
+        // Guest mode - use anon key
+        authHeader = `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`;
       }
 
       // Call the edge function
@@ -120,7 +128,7 @@ export function usePassageGenerator(
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: authHeader,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({ prompt }),
@@ -153,7 +161,7 @@ export function usePassageGenerator(
     } finally {
       setIsGenerating(false);
     }
-  }, [user, topic, ageLevel, onPassageGenerated]);
+  }, [user, isGuest, topic, ageLevel, onPassageGenerated]);
 
   return {
     ageLevel,

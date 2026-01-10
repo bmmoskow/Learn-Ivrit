@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,8 @@ const RATE_LIMITS = {
 };
 
 async function checkRateLimit(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<{ allowed: boolean; error?: string }> {
@@ -82,7 +83,8 @@ async function checkRateLimit(
 }
 
 async function logRequest(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<void> {
@@ -496,8 +498,8 @@ FORMS:
 
             forms = formsText
               .split("\n")
-              .filter((line) => line.trim().startsWith("-"))
-              .map((line) => {
+              .filter((line: string) => line.trim().startsWith("-"))
+              .map((line: string) => {
                 const match = line.match(/^-\s*([^(]+)\(([^)]+)\)\s*-\s*(.+)$/);
                 if (match) {
                   return {
@@ -508,7 +510,7 @@ FORMS:
                 }
                 return null;
               })
-              .filter((form) => form !== null);
+              .filter((form: unknown) => form !== null);
           }
         }
       }
@@ -655,7 +657,7 @@ FORMS:
         });
       }
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, "passage_translation");
+      const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
       if (!rateLimitCheck.allowed) {
         return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
           status: 429,
@@ -666,7 +668,7 @@ FORMS:
         });
       }
 
-      await logRequest(supabase, user.id, "passage_translation");
+      await logRequest(supabase, rateLimitId, "passage_translation");
 
       console.log("Processing image for OCR...");
 

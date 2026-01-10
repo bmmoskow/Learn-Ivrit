@@ -172,17 +172,18 @@ describe("usePassageGenerator", () => {
     expect(result.current.error).toBeNull();
   });
 
-  it("generatePassage sets error when user is not logged in", async () => {
+  it("generatePassage validates topic for guest users", async () => {
     vi.mocked(useAuth).mockReturnValue(createMockAuthReturn(null, true));
 
     const onPassageGenerated = vi.fn();
     const { result } = renderHook(() => usePassageGenerator(onPassageGenerated));
 
+    // Topic is empty by default
     await act(async () => {
       await result.current.generatePassage();
     });
 
-    expect(result.current.error).toBe("You must be logged in to generate passages");
+    expect(result.current.error).toContain("topic");
     expect(onPassageGenerated).not.toHaveBeenCalled();
   });
 
@@ -217,9 +218,10 @@ describe("usePassageGenerator", () => {
     expect(result.current.error).toContain("10 characters");
   });
 
-  it("generatePassage checks for vocabulary words", async () => {
+  it("generatePassage proceeds when authenticated user has no vocabulary words", async () => {
     vi.mocked(useAuth).mockReturnValue(createMockAuthReturn(mockUser));
 
+    // Mock empty vocabulary list
     vi.mocked(supabase.from).mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
@@ -227,6 +229,18 @@ describe("usePassageGenerator", () => {
         }),
       }),
     } as unknown as ReturnType<typeof supabase.from>);
+
+    // Must mock session for authenticated flow
+    vi.mocked(supabase.auth.getSession).mockResolvedValue({
+      data: { session: { access_token: "test-token" } },
+      error: null,
+    } as Awaited<ReturnType<typeof supabase.auth.getSession>>);
+
+    const generatedPassage = "שָׁלוֹם לְכֻלָּם! זֶה סִפּוּר קָצָר.";
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ passage: generatedPassage }),
+    });
 
     const onPassageGenerated = vi.fn();
     const { result } = renderHook(() => usePassageGenerator(onPassageGenerated));
@@ -239,7 +253,56 @@ describe("usePassageGenerator", () => {
       await result.current.generatePassage();
     });
 
-    expect(result.current.error).toContain("vocabulary words");
+    expect(onPassageGenerated).toHaveBeenCalledWith(generatedPassage);
+    expect(result.current.error).toBeNull();
+
+    // Uses session token for authenticated users
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("generate-hebrew-passage"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-token",
+        }),
+      })
+    );
+  });
+
+  it("generatePassage allows guests to generate without vocabulary", async () => {
+    vi.mocked(useAuth).mockReturnValue(createMockAuthReturn(null, true));
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+
+    const generatedPassage = "שָׁלוֹם לְכֻלָּם! זֶה סִפּוּר עַל חַיּוֹת.";
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ passage: generatedPassage }),
+    });
+
+    const onPassageGenerated = vi.fn();
+    const { result } = renderHook(() => usePassageGenerator(onPassageGenerated));
+
+    act(() => {
+      result.current.openGenerator();
+      result.current.setTopic("A story about animals and nature");
+    });
+
+    await act(async () => {
+      await result.current.generatePassage();
+    });
+
+    // Verify guest can generate passages
+    expect(onPassageGenerated).toHaveBeenCalledWith(generatedPassage);
+    expect(result.current.isOpen).toBe(false);
+    expect(result.current.error).toBeNull();
+
+    // Verify fetch was called with anon key for guest
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("generate-hebrew-passage"),
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-anon-key",
+        }),
+      })
+    );
   });
 
   it("generatePassage calls onPassageGenerated and closes dialog on success", async () => {
