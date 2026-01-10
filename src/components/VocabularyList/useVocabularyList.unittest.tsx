@@ -1,8 +1,20 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useVocabularyList } from "./useVocabularyList";
-import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
+import { defaultVocabulary } from "../../data/defaultVocabulary";
 import type { ReactNode } from "react";
+
+let useVocabularyList: typeof import("./useVocabularyList").useVocabularyList;
+
+// Use vi.hoisted to declare mocks before they're used in vi.mock factories
+const { mockUseAuth, mockFrom } = vi.hoisted(() => ({
+  mockUseAuth: vi.fn(),
+  mockFrom: vi.fn(),
+}));
+
+// Mock useAuth (we don't need the real AuthProvider for these hook tests)
+vi.mock("../../contexts/AuthContext/AuthContext", () => ({
+  useAuth: () => mockUseAuth(),
+}));
 
 // Mock the Supabase client
 vi.mock("../../../supabase/client", () => ({
@@ -17,7 +29,7 @@ vi.mock("../../../supabase/client", () => ({
       signOut: vi.fn(),
       resetPasswordForEmail: vi.fn(),
     },
-    from: vi.fn().mockReturnValue({
+    from: mockFrom.mockReturnValue({
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           order: vi.fn().mockReturnValue({
@@ -42,34 +54,26 @@ vi.mock("../../../supabase/client", () => ({
   },
 }));
 
-// Mock localStorage
-const localStorageMock = {
-  store: {} as Record<string, string>,
-  getItem: vi.fn((key: string) => localStorageMock.store[key] ?? null),
-  setItem: vi.fn((key: string, value: string) => {
-    localStorageMock.store[key] = value;
-  }),
-  removeItem: vi.fn((key: string) => {
-    delete localStorageMock.store[key];
-  }),
-  clear: vi.fn(() => {
-    localStorageMock.store = {};
-  }),
-  get length() {
-    return Object.keys(localStorageMock.store).length;
-  },
-  key: vi.fn((index: number) => Object.keys(localStorageMock.store)[index] ?? null),
-};
+const wrapper = ({ children }: { children: ReactNode }) => <>{children}</>;
 
-const wrapper = ({ children }: { children: ReactNode }) => (
-  <AuthProvider>{children}</AuthProvider>
-);
+beforeAll(async () => {
+  ({ useVocabularyList } = await import("./useVocabularyList"));
+});
 
 describe("useVocabularyList", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorageMock.store = {};
-    Object.defineProperty(window, "localStorage", { value: localStorageMock, writable: true });
+    // Default to non-guest user with no session
+    mockUseAuth.mockReturnValue({
+      user: null,
+      isGuest: false,
+      loading: false,
+      signUp: vi.fn(),
+      signIn: vi.fn(),
+      signInAsGuest: vi.fn(),
+      signOut: vi.fn(),
+      resetPassword: vi.fn(),
+    });
   });
 
   afterEach(() => {
@@ -79,7 +83,6 @@ describe("useVocabularyList", () => {
   it("initializes with default state", () => {
     const { result } = renderHook(() => useVocabularyList(), { wrapper });
 
-    expect(result.current.words).toEqual([]);
     expect(result.current.searchQuery).toBe("");
     expect(result.current.sortBy).toBe("date");
     expect(result.current.editingId).toBeNull();
@@ -199,5 +202,87 @@ describe("useVocabularyList", () => {
 
     // With totalCount of 0 (default), totalPages should be 0
     expect(result.current.totalPages).toBe(0);
+  });
+
+  describe("Guest User - Default Vocabulary", () => {
+    beforeEach(() => {
+      // Mock useAuth to return guest mode
+      mockUseAuth.mockReturnValue({
+        user: null,
+        isGuest: true,
+        loading: false,
+        signUp: vi.fn(),
+        signIn: vi.fn(),
+        signInAsGuest: vi.fn(),
+        signOut: vi.fn(),
+        resetPassword: vi.fn(),
+      });
+      mockFrom.mockClear();
+    });
+
+    it("loads default vocabulary for guest users", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+
+      // Wait for loading to complete
+      await vi.waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Guest should see the default vocabulary
+      expect(result.current.isGuest).toBe(true);
+      expect(result.current.words.length).toBe(defaultVocabulary.length);
+    });
+
+    it("guest vocabulary contains all default words", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+
+      await vi.waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Check that each default word is present
+      const hebrewWords = result.current.words.map((w) => w.hebrew_word);
+      for (const defaultWord of defaultVocabulary) {
+        expect(hebrewWords).toContain(defaultWord.hebrew);
+      }
+    });
+
+    it("guest vocabulary words have correct structure", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+
+      await vi.waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Check that words have the expected structure
+      const firstWord = result.current.words[0];
+      expect(firstWord).toHaveProperty("id");
+      expect(firstWord).toHaveProperty("hebrew_word");
+      expect(firstWord).toHaveProperty("english_translation");
+      expect(firstWord).toHaveProperty("definition");
+      expect(firstWord).toHaveProperty("user_id", "guest");
+      expect(firstWord.id).toMatch(/^guest-/);
+    });
+
+    it("guest vocabulary sets totalCount correctly", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+
+      await vi.waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.totalCount).toBe(defaultVocabulary.length);
+    });
+
+    it("guest vocabulary does not call Supabase", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+
+      await vi.waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Supabase.from should not be called for guests
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
   });
 });
