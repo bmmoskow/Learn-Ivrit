@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { useWordDefinitionPopup } from "./useWordDefinitionPopup";
 import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
 import React from "react";
@@ -18,12 +18,17 @@ const mockUpdate = vi.fn().mockReturnValue({
   }),
 });
 
+let mockSession: { user: { id: string }; access_token: string } | null = {
+  user: { id: "test-user-id" },
+  access_token: "test-token",
+};
+
 vi.mock("../../../../supabase/client", () => ({
   supabase: {
     auth: {
-      getSession: vi.fn().mockResolvedValue({
-        data: { session: { user: { id: "test-user-id" }, access_token: "test-token" } },
-      }),
+      getSession: vi.fn().mockImplementation(() =>
+        Promise.resolve({ data: { session: mockSession } })
+      ),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),
@@ -197,6 +202,166 @@ describe("useWordDefinitionPopup", () => {
       expect(insertSpy).toHaveBeenCalledWith(testData);
       expect(insertSpy.mock.calls[0][0].hebrew_word).toBe("שָׁלוֹם");
       expect(insertSpy.mock.calls[0][0].hebrew_word).toContain("ָ");
+    });
+  });
+
+  describe("guest mode", () => {
+    beforeEach(() => {
+      mockSession = null;
+      mockLocalStorage = { guestMode: 'true' };
+      vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+      mockSession = { user: { id: "test-user-id" }, access_token: "test-token" };
+      mockLocalStorage = {};
+    });
+
+    it("should return isGuest as true when user is not authenticated", async () => {
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isGuest).toBe(true);
+      });
+    });
+
+    it("should fetch definition without authorization header for guest users", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "Peace, hello",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/define"),
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.not.objectContaining({
+            Authorization: expect.anything(),
+          }),
+        })
+      );
+    });
+
+    it("should not attempt to save to vocabulary for guest users", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "Peace, hello",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+        expect(result.current.definition).not.toBeNull();
+      });
+
+      await act(async () => {
+        await result.current.saveToVocabulary();
+      });
+
+      expect(mockInsert).not.toHaveBeenCalled();
+      expect(result.current.saved).toBe(false);
+    });
+
+    it("should load definition successfully for guest users", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "Peace, hello",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+            examples: [
+              { hebrew: "שָׁלוֹם עֲלֵיכֶם", english: "Peace be upon you" },
+            ],
+            notes: "Common greeting",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.definition).not.toBeNull();
+      expect(result.current.definition?.definition).toBe("Peace, hello");
+      expect(result.current.definition?.transliteration).toBe("shalom");
+      expect(result.current.error).toBe("");
+    });
+
+    it("should handle API errors gracefully for guest users", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        json: () =>
+          Promise.resolve({
+            error: "Rate limit exceeded. Please try again later.",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.error).toBe("Rate limit exceeded. Please try again later.");
+      expect(result.current.definition).toBeNull();
+    });
+  });
+
+  describe("authenticated mode", () => {
+    it("should return isGuest as false when user is authenticated", async () => {
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isGuest).toBe(false);
+      });
+    });
+
+    it("should include authorization header for authenticated users", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "Peace, hello",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/gemini-translate/define"),
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer test-token",
+          }),
+        })
+      );
     });
   });
 });
