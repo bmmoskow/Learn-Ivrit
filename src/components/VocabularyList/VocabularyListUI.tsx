@@ -90,6 +90,18 @@ export function VocabularyListUI({
         )}
       </div>
 
+      {/* Guest Message */}
+      {isGuest && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">Example Vocabulary List</h3>
+            <p className="text-sm sm:text-base text-blue-700">
+              This is a sample list for Guest users. Create a free account to build your own personalized vocabulary and track your progress.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Add Form */}
       {showAddForm && !isGuest && (
         <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">

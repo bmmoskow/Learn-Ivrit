@@ -111,11 +111,16 @@ export function WordDefinitionPopupUI({
           </div>
         )}
 
-        {definition && !loading && !isGuest && (
+        {definition && !loading && (
           <div className="p-4 border-t border-gray-200 bg-gray-50">
+            {isGuest && (
+              <p className="text-sm text-gray-600 text-center mb-2">
+                Sign up for an account to save words to your vocabulary
+              </p>
+            )}
             <button
               onClick={onSave}
-              disabled={saving || saved}
+              disabled={saving || saved || isGuest}
               className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {saving ? (

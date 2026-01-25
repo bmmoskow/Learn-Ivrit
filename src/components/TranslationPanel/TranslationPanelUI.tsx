@@ -457,17 +457,13 @@ export function TranslationPanelUI({
                 >
                   load from Bible
                 </span>
-                {!isGuest && (
-                  <>
-                    , or{" "}
-                    <span
-                      className="text-amber-600 underline cursor-pointer pointer-events-auto"
-                      onClick={() => setShowPassageGenerator(true)}
-                    >
-                      generate with AI
-                    </span>
-                  </>
-                )}
+                , or{" "}
+                <span
+                  className="text-amber-600 underline cursor-pointer pointer-events-auto"
+                  onClick={() => setShowPassageGenerator(true)}
+                >
+                  generate with AI
+                </span>
               </div>
             </div>
           )}
