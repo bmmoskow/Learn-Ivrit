@@ -106,12 +106,17 @@ describe("useTranslationPanel", () => {
   });
 
   describe("setters", () => {
-    it("setHebrewText updates hebrewText and triggers translation", () => {
+    it("setHebrewText updates hebrewText and triggers translation", async () => {
       setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      act(() => {
+      await act(async () => {
         result.current.setHebrewText("שלום");
+      });
+
+      // Wait for translation to complete
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
       });
 
       expect(result.current.hebrewText).toBe("שלום");
@@ -288,8 +293,13 @@ describe("useTranslationPanel", () => {
     });
 
     it("does not trigger translation for empty text", async () => {
-      setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      // Wait a bit for any pending async operations from previous tests to complete
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Clear any lingering calls from previous tests
+      mockFetch.mockClear();
 
       await act(async () => {
         result.current.setHebrewText("");
@@ -314,11 +324,11 @@ describe("useTranslationPanel", () => {
   });
 
   describe("clearAll", () => {
-    it("resets all text and navigation state", () => {
+    it("resets all text and navigation state", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       // Set some state first
-      act(() => {
+      await act(async () => {
         result.current.setHebrewText("שלום");
       });
 
@@ -739,12 +749,17 @@ describe("useTranslationPanel", () => {
       expect(result.current.syncedParagraphs).toBeNull();
     });
 
-    it("computes synced paragraphs when hebrewText is set", () => {
+    it("computes synced paragraphs when hebrewText is set", async () => {
       setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      act(() => {
+      await act(async () => {
         result.current.setHebrewText("פסקה ראשונה\n\nפסקה שנייה");
+      });
+
+      // Wait for translation to complete
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
       });
 
       expect(result.current.syncedParagraphs).toHaveLength(2);
@@ -835,12 +850,17 @@ describe("useTranslationPanel", () => {
   });
 
   describe("handleWordClick", () => {
-    it("sets selectedWord with cleaned word and sentence context", () => {
+    it("sets selectedWord with cleaned word and sentence context", async () => {
       setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      act(() => {
+      await act(async () => {
         result.current.setHebrewText("שלום עולם. זה משפט שני.");
+      });
+
+      // Wait for translation to complete
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
       });
 
       const mockEvent = {
@@ -1348,25 +1368,36 @@ describe("useTranslationPanel", () => {
   });
 
 describe("syncedParagraphs edge cases", () => {
-    it("handles single paragraph with translation", () => {
+    it("handles single paragraph with translation", async () => {
       setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      act(() => {
+      await act(async () => {
         result.current.setHebrewText("משפט בודד");
+      });
+
+      // Wait for translation to complete
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
       });
 
       expect(result.current.syncedParagraphs).toHaveLength(1);
       expect(result.current.syncedParagraphs![0].hebrew).toBe("משפט בודד");
-      expect(result.current.syncedParagraphs![0].english).toBe("");
+      // Translation should be populated now since we waited for it
+      expect(result.current.syncedParagraphs![0].english).toBe("Translation result");
     });
 
-    it("returns multiple synced paragraphs for multi-paragraph text", () => {
+    it("returns multiple synced paragraphs for multi-paragraph text", async () => {
       setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      act(() => {
+      await act(async () => {
         result.current.setHebrewText("פסקה א\n\nפסקה ב\n\nפסקה ג");
+      });
+
+      // Wait for translation to complete
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
       });
 
       expect(result.current.syncedParagraphs).toHaveLength(3);
@@ -1473,7 +1504,7 @@ describe("syncedParagraphs edge cases", () => {
     });
 
     describe("setHebrewText forces hebrew-to-english direction", () => {
-      it("resets direction to hebrew-to-english when setHebrewText is called", () => {
+      it("resets direction to hebrew-to-english when setHebrewText is called", async () => {
         setupTranslationMocks();
         const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
@@ -1484,8 +1515,13 @@ describe("syncedParagraphs edge cases", () => {
         expect(result.current.translationDirection).toBe("english-to-hebrew");
 
         // Now use setHebrewText which should force hebrew-to-english
-        act(() => {
+        await act(async () => {
           result.current.setHebrewText("עברית");
+        });
+
+        // Wait for translation to complete
+        await vi.waitFor(() => {
+          expect(mockFetch).toHaveBeenCalled();
         });
 
         expect(result.current.translationDirection).toBe("hebrew-to-english");
