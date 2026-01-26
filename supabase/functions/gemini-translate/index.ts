@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.0-flash-exp";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -331,7 +333,7 @@ Deno.serve(async (req: Request) => {
         const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: "POST",
             headers: {
@@ -453,7 +455,7 @@ FORMS:
 - בְּשָׁלוֹם (be-shalom) - in peace (prepositional)`;
 
       const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
@@ -679,7 +681,7 @@ FORMS:
       const prompt = `Extract ALL Hebrew text from this image. Include vowel marks (nikud) if present. Return ONLY the extracted Hebrew text, nothing else.`;
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: {
