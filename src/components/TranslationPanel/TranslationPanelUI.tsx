@@ -211,20 +211,21 @@ export function TranslationPanelUI({
   return (
     <div className="flex-1 flex flex-col p-6">
       <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2 shrink-0">
               <Languages className="w-5 h-5 text-blue-600" />
-              Translation Panel
+              <span className="hidden xs:inline">Translation Panel</span>
+              <span className="xs:hidden">Translate</span>
             </h2>
             {sourceText && (
-              <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-600">
                 <ArrowRightLeft className="w-4 h-4" />
                 <span>{isHebrewToEnglish ? "Hebrew → English" : "English → Hebrew"}</span>
               </div>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             {!isGuest && (
               <>
                 <button
@@ -456,17 +457,13 @@ export function TranslationPanelUI({
                 >
                   load from Bible
                 </span>
-                {!isGuest && (
-                  <>
-                    , or{" "}
-                    <span
-                      className="text-amber-600 underline cursor-pointer pointer-events-auto"
-                      onClick={() => setShowPassageGenerator(true)}
-                    >
-                      generate with AI
-                    </span>
-                  </>
-                )}
+                , or{" "}
+                <span
+                  className="text-amber-600 underline cursor-pointer pointer-events-auto"
+                  onClick={() => setShowPassageGenerator(true)}
+                >
+                  generate with AI
+                </span>
               </div>
             </div>
           )}

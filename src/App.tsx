@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { Navigation } from "./components/Navigation";
+import { Navigation } from "./components/Navigation/Navigation";
 import { Dashboard } from "./components/Dashboard/Dashboard";
 import { TranslationPanel } from "./components/TranslationPanel/TranslationPanel";
 import { VocabularyList } from "./components/VocabularyList/VocabularyList";
