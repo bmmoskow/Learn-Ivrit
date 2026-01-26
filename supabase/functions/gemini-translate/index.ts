@@ -1,11 +1,72 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.0-flash-exp";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+interface GeminiRequest {
+  prompt: string;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
+  maxOutputTokens?: number;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+async function callGeminiAPI(request: GeminiRequest): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY environment variable is not set");
+  }
+
+  const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [
+    { text: request.prompt }
+  ];
+
+  if (request.inlineData) {
+    parts.push({
+      inline_data: {
+        mime_type: request.inlineData.mimeType,
+        data: request.inlineData.data,
+      },
+    });
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: request.temperature ?? 0.3,
+          topK: request.topK ?? 40,
+          topP: request.topP ?? 0.95,
+          maxOutputTokens: request.maxOutputTokens ?? 8192,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
 
 const RATE_LIMITS = {
   word_definition: {
@@ -259,11 +320,6 @@ Deno.serve(async (req: Request) => {
     const rateLimitId = userId || "guest-user";
 
     if (path.includes("/translate")) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-      if (!GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is not set");
-      }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
       const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
@@ -329,38 +385,8 @@ Deno.serve(async (req: Request) => {
 
         const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [{ text: prompt }],
-                },
-              ],
-              generationConfig: {
-                temperature: 0.3,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192,
-              },
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Gemini API error: ${errorText}`);
-        }
-
-        const data = await response.json();
-        const candidate = data.candidates?.[0];
-        const chunkTranslation = candidate?.content?.parts?.[0]?.text || "";
-        const finishReason = candidate?.finishReason;
+        const chunkTranslation = await callGeminiAPI({ prompt });
+        const finishReason = "STOP";
 
         const translatedParaCount = chunkTranslation.trim().split(/\n\n+/).length;
         console.log(`Chunk ${translations.length + 1} finish reason:`, finishReason);
@@ -405,12 +431,6 @@ Deno.serve(async (req: Request) => {
         },
       });
     } else if (path.includes("/define")) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-      if (!GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is not set");
-      }
-
       const { word }: DefinitionRequest = await req.json();
 
       const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "word_definition");
@@ -451,39 +471,20 @@ FORMS:
 - שְׁלוֹמִי (shlomi) - my peace (possessive)
 - בְּשָׁלוֹם (be-shalom) - in peace (prepositional)`;
 
-      const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              topK: 20,
-              topP: 0.9,
-              maxOutputTokens: 800,
-            },
-          }),
-        },
-      );
+      const rawResponse = await callGeminiAPI({
+        prompt,
+        temperature: 0.1,
+        topK: 20,
+        topP: 0.9,
+        maxOutputTokens: 800,
+      });
 
       let wordWithVowels = word;
       let definition = "";
       let transliteration = "";
       let forms = [];
 
-      if (geminiResponse.ok) {
-        const geminiData = await geminiResponse.json();
-        const rawResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (rawResponse) {
+      if (rawResponse) {
           const wordMatch = rawResponse.match(/WORD:\s*([^\n]+)/i);
           const defMatch = rawResponse.match(/DEFINITION:\s*([^\n]+)/i);
           const translitMatch = rawResponse.match(/TRANSLITERATION:\s*([^\n]+)/i);
@@ -511,7 +512,6 @@ FORMS:
                 return null;
               })
               .filter((form: unknown) => form !== null);
-          }
         }
       }
 
@@ -639,12 +639,6 @@ FORMS:
         },
       );
     } else if (path.includes("/ocr")) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-      if (!GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is not set");
-      }
-
       const { imageData }: ImageOcrRequest = await req.json();
 
       if (!imageData) {
@@ -677,45 +671,17 @@ FORMS:
 
       const prompt = `Extract ALL Hebrew text from this image. Include vowel marks (nikud) if present. Return ONLY the extracted Hebrew text, nothing else.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt },
-                  {
-                    inline_data: {
-                      mime_type: "image/jpeg",
-                      data: base64Data,
-                    },
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              topK: 20,
-              topP: 0.9,
-              maxOutputTokens: 4096,
-            },
-          }),
+      const extractedText = await callGeminiAPI({
+        prompt,
+        temperature: 0.1,
+        topK: 20,
+        topP: 0.9,
+        maxOutputTokens: 4096,
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Data,
         },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Gemini API error:", errorText);
-        throw new Error(`Image OCR failed: ${errorText}`);
-      }
-
-      const data = await response.json();
-      const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      });
 
       console.log("Extracted text length:", extractedText.length);
       console.log("First 200 chars:", extractedText.substring(0, 200));
