@@ -21,7 +21,7 @@ The Service provides Hebrew vocabulary learning tools, including:
 ## 3. User Accounts and Eligibility
 
 ### Age Requirement
-You must be at least 13 years old to use this Service. By using the Service, you represent that you are at least 13 years of age.
+You must be at least 18 years old to use this Service. By using the Service, you represent that you are at least 18 years of age and have the legal capacity to enter into this agreement.
 
 ### Account Security
 - You are responsible for maintaining the confidentiality of your account credentials
