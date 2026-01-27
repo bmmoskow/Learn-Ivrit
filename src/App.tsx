@@ -7,7 +7,7 @@ import { TranslationPanel } from "./components/TranslationPanel/TranslationPanel
 import { VocabularyList } from "./components/VocabularyList/VocabularyList";
 import { TestPanel } from "./components/TestPanel/TestPanel";
 import { ResetPassword } from "./components/Login/ResetPassword/ResetPassword";
-import { Footer } from "./components/Footer";
+import { Footer } from "./components/Footer/Footer";
 import { supabase } from "../supabase/client";
 
 function AppContent() {
