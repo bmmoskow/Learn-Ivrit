@@ -33,7 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Check if Supabase is properly configured
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    // This app uses the anon key for the browser client
+    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       console.warn('Supabase not configured - authentication will not work, but guest mode is available');
@@ -41,14 +42,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
+    // IMPORTANT: Set up auth listener BEFORE getSession to avoid race conditions
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       (async () => {
         setUser(session?.user ?? null);
+        setLoading(false);
 
         if (event === 'PASSWORD_RECOVERY') {
           window.location.hash = 'reset-password';
@@ -70,6 +68,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       })();
+    });
+
+    // Get initial session after listener is set up
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -101,9 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await retryWithBackoff(() =>
+    const { data, error } = await retryWithBackoff(() =>
       supabase.auth.signInWithPassword({ email, password })
     );
+
+    if (!error && data.session) {
+      setUser(data.session.user);
+    }
+
     return { error };
   };
   const signInAsGuest = () => {
