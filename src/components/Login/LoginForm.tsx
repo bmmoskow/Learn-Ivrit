@@ -1,5 +1,6 @@
 import { LogIn, UserPlus, Mail, Eye, EyeOff } from "lucide-react";
 import { UseLoginReturn } from "./useLogin";
+import { Footer } from "../Footer/Footer";
 
 type LoginFormProps = UseLoginReturn;
 
@@ -178,6 +179,7 @@ export function LoginForm({
             )}
           </div>
         </div>
+        <Footer />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { TranslationPanel } from "./components/TranslationPanel/TranslationPanel
 import { VocabularyList } from "./components/VocabularyList/VocabularyList";
 import { TestPanel } from "./components/TestPanel/TestPanel";
 import { ResetPassword } from "./components/Login/ResetPassword/ResetPassword";
+import { Footer } from "./components/Footer/Footer";
 import { supabase } from "../supabase/client";
 
 function AppContent() {
@@ -88,6 +89,7 @@ function AppContent() {
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <Navigation currentView={currentView} onViewChange={setCurrentView} />
         {renderView()}
+        <Footer />
       </div>
     </ProtectedRoute>
   );
