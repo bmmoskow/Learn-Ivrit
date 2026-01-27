@@ -313,6 +313,59 @@ describe("AuthContext", () => {
       });
     });
 
+    it("immediately updates user state on successful sign-in", async () => {
+      const mockUser = createMockUser({ id: "immediate-user", email: "immediate@example.com" });
+      const mockSession = createMockSession(mockUser);
+
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: mockUser, session: mockSession },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      // User should be null before sign-in
+      expect(result.current.user).toBeNull();
+
+      await act(async () => {
+        await result.current.signIn("immediate@example.com", "password123");
+      });
+
+      // User should be set immediately after sign-in completes
+      expect(result.current.user).toEqual(mockUser);
+    });
+
+    it("does not update user state when sign-in fails", async () => {
+      const authError = createMockAuthError("Invalid credentials", {
+        status: 401,
+        code: "invalid_credentials",
+      });
+
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: null, session: null },
+        error: authError,
+      });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      expect(result.current.user).toBeNull();
+
+      await act(async () => {
+        await result.current.signIn("test@example.com", "wrong");
+      });
+
+      // User should still be null after failed sign-in
+      expect(result.current.user).toBeNull();
+    });
+
     it("returns error on failure", async () => {
       const authError = createMockAuthError("Invalid credentials", {
         status: 401,

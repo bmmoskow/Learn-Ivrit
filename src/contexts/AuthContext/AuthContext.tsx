@@ -105,9 +105,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await retryWithBackoff(() =>
+    const { data, error } = await retryWithBackoff(() =>
       supabase.auth.signInWithPassword({ email, password })
     );
+
+    if (!error && data.session) {
+      setUser(data.session.user);
+    }
+
     return { error };
   };
   const signInAsGuest = () => {
