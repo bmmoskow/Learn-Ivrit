@@ -1,11 +1,59 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.5-flash";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+interface GeminiRequest {
+  prompt: string;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
+  maxOutputTokens?: number;
+}
+
+async function callGeminiAPI(request: GeminiRequest): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY environment variable is not set");
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [{ text: request.prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: request.temperature ?? 0.7,
+          topK: request.topK ?? 40,
+          topP: request.topP ?? 0.95,
+          maxOutputTokens: request.maxOutputTokens ?? 2048,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
 
 const RATE_LIMITS = {
   passage_generation: {
@@ -16,7 +64,8 @@ const RATE_LIMITS = {
 };
 
 async function checkRateLimit(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
 ): Promise<{ allowed: boolean; error?: string }> {
   const limits = RATE_LIMITS.passage_generation;
@@ -78,7 +127,8 @@ async function checkRateLimit(
 }
 
 async function logRequest(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
 ): Promise<void> {
   await supabase.from("gemini_api_rate_limits").insert({
@@ -110,24 +160,24 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Validate user
+    // Try to validate user, but allow guest access
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    const { data: { user } } = await supabase.auth.getUser(token);
 
-    if (authError || !user) {
-      console.error("Auth error:", authError);
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Determine rate limit ID - use user.id for authenticated users, 'guest-user' for guests
+    let rateLimitId: string;
+    if (user) {
+      rateLimitId = user.id;
+      console.log(`Passage generation request from user: ${user.id}`);
+    } else {
+      rateLimitId = "guest-user";
+      console.log("Passage generation request from guest user");
     }
 
-    console.log(`Passage generation request from user: ${user.id}`);
-
     // Check rate limit
-    const rateLimitCheck = await checkRateLimit(supabase, user.id);
+    const rateLimitCheck = await checkRateLimit(supabase, rateLimitId);
     if (!rateLimitCheck.allowed) {
-      console.log(`Rate limit exceeded for user: ${user.id}`);
+      console.log(`Rate limit exceeded for: ${rateLimitId}`);
       return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
         status: 429,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -146,51 +196,13 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating passage with prompt length: ${prompt.length}`);
 
-    // Get Gemini API key
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY not configured");
-      throw new Error("GEMINI_API_KEY environment variable is not set");
-    }
-
     // Log the request for rate limiting
-    await logRequest(supabase, user.id);
+    await logRequest(supabase, rateLimitId);
 
     // Call Gemini API
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-          },
-        }),
-      }
-    );
-
-    if (!geminiResponse.ok) {
-      const errorText = await geminiResponse.text();
-      console.error("Gemini API error:", errorText);
-      throw new Error(`Gemini API error: ${geminiResponse.status}`);
-    }
-
-    const geminiData = await geminiResponse.json();
-    const passage = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const passage = await callGeminiAPI({ prompt });
 
     if (!passage) {
-      console.error("No passage generated from Gemini response:", geminiData);
       throw new Error("Failed to generate passage");
     }
 

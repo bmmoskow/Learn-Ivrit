@@ -1,11 +1,72 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "jsr:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
+
+const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.5-flash";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
+
+interface GeminiRequest {
+  prompt: string;
+  temperature?: number;
+  topK?: number;
+  topP?: number;
+  maxOutputTokens?: number;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+async function callGeminiAPI(request: GeminiRequest): Promise<string> {
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY environment variable is not set");
+  }
+
+  const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [
+    { text: request.prompt }
+  ];
+
+  if (request.inlineData) {
+    parts.push({
+      inline_data: {
+        mime_type: request.inlineData.mimeType,
+        data: request.inlineData.data,
+      },
+    });
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: {
+          temperature: request.temperature ?? 0.3,
+          topK: request.topK ?? 40,
+          topP: request.topP ?? 0.95,
+          maxOutputTokens: request.maxOutputTokens ?? 8192,
+        },
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Gemini API error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
 
 const RATE_LIMITS = {
   word_definition: {
@@ -21,7 +82,8 @@ const RATE_LIMITS = {
 };
 
 async function checkRateLimit(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<{ allowed: boolean; error?: string }> {
@@ -82,7 +144,8 @@ async function checkRateLimit(
 }
 
 async function logRequest(
-  supabase: ReturnType<typeof createClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: ReturnType<typeof createClient<any>>,
   userId: string,
   requestType: "word_definition" | "passage_translation",
 ): Promise<void> {
@@ -228,46 +291,38 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     const path = url.pathname;
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: "Missing authorization header" }), {
-        status: 401,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const token = authHeader.replace("Bearer ", "");
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(token);
+    // Check for authentication (optional - guests allowed for translation)
+    const authHeader = req.headers.get("Authorization");
+    let userId: string | null = null;
 
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
-        status: 401,
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
-      });
+    if (authHeader && authHeader !== "Bearer null" && authHeader !== "Bearer undefined") {
+      const token = authHeader.replace("Bearer ", "");
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser(token);
+
+      if (!authError && user) {
+        userId = user.id;
+        console.log(`Authenticated request from user: ${userId}`);
+      } else {
+        console.log("Guest mode access (invalid token)");
+      }
+    } else {
+      console.log("Guest mode access (no auth header)");
     }
 
-    if (path.includes("/translate")) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    // For guests, use a consistent guest identifier for rate limiting
+    const rateLimitId = userId || "guest-user";
 
-      if (!GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is not set");
-      }
+    if (path.includes("/translate")) {
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, "passage_translation");
+      const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
       if (!rateLimitCheck.allowed) {
         return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
           status: 429,
@@ -286,7 +341,7 @@ Deno.serve(async (req: Request) => {
       const textLength = text.length;
       console.log(`Translating ${sourceLanguage} to ${targetLanguage} - hash:`, contentHash, "length:", textLength);
 
-      await logRequest(supabase, user.id, "passage_translation");
+      await logRequest(supabase, rateLimitId, "passage_translation");
 
       const vowelInstruction =
         targetLanguage === "Hebrew"
@@ -330,38 +385,8 @@ Deno.serve(async (req: Request) => {
 
         const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contents: [
-                {
-                  parts: [{ text: prompt }],
-                },
-              ],
-              generationConfig: {
-                temperature: 0.3,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 8192,
-              },
-            }),
-          },
-        );
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Gemini API error: ${errorText}`);
-        }
-
-        const data = await response.json();
-        const candidate = data.candidates?.[0];
-        const chunkTranslation = candidate?.content?.parts?.[0]?.text || "";
-        const finishReason = candidate?.finishReason;
+        const chunkTranslation = await callGeminiAPI({ prompt });
+        const finishReason = "STOP";
 
         const translatedParaCount = chunkTranslation.trim().split(/\n\n+/).length;
         console.log(`Chunk ${translations.length + 1} finish reason:`, finishReason);
@@ -406,15 +431,9 @@ Deno.serve(async (req: Request) => {
         },
       });
     } else if (path.includes("/define")) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-      if (!GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is not set");
-      }
-
       const { word }: DefinitionRequest = await req.json();
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, "word_definition");
+      const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "word_definition");
       if (!rateLimitCheck.allowed) {
         return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
           status: 429,
@@ -425,7 +444,7 @@ Deno.serve(async (req: Request) => {
         });
       }
 
-      await logRequest(supabase, user.id, "word_definition");
+      await logRequest(supabase, rateLimitId, "word_definition");
 
       const prompt = `For the Hebrew word "${word}":
 
@@ -452,39 +471,20 @@ FORMS:
 - שְׁלוֹמִי (shlomi) - my peace (possessive)
 - בְּשָׁלוֹם (be-shalom) - in peace (prepositional)`;
 
-      const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              topK: 20,
-              topP: 0.9,
-              maxOutputTokens: 800,
-            },
-          }),
-        },
-      );
+      const rawResponse = await callGeminiAPI({
+        prompt,
+        temperature: 0.1,
+        topK: 20,
+        topP: 0.9,
+        maxOutputTokens: 800,
+      });
 
       let wordWithVowels = word;
       let definition = "";
       let transliteration = "";
       let forms = [];
 
-      if (geminiResponse.ok) {
-        const geminiData = await geminiResponse.json();
-        const rawResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
-        if (rawResponse) {
+      if (rawResponse) {
           const wordMatch = rawResponse.match(/WORD:\s*([^\n]+)/i);
           const defMatch = rawResponse.match(/DEFINITION:\s*([^\n]+)/i);
           const translitMatch = rawResponse.match(/TRANSLITERATION:\s*([^\n]+)/i);
@@ -499,8 +499,8 @@ FORMS:
 
             forms = formsText
               .split("\n")
-              .filter((line) => line.trim().startsWith("-"))
-              .map((line) => {
+              .filter((line: string) => line.trim().startsWith("-"))
+              .map((line: string) => {
                 const match = line.match(/^-\s*([^(]+)\(([^)]+)\)\s*-\s*(.+)$/);
                 if (match) {
                   return {
@@ -511,8 +511,7 @@ FORMS:
                 }
                 return null;
               })
-              .filter((form) => form !== null);
-          }
+              .filter((form: unknown) => form !== null);
         }
       }
 
@@ -640,12 +639,6 @@ FORMS:
         },
       );
     } else if (path.includes("/ocr")) {
-      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-      if (!GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY environment variable is not set");
-      }
-
       const { imageData }: ImageOcrRequest = await req.json();
 
       if (!imageData) {
@@ -658,7 +651,7 @@ FORMS:
         });
       }
 
-      const rateLimitCheck = await checkRateLimit(supabase, user.id, "passage_translation");
+      const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
       if (!rateLimitCheck.allowed) {
         return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
           status: 429,
@@ -669,7 +662,7 @@ FORMS:
         });
       }
 
-      await logRequest(supabase, user.id, "passage_translation");
+      await logRequest(supabase, rateLimitId, "passage_translation");
 
       console.log("Processing image for OCR...");
 
@@ -678,45 +671,17 @@ FORMS:
 
       const prompt = `Extract ALL Hebrew text from this image. Include vowel marks (nikud) if present. Return ONLY the extracted Hebrew text, nothing else.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: prompt },
-                  {
-                    inline_data: {
-                      mime_type: "image/jpeg",
-                      data: base64Data,
-                    },
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              topK: 20,
-              topP: 0.9,
-              maxOutputTokens: 4096,
-            },
-          }),
+      const extractedText = await callGeminiAPI({
+        prompt,
+        temperature: 0.1,
+        topK: 20,
+        topP: 0.9,
+        maxOutputTokens: 4096,
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Data,
         },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Gemini API error:", errorText);
-        throw new Error(`Image OCR failed: ${errorText}`);
-      }
-
-      const data = await response.json();
-      const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      });
 
       console.log("Extracted text length:", extractedText.length);
       console.log("First 200 chars:", extractedText.substring(0, 200));

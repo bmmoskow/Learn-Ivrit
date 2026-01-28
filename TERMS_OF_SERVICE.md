@@ -1,6 +1,6 @@
 # Terms of Service
 
-**Last Updated: [DATE]**
+**Last Updated: January 28, 2026**
 
 **IMPORTANT: THESE TERMS REQUIRE BINDING ARBITRATION AND CONTAIN A CLASS ACTION WAIVER**
 
@@ -55,24 +55,11 @@ You agree not to:
 - Translations are generated using Google's Gemini API
 - You are responsible for ensuring your use of any third-party content complies with applicable licenses
 
-## 6. Paid Services and Subscriptions
+## 6. Service Availability
 
-### Billing
-- Subscription fees are billed in advance on a recurring basis (monthly or annually)
-- You authorize us to charge your payment method for all fees
-- Prices are subject to change with 30 days' notice
-- All fees are non-refundable except as required by law
-
-### Auto-Renewal
-- YOUR SUBSCRIPTION WILL AUTOMATICALLY RENEW unless you cancel before the renewal date
-- You may cancel at any time through your account settings
-- Cancellation takes effect at the end of the current billing period
-- No refunds or credits for partial periods
-
-### Free Trial
-- Free trials (if offered) are for new users only
-- You must provide payment information to start a trial
-- You will be charged when the trial ends unless you cancel before the trial period expires
+The Service is currently provided free of charge. We reserve the right to:
+- Modify, suspend, or discontinue any part of the Service at any time
+- Change our pricing model in the future with advance notice to users
 
 ## 7. Acceptable Use
 
@@ -111,7 +98,7 @@ TO THE MAXIMUM EXTENT PERMITTED BY LAW:
 
 - WE ARE NOT LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES
 - WE ARE NOT LIABLE FOR ANY LOSS OF PROFITS, REVENUE, DATA, OR USE
-- OUR TOTAL LIABILITY SHALL NOT EXCEED THE AMOUNT YOU PAID US IN THE 12 MONTHS BEFORE THE CLAIM, OR $100, WHICHEVER IS GREATER
+- OUR TOTAL LIABILITY SHALL NOT EXCEED $100
 
 This limitation applies regardless of the legal theory (contract, tort, negligence, strict liability, or otherwise) and even if we have been advised of the possibility of such damages.
 
@@ -126,19 +113,19 @@ You agree to indemnify, defend, and hold us harmless from any claims, damages, l
 ## 12. Termination
 
 ### By You
-You may terminate your account at any time by contacting us or through your account settings.
+You may terminate your account at any time by:
+- Using the account deletion feature in your Settings page
+- Contacting us at support@yourapp.com (replace with your actual contact email)
 
 ### By Us
 We may suspend or terminate your account immediately, without notice, for:
 - Violation of these Terms
 - Fraudulent or illegal activity
-- Non-payment of fees
 - Any reason at our sole discretion
 
 ### Effect of Termination
 - You will lose access to your account and data
 - We may delete your data after termination
-- You remain liable for all fees incurred before termination
 - Sections that by their nature should survive termination will survive (including liability limitations, arbitration, and indemnification)
 
 ## 13. Dispute Resolution and Arbitration
@@ -161,7 +148,7 @@ Either party may bring a lawsuit in court to:
 - Resolve disputes in small claims court
 
 ### Opt-Out
-You may opt out of this arbitration agreement by sending written notice within 30 days of first accepting these Terms to [YOUR EMAIL ADDRESS]. The notice must include your name, email, and a clear statement that you wish to opt out of arbitration.
+You may opt out of this arbitration agreement by sending written notice within 30 days of first accepting these Terms to support@yourapp.com (replace with your actual contact email). The notice must include your name, email, and a clear statement that you wish to opt out of arbitration.
 
 ## 14. Changes to Terms
 
@@ -187,7 +174,7 @@ You may not use or export the Service in violation of U.S. export laws and regul
 
 ## 18. Governing Law
 
-These Terms are governed by the laws of [YOUR STATE/COUNTRY], without regard to conflict of law principles. Any disputes not subject to arbitration will be resolved in the courts of [YOUR JURISDICTION].
+These Terms are governed by the laws of the State of Washington, United States, without regard to conflict of law principles. Any disputes not subject to arbitration will be resolved in the courts of the State of Washington, United States.
 
 ## 19. Entire Agreement
 
@@ -209,9 +196,9 @@ You may not assign these Terms without our prior written consent. We may assign 
 
 For questions about these Terms, contact us at:
 
-**[YOUR NAME/COMPANY NAME]**
-**Email: [YOUR EMAIL]**
-**Address: [YOUR ADDRESS]**
+**Email: support@yourapp.com** (replace with your actual contact email)
+
+You can also reach us through the Settings page in your account.
 
 ---
 
