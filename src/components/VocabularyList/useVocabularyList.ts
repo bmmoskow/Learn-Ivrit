@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../supabase/client";
+import { defaultVocabulary } from "../../data/defaultVocabulary";
 import {
   VocabWithStats,
   SortBy,
@@ -13,6 +14,7 @@ import {
   calculatePaginationRange,
   mapViewRowToVocabWithStats,
   mapWordsWithStats,
+  createGuestVocabWord,
 } from "./vocabularyListUtils";
 
 export interface UseVocabularyListReturn {
@@ -75,8 +77,19 @@ export function useVocabularyList(): UseVocabularyListReturn {
   }, [sortBy, debouncedSearchQuery]);
 
   const loadVocabulary = useCallback(async () => {
-    if (!user) return;
+    if (isGuest) {
+      // Load default vocabulary for guests
+      const guestWords: VocabWithStats[] = defaultVocabulary.map((word, index) => createGuestVocabWord(word, index));
+      setWords(guestWords);
+      setTotalCount(guestWords.length);
+      setLoading(false);
+      return;
+    }
 
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     try {
@@ -87,7 +100,7 @@ export function useVocabularyList(): UseVocabularyListReturn {
 
         if (debouncedSearchQuery) {
           query = query.or(
-            `hebrew_word.ilike.%${debouncedSearchQuery}%,english_translation.ilike.%${debouncedSearchQuery}%`
+            `hebrew_word.ilike.%${debouncedSearchQuery}%,english_translation.ilike.%${debouncedSearchQuery}%`,
           );
         }
 
@@ -110,13 +123,13 @@ export function useVocabularyList(): UseVocabularyListReturn {
           .from("vocabulary_words")
           .select(
             "id, hebrew_word, english_translation, definition, transliteration, created_at, updated_at, user_id",
-            { count: "exact" }
+            { count: "exact" },
           )
           .eq("user_id", user.id);
 
         if (debouncedSearchQuery) {
           query = query.or(
-            `hebrew_word.ilike.%${debouncedSearchQuery}%,english_translation.ilike.%${debouncedSearchQuery}%`
+            `hebrew_word.ilike.%${debouncedSearchQuery}%,english_translation.ilike.%${debouncedSearchQuery}%`,
           );
         }
 
@@ -139,7 +152,7 @@ export function useVocabularyList(): UseVocabularyListReturn {
         const { data: statsData } = await supabase
           .from("word_statistics")
           .select(
-            "id, user_id, word_id, correct_count, incorrect_count, total_attempts, consecutive_correct, last_tested, confidence_score, created_at, updated_at"
+            "id, user_id, word_id, correct_count, incorrect_count, total_attempts, consecutive_correct, last_tested, confidence_score, created_at, updated_at",
           )
           .in("word_id", wordIds);
 
@@ -152,7 +165,7 @@ export function useVocabularyList(): UseVocabularyListReturn {
     } finally {
       setLoading(false);
     }
-  }, [user, sortBy, currentPage, debouncedSearchQuery]);
+  }, [user, isGuest, sortBy, currentPage, debouncedSearchQuery]);
 
   // Load vocabulary when dependencies change
   useEffect(() => {
@@ -228,7 +241,7 @@ export function useVocabularyList(): UseVocabularyListReturn {
         console.error("Error deleting word:", err);
       }
     },
-    [loadVocabulary]
+    [loadVocabulary],
   );
 
   return {

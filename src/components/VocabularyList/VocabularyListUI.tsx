@@ -74,20 +74,33 @@ export function VocabularyListUI({
   const pageNumbers = calculatePageNumbers(currentPage, totalPages);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">My Vocabulary</h2>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Vocabulary</h2>
         {!isGuest && (
           <button
             onClick={() => onShowAddFormChange(!showAddForm)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base"
           >
             <Plus className="w-4 h-4" />
-            Add Word
+            <span className="hidden xs:inline">Add Word</span>
+            <span className="xs:hidden">Add</span>
           </button>
         )}
       </div>
+
+      {/* Guest Message */}
+      {isGuest && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-900 mb-2">Example Vocabulary List</h3>
+            <p className="text-sm sm:text-base text-blue-700">
+              This is a sample list for Guest users. Create a free account to build your own personalized vocabulary and track your progress.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Add Form */}
       {showAddForm && !isGuest && (
@@ -153,21 +166,21 @@ export function VocabularyListUI({
       )}
 
       {/* Search and Sort */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
           <input
             type="text"
-            placeholder="Search vocabulary..."
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
           <button
             onClick={() => onSortByChange("date")}
-            className={`px-4 py-2 rounded-lg transition ${
+            className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
               sortBy === "date" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
@@ -175,7 +188,7 @@ export function VocabularyListUI({
           </button>
           <button
             onClick={() => onSortByChange("alphabetical")}
-            className={`px-4 py-2 rounded-lg transition ${
+            className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
               sortBy === "alphabetical" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
@@ -184,7 +197,7 @@ export function VocabularyListUI({
           {!isGuest && (
             <button
               onClick={() => onSortByChange("performance")}
-              className={`px-4 py-2 rounded-lg transition ${
+              className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
                 sortBy === "performance" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
             >
@@ -200,31 +213,35 @@ export function VocabularyListUI({
           {searchQuery ? "No words match your search" : "No vocabulary words yet. Add some to get started!"}
         </div>
       ) : (
-        <div>
+        <div className="overflow-hidden">
           {/* Table Header */}
           <div className="bg-gray-50 border-b border-gray-200 flex items-center font-semibold text-gray-700">
-            <div className="px-4 py-3 text-right text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "200px" }}>
+            <div className="px-2 sm:px-4 py-2 sm:py-3 text-right text-sm font-semibold text-gray-700 flex-1 min-w-0">
               Hebrew
             </div>
-            <div className="px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "180px" }}>
+            <div className="px-2 sm:px-4 py-2 sm:py-3 text-sm font-semibold text-gray-700 flex-1 min-w-0">
               English
             </div>
             {!isGuest && (
-              <div className="px-4 py-3 text-sm font-semibold text-gray-700 flex-1 min-w-[200px]">Definition</div>
-            )}
-            {!isGuest && (
               <>
-                <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "120px" }}>
+                <div
+                  className="hidden sm:block text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                  style={{ width: "120px" }}
+                >
                   Stats
                 </div>
-                <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "140px" }}>
+                <div
+                  className="hidden sm:block text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                  style={{ width: "140px" }}
+                >
                   Performance
                 </div>
               </>
             )}
             {!isGuest && (
-              <div className="text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0" style={{ width: "120px" }}>
-                Actions
+              <div className="text-center px-1 py-2 sm:px-4 sm:py-3 text-sm font-semibold text-gray-700 flex-shrink-0 w-14 sm:w-[120px]">
+                <span className="sm:hidden">⚙</span>
+                <span className="hidden sm:inline">Actions</span>
               </div>
             )}
           </div>
@@ -241,12 +258,7 @@ export function VocabularyListUI({
                     onCancelEdit={onCancelEdit}
                   />
                 ) : (
-                  <DisplayRow
-                    word={word}
-                    isGuest={isGuest}
-                    onStartEdit={onStartEdit}
-                    onDeleteWord={onDeleteWord}
-                  />
+                  <DisplayRow word={word} isGuest={isGuest} onStartEdit={onStartEdit} onDeleteWord={onDeleteWord} />
                 )}
               </div>
             ))}
@@ -310,38 +322,34 @@ interface EditRowProps {
 function EditRow({ editForm, onEditFormChange, onSaveEdit, onCancelEdit }: EditRowProps) {
   return (
     <>
-      <div className="px-4 py-4 flex-shrink-0" style={{ width: "200px" }}>
+      <div className="px-2 sm:px-4 py-2 sm:py-4 flex-1 min-w-0">
         <input
           type="text"
           value={editForm.hebrew_word}
           onChange={(e) => onEditFormChange({ ...editForm, hebrew_word: e.target.value })}
-          className="w-full px-2 py-1 border border-gray-300 rounded text-right"
+          className="w-full px-2 py-1 border border-gray-300 rounded text-right text-sm"
           dir="rtl"
         />
       </div>
-      <div className="px-4 py-4 flex-shrink-0" style={{ width: "180px" }}>
+      <div className="px-2 sm:px-4 py-2 sm:py-4 flex-1 min-w-0">
         <input
           type="text"
           value={editForm.english_translation}
           onChange={(e) => onEditFormChange({ ...editForm, english_translation: e.target.value })}
-          className="w-full px-2 py-1 border border-gray-300 rounded"
+          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
         />
       </div>
-      <div className="px-4 py-4 flex-1 min-w-[200px]">
-        <input
-          type="text"
-          value={editForm.definition}
-          onChange={(e) => onEditFormChange({ ...editForm, definition: e.target.value })}
-          className="w-full px-2 py-1 border border-gray-300 rounded"
-        />
-      </div>
-      <div className="px-4 py-4 text-center flex-shrink-0" style={{ width: "380px" }}>
-        <button onClick={onSaveEdit} className="px-4 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 mr-2">
-          Save
-        </button>
-        <button onClick={onCancelEdit} className="px-4 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-          Cancel
-        </button>
+      <div className="px-1 sm:px-4 py-2 sm:py-4 text-center flex-shrink-0 w-14 sm:w-[120px]">
+        <div className="flex items-center justify-center gap-0 sm:gap-1">
+          <button onClick={onSaveEdit} className="p-1.5 sm:px-4 sm:py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+            <span className="sm:hidden">✓</span>
+            <span className="hidden sm:inline">Save</span>
+          </button>
+          <button onClick={onCancelEdit} className="p-1.5 sm:px-4 sm:py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">
+            <span className="sm:hidden">✕</span>
+            <span className="hidden sm:inline">Cancel</span>
+          </button>
+        </div>
       </div>
     </>
   );
@@ -357,23 +365,18 @@ interface DisplayRowProps {
 function DisplayRow({ word, isGuest, onStartEdit, onDeleteWord }: DisplayRowProps) {
   return (
     <>
-      <div className="px-4 py-4 text-right flex-shrink-0" style={{ width: "200px" }}>
-        <div className="font-semibold text-lg" dir="rtl">
+      <div className="px-2 sm:px-4 py-2 sm:py-4 text-right flex-1 min-w-0 overflow-hidden">
+        <div className="font-semibold text-base sm:text-lg truncate" dir="rtl">
           {word.hebrew_word}
         </div>
-        {word.transliteration && <div className="text-sm text-gray-500">{word.transliteration}</div>}
+        {word.transliteration && <div className="text-xs sm:text-sm text-gray-500 truncate">{word.transliteration}</div>}
       </div>
-      <div className="px-4 py-4 flex-shrink-0" style={{ width: "180px" }}>
-        <div className="font-medium text-gray-900">{word.english_translation}</div>
+      <div className="px-2 sm:px-4 py-2 sm:py-4 flex-1 min-w-0 overflow-hidden">
+        <div className="font-medium text-gray-900 text-sm sm:text-base truncate">{word.english_translation}</div>
       </div>
-      {!isGuest && (
-        <div className="px-4 py-4 flex-1 min-w-[200px]">
-          <div className="text-sm text-gray-600 truncate">{word.definition}</div>
-        </div>
-      )}
       {!isGuest && (
         <>
-          <div className="px-4 py-4 text-center flex-shrink-0" style={{ width: "120px" }}>
+          <div className="hidden sm:block px-4 py-4 text-center flex-shrink-0" style={{ width: "120px" }}>
             {word.statistics && word.statistics.total_attempts && word.statistics.total_attempts > 0 ? (
               <div className="text-sm">
                 <div className="font-medium text-gray-900">
@@ -385,7 +388,7 @@ function DisplayRow({ word, isGuest, onStartEdit, onDeleteWord }: DisplayRowProp
               <span className="text-sm text-gray-400">Not tested</span>
             )}
           </div>
-          <div className="px-4 py-4 text-center flex-shrink-0" style={{ width: "140px" }}>
+          <div className="hidden sm:block px-4 py-4 text-center flex-shrink-0" style={{ width: "140px" }}>
             {word.statistics && word.statistics.total_attempts && word.statistics.total_attempts > 0 ? (
               <div className="flex items-center justify-center gap-2">
                 {getPerformanceIcon(word.statistics.confidence_score ?? 0)}
@@ -402,18 +405,18 @@ function DisplayRow({ word, isGuest, onStartEdit, onDeleteWord }: DisplayRowProp
         </>
       )}
       {!isGuest && (
-        <div className="px-4 py-4 text-center flex-shrink-0" style={{ width: "120px" }}>
-          <div className="flex items-center justify-center gap-2">
+        <div className="px-1 sm:px-4 py-2 sm:py-4 text-center flex-shrink-0 w-14 sm:w-[120px]">
+          <div className="flex items-center justify-center gap-0 sm:gap-2">
             <button
               onClick={() => onStartEdit(word)}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+              className="p-1.5 sm:p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
               title="Edit word"
             >
               <Edit2 className="w-4 h-4" />
             </button>
             <button
               onClick={() => onDeleteWord(word.id)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+              className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
               title="Delete word"
             >
               <Trash2 className="w-4 h-4" />
