@@ -7,7 +7,9 @@ import { TranslationPanel } from "./components/TranslationPanel/TranslationPanel
 import { VocabularyList } from "./components/VocabularyList/VocabularyList";
 import { TestPanel } from "./components/TestPanel/TestPanel";
 import { ResetPassword } from "./components/Login/ResetPassword/ResetPassword";
+import Settings from "./pages/Settings";
 import { Footer } from "./components/Footer/Footer";
+import { FAQPage } from "./components/FAQ/FAQPage";
 import { supabase } from "../supabase/client";
 
 function AppContent() {
@@ -17,7 +19,7 @@ function AppContent() {
 
   useEffect(() => {
     if (isGuest) {
-      setCurrentView("translate");
+      setCurrentView("faq");
     }
   }, [isGuest]);
 
@@ -79,6 +81,10 @@ function AppContent() {
         return <VocabularyList />;
       case "test":
         return <TestPanel />;
+      case "faq":
+        return <FAQPage />;
+      case "settings":
+        return <Settings />;
       default:
         return <Dashboard />;
     }

@@ -1,5 +1,5 @@
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
-import { Home, Languages, BookOpen, GraduationCap, LogOut, User } from "lucide-react";
+import { Home, Languages, BookOpen, GraduationCap, LogOut, User, Settings, HelpCircle } from "lucide-react";
 
 type NavigationProps = {
   currentView: string;
@@ -14,7 +14,15 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
     { id: "translate", label: "Translate", icon: Languages, guestHidden: false },
     { id: "vocabulary", label: "Vocabulary", icon: BookOpen, guestHidden: false },
     { id: "test", label: "Test", icon: GraduationCap, guestHidden: false },
-  ].filter((item) => !isGuest || !item.guestHidden);
+    { id: "faq", label: "FAQ", icon: HelpCircle, guestHidden: false, guestOnly: true },
+    { id: "settings", label: "Settings", icon: Settings, guestHidden: true },
+  ].filter((item) => {
+    if (isGuest) {
+      return !item.guestHidden;
+    } else {
+      return !item.guestOnly;
+    }
+  });
 
   return (
     <nav className="bg-white border-b border-gray-200 shadow-sm">
@@ -23,7 +31,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
         <div className="hidden lg:flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              Hebrew Learner
+              Learn Ivrit
             </div>
             <div className="flex items-center gap-2">
               {navItems.map((item) => (
@@ -59,10 +67,10 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
 
         {/* Tablet (sm to lg): Two row layout */}
         <div className="hidden sm:block lg:hidden">
-          {/* Row 1: Hebrew Learner (left) + Email (right) */}
+          {/* Row 1: Learn Ivrit (left) + Email (right) */}
           <div className="flex items-center justify-between h-14">
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              Hebrew Learner
+              Learn Ivrit
             </div>
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
               <User className="w-4 h-4" />
@@ -98,10 +106,10 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
 
         {/* Phone (below sm): Two row layout, no email */}
         <div className="sm:hidden">
-          {/* Row 1: Hebrew Learner (left) + Sign Out (right) */}
+          {/* Row 1: Learn Ivrit (left) + Sign Out (right) */}
           <div className="flex items-center justify-between h-12">
             <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              Hebrew Learner
+              Learn Ivrit
             </div>
             <button
               onClick={() => signOut()}

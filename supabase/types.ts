@@ -475,6 +475,10 @@ export type Database = {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      delete_user_account: {
+        Args: Record<PropertyKey, never>;
+        Returns: Json;
+      };
       increment_translation_access: {
         Args: {
           cache_id: string;
