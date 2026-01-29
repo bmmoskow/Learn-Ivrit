@@ -1,5 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { APP_CONFIG } from '@/config/app';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Trash2, Mail, AlertTriangle, HelpCircle } from 'lucide-react';
 import { FAQDialog } from '../FAQ/FAQDialog';
+import { Link } from 'react-router-dom';
 
 interface SettingsUIProps {
   user: User;
@@ -96,16 +98,42 @@ export default function SettingsUI({
               <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
                 <Mail className="h-5 w-5 text-primary" />
                 <a
-                  href="mailto:support@yourapp.com"
+                  href={`mailto:${APP_CONFIG.supportEmail}`}
                   className="text-primary hover:underline font-medium"
                 >
-                  support@yourapp.com
+{APP_CONFIG.supportEmail}
                 </a>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
                 Replace with your actual support email address
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Legal</CardTitle>
+            <CardDescription>Terms and policies</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/terms"
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Terms of Service
+              </Link>
+              <Link
+                to="/privacy"
+                className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
+              >
+                Privacy Policy
+              </Link>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Review our terms and privacy practices
+            </p>
           </CardContent>
         </Card>
 
@@ -161,6 +189,16 @@ export default function SettingsUI({
               <p>
                 This action cannot be undone. This will permanently delete your account and remove
                 all your data from our servers.
+              </p>
+              <p className="text-sm">
+                Your data will be handled according to our{' '}
+                <Link
+                  to="/privacy"
+                  className="text-blue-600 hover:text-blue-700 underline"
+                >
+                  Privacy Policy
+                </Link>
+                .
               </p>
               <div className="space-y-2">
                 <Label htmlFor="delete-confirmation">

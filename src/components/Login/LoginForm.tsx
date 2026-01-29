@@ -78,6 +78,19 @@ export function LoginForm({
               </div>
             )}
 
+            {isSignUp && (
+              <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+                By signing up, you agree to our{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline">
+                  Terms of Service
+                </a>
+                {' '}and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline">
+                  Privacy Policy
+                </a>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input

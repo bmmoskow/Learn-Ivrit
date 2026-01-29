@@ -130,7 +130,7 @@ npx vitest run       # Run tests
 
 - Read the [Deployment Guide](DEPLOYMENT_GUIDE.md) for production deployment
 - Check out the [API Compliance Checklist](API_COMPLIANCE_CHECKLIST.md)
-- Review the [Privacy Policy](PRIVACY_POLICY.md) and [Terms of Service](TERMS_OF_SERVICE.md)
+- Review the [Privacy Policy](public/PRIVACY_POLICY.md) and [Terms of Service](public/TERMS_OF_SERVICE.md)
 
 ## Need Help?
 
