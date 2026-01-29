@@ -1,9 +1,6 @@
 import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-<<<<<<< HEAD
 import { APP_CONFIG } from '@/config/app';
-=======
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,10 +16,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Trash2, Mail, AlertTriangle, HelpCircle } from 'lucide-react';
 import { FAQDialog } from '../FAQ/FAQDialog';
-<<<<<<< HEAD
 import { Link } from 'react-router-dom';
-=======
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
 
 interface SettingsUIProps {
   user: User;
@@ -104,17 +98,10 @@ export default function SettingsUI({
               <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
                 <Mail className="h-5 w-5 text-primary" />
                 <a
-<<<<<<< HEAD
                   href={`mailto:${APP_CONFIG.supportEmail}`}
                   className="text-primary hover:underline font-medium"
                 >
 {APP_CONFIG.supportEmail}
-=======
-                  href="mailto:support@yourapp.com"
-                  className="text-primary hover:underline font-medium"
-                >
-                  support@yourapp.com
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
                 </a>
               </div>
               <p className="text-xs text-muted-foreground mt-3">
@@ -124,7 +111,6 @@ export default function SettingsUI({
           </CardContent>
         </Card>
 
-<<<<<<< HEAD
         <Card>
           <CardHeader>
             <CardTitle>Legal</CardTitle>
@@ -151,8 +137,6 @@ export default function SettingsUI({
           </CardContent>
         </Card>
 
-=======
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
         <Card className="border-destructive">
           <CardHeader>
             <CardTitle className="text-destructive flex items-center gap-2">
@@ -206,7 +190,6 @@ export default function SettingsUI({
                 This action cannot be undone. This will permanently delete your account and remove
                 all your data from our servers.
               </p>
-<<<<<<< HEAD
               <p className="text-sm">
                 Your data will be handled according to our{' '}
                 <Link
@@ -217,8 +200,6 @@ export default function SettingsUI({
                 </Link>
                 .
               </p>
-=======
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
               <div className="space-y-2">
                 <Label htmlFor="delete-confirmation">
                   Type <span className="font-bold text-foreground">DELETE</span> to confirm
