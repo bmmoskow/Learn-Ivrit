@@ -5,7 +5,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { HelpCircle, BookOpen, GraduationCap, Languages, CheckCircle, FileText } from 'lucide-react';
+<<<<<<< HEAD
 import { APP_CONFIG } from '@/config/app';
+=======
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
 
 export function FAQContent() {
   return (
@@ -14,7 +17,11 @@ export function FAQContent() {
         <HelpCircle className="w-8 h-8 text-blue-600" />
         <div>
           <h2 className="text-2xl font-bold">Frequently Asked Questions</h2>
+<<<<<<< HEAD
           <p className="text-gray-600">Find answers to common questions about {APP_CONFIG.appName}</p>
+=======
+          <p className="text-gray-600">Find answers to common questions about Learn Ivrit</p>
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
         </div>
       </div>
 
@@ -23,6 +30,7 @@ export function FAQContent() {
           <AccordionTrigger className="text-left">
             <div className="flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-blue-600" />
+<<<<<<< HEAD
               <span>What is {APP_CONFIG.appName}?</span>
             </div>
           </AccordionTrigger>
@@ -30,6 +38,15 @@ export function FAQContent() {
 {APP_CONFIG.appName} is a comprehensive language learning tool designed to help you master Hebrew, both Modern and Biblical.
             It provides translation tools, vocabulary management, and adaptive testing to track your progress.
             Whether you're a beginner or advancing your skills, {APP_CONFIG.appName} adapts to your learning level.
+=======
+              <span>What is Learn Ivrit?</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="text-gray-700 leading-relaxed">
+            Learn Ivrit is a comprehensive language learning tool designed to help you master Hebrew, both Modern and Biblical.
+            It provides translation tools, vocabulary management, and adaptive testing to track your progress.
+            Whether you're a beginner or advancing your skills, Learn Ivrit adapts to your learning level.
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
           </AccordionContent>
         </AccordionItem>
 
@@ -37,11 +54,19 @@ export function FAQContent() {
           <AccordionTrigger className="text-left">
             <div className="flex items-center gap-2">
               <GraduationCap className="w-5 h-5 text-blue-600" />
+<<<<<<< HEAD
               <span>What do I need to know before using {APP_CONFIG.appName}?</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-gray-700 leading-relaxed">
 {APP_CONFIG.appName} is designed for learners who already have a basic foundation in Hebrew:
+=======
+              <span>What do I need to know before using Learn Ivrit?</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="text-gray-700 leading-relaxed">
+            Learn Ivrit is designed for learners who already have a basic foundation in Hebrew:
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
             <ul className="list-disc ml-6 mt-2 space-y-1">
               <li>You should be able to read Hebrew text (recognize letters and vowel points)</li>
               <li>You should have rudimentary knowledge of Hebrew grammar</li>
@@ -62,7 +87,11 @@ export function FAQContent() {
             </p>
             <p className="mt-2 text-sm">
               If you're just starting to learn the Hebrew alphabet, we recommend working through
+<<<<<<< HEAD
               a beginner's course first, then returning to {APP_CONFIG.appName} to build your skills further.
+=======
+              a beginner's course first, then returning to Learn Ivrit to build your skills further.
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
             </p>
           </AccordionContent>
         </AccordionItem>
@@ -75,7 +104,11 @@ export function FAQContent() {
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-gray-700 leading-relaxed">
+<<<<<<< HEAD
 {APP_CONFIG.appName} supports multiple ways to get Hebrew text for translation and study:
+=======
+            Learn Ivrit supports multiple ways to get Hebrew text for translation and study:
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
             <ul className="list-disc ml-6 mt-2 space-y-2">
               <li><strong>Pasted Text:</strong> Copy and paste Hebrew or English text directly into the translation panel</li>
               <li><strong>Bible Chapters:</strong> Load specific biblical passages by book, chapter, and verse range</li>
@@ -155,7 +188,11 @@ export function FAQContent() {
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-gray-700 leading-relaxed">
+<<<<<<< HEAD
             You can explore {APP_CONFIG.appName} as a guest to try out the translation and testing features.
+=======
+            You can explore Learn Ivrit as a guest to try out the translation and testing features.
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
             However, without an account, no data is stored - you cannot save vocabulary, bookmarks, or track progress.
             The vocabulary list you see as a guest is populated with basic words for display purposes only.
             <div className="mt-3 p-3 bg-blue-50 rounded-lg">
@@ -188,6 +225,7 @@ export function FAQContent() {
               <li>You can delete your account and all data at any time</li>
             </ul>
             <p className="mt-3 text-sm text-gray-600">
+<<<<<<< HEAD
               See our{' '}
               <a
                 href="/privacy"
@@ -198,6 +236,9 @@ export function FAQContent() {
                 Privacy Policy
               </a>
               {' '}for full details about data access and our commitments.
+=======
+              See our Privacy Policy (accessible from Settings) for full details about data access and our commitments.
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
             </p>
           </AccordionContent>
         </AccordionItem>
@@ -206,11 +247,19 @@ export function FAQContent() {
           <AccordionTrigger className="text-left">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-blue-600" />
+<<<<<<< HEAD
               <span>Is {APP_CONFIG.appName} free to use?</span>
             </div>
           </AccordionTrigger>
           <AccordionContent className="text-gray-700 leading-relaxed">
             Yes, {APP_CONFIG.appName} is currently free to use. We're committed to making Hebrew
+=======
+              <span>Is Learn Ivrit free to use?</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="text-gray-700 leading-relaxed">
+            Yes, Learn Ivrit is currently free to use. We're committed to making Hebrew
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
             accessible to everyone who wants to learn. All core features including translation,
             vocabulary management, and adaptive testing are available at no cost.
           </AccordionContent>
@@ -247,10 +296,17 @@ export function FAQContent() {
             If you need assistance or want to report a problem, please contact us at:
             <div className="mt-2 p-3 bg-gray-50 rounded-lg">
               <a
+<<<<<<< HEAD
                 href={`mailto:${APP_CONFIG.supportEmail}`}
                 className="text-blue-600 hover:underline font-medium"
               >
 {APP_CONFIG.supportEmail}
+=======
+                href="mailto:support@yourapp.com"
+                className="text-blue-600 hover:underline font-medium"
+              >
+                support@yourapp.com
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
               </a>
             </div>
             <p className="mt-2 text-sm text-gray-600">

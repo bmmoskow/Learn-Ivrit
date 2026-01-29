@@ -11,8 +11,11 @@ import { ResetPassword } from "./components/Login/ResetPassword/ResetPassword";
 import Settings from "./pages/Settings";
 import { Footer } from "./components/Footer/Footer";
 import { FAQPage } from "./components/FAQ/FAQPage";
+<<<<<<< HEAD
 import { TermsOfService } from "./pages/TermsOfService";
 import { PrivacyPolicy } from "./pages/PrivacyPolicy";
+=======
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
 import { supabase } from "../supabase/client";
 
 function AppContent() {
@@ -28,6 +31,7 @@ function AppContent() {
   useEffect(() => {
     if (isGuest) {
       setCurrentView("faq");
+<<<<<<< HEAD
       if (location.pathname === "/") {
         navigate("/faq", { replace: true });
       }
@@ -38,6 +42,8 @@ function AppContent() {
       } else if (!saved) {
         setCurrentView("dashboard");
       }
+=======
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
     }
   }, [isGuest, user, navigate, location.pathname]);
 
@@ -95,6 +101,28 @@ function AppContent() {
     );
   }
 
+<<<<<<< HEAD
+=======
+  const renderView = () => {
+    switch (currentView) {
+      case "dashboard":
+        return <Dashboard />;
+      case "translate":
+        return <TranslationPanel />;
+      case "vocabulary":
+        return <VocabularyList />;
+      case "test":
+        return <TestPanel />;
+      case "faq":
+        return <FAQPage />;
+      case "settings":
+        return <Settings />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+>>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0
   return (
     <Routes>
       <Route path="/terms" element={<TermsOfService />} />
