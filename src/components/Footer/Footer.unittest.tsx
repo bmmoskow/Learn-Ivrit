@@ -1,11 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Footer } from './Footer';
+
+const renderFooter = () => {
+  return render(
+    <MemoryRouter>
+      <Footer />
+    </MemoryRouter>
+  );
+};
 
 describe('Footer', () => {
   describe('rendering', () => {
     it('renders the footer element', () => {
-      const { container } = render(<Footer />);
+      const { container } = renderFooter();
       const footer = container.querySelector('footer');
 
       expect(footer).toBeInTheDocument();
@@ -13,30 +22,31 @@ describe('Footer', () => {
     });
 
     it('displays attribution text for translations', () => {
-      render(<Footer />);
+      renderFooter();
 
       expect(screen.getByText('Translations powered by')).toBeInTheDocument();
     });
 
     it('displays attribution text for biblical texts', () => {
-      render(<Footer />);
+      renderFooter();
 
       expect(screen.getByText('Biblical texts from')).toBeInTheDocument();
     });
 
     it('renders separator bullet point on larger screens', () => {
-      const { container } = render(<Footer />);
-      const separator = container.querySelector('.text-gray-400');
+      const { container } = renderFooter();
+      const separators = container.querySelectorAll('.text-gray-400');
 
-      expect(separator).toBeInTheDocument();
-      expect(separator).toHaveTextContent('•');
-      expect(separator).toHaveClass('hidden', 'sm:inline');
+      expect(separators.length).toBeGreaterThan(0);
+      const firstSeparator = Array.from(separators).find(el => el.textContent === '•');
+      expect(firstSeparator).toBeInTheDocument();
+      expect(firstSeparator).toHaveClass('hidden', 'sm:inline');
     });
   });
 
   describe('Google Gemini link', () => {
     it('renders link to Google Gemini API', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Google Gemini/i });
 
       expect(link).toBeInTheDocument();
@@ -44,21 +54,21 @@ describe('Footer', () => {
     });
 
     it('opens Google Gemini link in new tab', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Google Gemini/i });
 
       expect(link).toHaveAttribute('target', '_blank');
     });
 
     it('has security attributes on Google Gemini link', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Google Gemini/i });
 
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('displays external link icon for Google Gemini', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Google Gemini/i });
       const svg = link.querySelector('svg');
 
@@ -66,7 +76,7 @@ describe('Footer', () => {
     });
 
     it('has hover styles on Google Gemini link', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Google Gemini/i });
 
       expect(link).toHaveClass('text-blue-600', 'hover:text-blue-700');
@@ -75,7 +85,7 @@ describe('Footer', () => {
 
   describe('Sefaria link', () => {
     it('renders link to Sefaria', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Powered by Sefaria/i });
 
       expect(link).toBeInTheDocument();
@@ -83,21 +93,21 @@ describe('Footer', () => {
     });
 
     it('opens Sefaria link in new tab', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Powered by Sefaria/i });
 
       expect(link).toHaveAttribute('target', '_blank');
     });
 
     it('has security attributes on Sefaria link', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Powered by Sefaria/i });
 
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
     it('displays Sefaria logo image', () => {
-      render(<Footer />);
+      renderFooter();
       const image = screen.getByAltText('Powered by Sefaria');
 
       expect(image).toBeInTheDocument();
@@ -105,23 +115,71 @@ describe('Footer', () => {
     });
 
     it('has correct image dimensions', () => {
-      render(<Footer />);
+      renderFooter();
       const image = screen.getByAltText('Powered by Sefaria');
 
       expect(image).toHaveClass('h-6');
     });
 
     it('has hover styles on Sefaria link', () => {
-      render(<Footer />);
+      renderFooter();
       const link = screen.getByRole('link', { name: /Powered by Sefaria/i });
 
       expect(link).toHaveClass('hover:opacity-80');
     });
   });
 
+  describe('legal links', () => {
+    it('renders Terms of Service link', () => {
+      renderFooter();
+      const link = screen.getByRole('link', { name: /Terms of Service/i });
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/terms');
+    });
+
+    it('renders Privacy Policy link', () => {
+      renderFooter();
+      const link = screen.getByRole('link', { name: /Privacy Policy/i });
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/privacy');
+    });
+
+    it('has hover styles on Terms of Service link', () => {
+      renderFooter();
+      const link = screen.getByRole('link', { name: /Terms of Service/i });
+
+      expect(link).toHaveClass('hover:text-blue-600');
+    });
+
+    it('has hover styles on Privacy Policy link', () => {
+      renderFooter();
+      const link = screen.getByRole('link', { name: /Privacy Policy/i });
+
+      expect(link).toHaveClass('hover:text-blue-600');
+    });
+
+    it('renders separator between legal links', () => {
+      const { container } = renderFooter();
+      const legalLinksContainer = container.querySelector('.text-xs.text-gray-500');
+
+      expect(legalLinksContainer).toBeInTheDocument();
+      expect(legalLinksContainer?.textContent).toContain('•');
+    });
+
+    it('legal links have proper text size', () => {
+      const { container } = renderFooter();
+      const legalLinksContainer = container.querySelector('.text-xs');
+
+      expect(legalLinksContainer).toBeInTheDocument();
+      expect(legalLinksContainer).toHaveClass('text-gray-500');
+    });
+  });
+
   describe('responsive layout', () => {
     it('uses responsive container with proper padding', () => {
-      const { container } = render(<Footer />);
+      const { container } = renderFooter();
       const contentDiv = container.querySelector('.max-w-7xl');
 
       expect(contentDiv).toBeInTheDocument();
@@ -129,40 +187,44 @@ describe('Footer', () => {
     });
 
     it('has responsive flex layout', () => {
-      const { container } = render(<Footer />);
-      const flexContainer = container.querySelector('.flex.flex-col');
+      const { container } = renderFooter();
+      const attributionsContainer = container.querySelector('.flex.flex-col.sm\\:flex-row');
 
-      expect(flexContainer).toBeInTheDocument();
-      expect(flexContainer).toHaveClass('sm:flex-row');
+      expect(attributionsContainer).toBeInTheDocument();
     });
 
     it('centers content appropriately', () => {
-      const { container } = render(<Footer />);
-      const flexContainer = container.querySelector('.flex.flex-col');
+      const { container } = renderFooter();
+      const mainContainer = container.querySelector('.flex.flex-col.items-center');
 
-      expect(flexContainer).toHaveClass('justify-center', 'items-center');
+      expect(mainContainer).toBeInTheDocument();
+      expect(mainContainer).toHaveClass('items-center');
     });
   });
 
   describe('accessibility', () => {
     it('has proper alt text for Sefaria logo', () => {
-      render(<Footer />);
+      renderFooter();
       const image = screen.getByAltText('Powered by Sefaria');
 
       expect(image).toHaveAccessibleName('Powered by Sefaria');
     });
 
     it('all links are keyboard accessible', () => {
-      render(<Footer />);
+      renderFooter();
       const geminiLink = screen.getByRole('link', { name: /Google Gemini/i });
       const sefariaLink = screen.getByRole('link', { name: /Powered by Sefaria/i });
+      const termsLink = screen.getByRole('link', { name: /Terms of Service/i });
+      const privacyLink = screen.getByRole('link', { name: /Privacy Policy/i });
 
       expect(geminiLink).toBeVisible();
       expect(sefariaLink).toBeVisible();
+      expect(termsLink).toBeVisible();
+      expect(privacyLink).toBeVisible();
     });
 
     it('uses semantic footer element', () => {
-      const { container } = render(<Footer />);
+      const { container } = renderFooter();
       const footer = container.querySelector('footer');
 
       expect(footer).toBeInTheDocument();
@@ -171,21 +233,21 @@ describe('Footer', () => {
 
   describe('styling and visual presentation', () => {
     it('has proper text color for attributions', () => {
-      const { container } = render(<Footer />);
+      const { container } = renderFooter();
       const flexContainer = container.querySelector('.text-gray-600');
 
       expect(flexContainer).toBeInTheDocument();
     });
 
     it('uses proper text size', () => {
-      const { container } = render(<Footer />);
+      const { container } = renderFooter();
       const flexContainer = container.querySelector('.text-sm');
 
       expect(flexContainer).toBeInTheDocument();
     });
 
     it('applies proper gap spacing', () => {
-      const { container } = render(<Footer />);
+      const { container } = renderFooter();
       const flexContainer = container.querySelector('.gap-4');
 
       expect(flexContainer).toBeInTheDocument();

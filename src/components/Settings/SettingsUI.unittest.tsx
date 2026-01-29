@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import SettingsUI from './SettingsUI';
 import type { User } from '@supabase/supabase-js';
 
@@ -13,21 +14,30 @@ const mockUser: User = {
   created_at: '2024-01-01T00:00:00.000Z',
 };
 
+const renderSettingsUI = (props: Partial<React.ComponentProps<typeof SettingsUI>> = {}) => {
+  const defaultProps = {
+    user: mockUser,
+    isDeleting: false,
+    showDeleteDialog: false,
+    setShowDeleteDialog: vi.fn(),
+    deleteConfirmation: '',
+    setDeleteConfirmation: vi.fn(),
+    handleDeleteAccount: vi.fn(),
+    showFAQDialog: false,
+    setShowFAQDialog: vi.fn(),
+    ...props,
+  };
+
+  return render(
+    <MemoryRouter>
+      <SettingsUI {...defaultProps} />
+    </MemoryRouter>
+  );
+};
+
 describe('SettingsUI', () => {
   it('renders account information', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI();
 
     expect(screen.getByText('Account Settings')).toBeInTheDocument();
     expect(screen.getByText('Account Information')).toBeInTheDocument();
@@ -35,77 +45,29 @@ describe('SettingsUI', () => {
   });
 
   it('email input is disabled', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI();
 
     const emailInput = screen.getByDisplayValue('test@example.com');
     expect(emailInput).toBeDisabled();
   });
 
   it('renders help and support section', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI();
 
     expect(screen.getByText('Help & Support')).toBeInTheDocument();
     expect(screen.getByText('support@yourapp.com')).toBeInTheDocument();
   });
 
   it('renders danger zone with delete account button', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI();
 
     expect(screen.getByText('To Delete Your Account')).toBeInTheDocument();
-    expect(screen.getByText('This action cannot be undone')).toBeInTheDocument();
+    expect(screen.getByText(/This action cannot be undone/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Delete Account/i })).toBeInTheDocument();
   });
 
   it('lists what will be deleted', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI();
 
     expect(screen.getByText(/All vocabulary words and definitions/i)).toBeInTheDocument();
     expect(screen.getByText(/Test history and statistics/i)).toBeInTheDocument();
@@ -118,19 +80,7 @@ describe('SettingsUI', () => {
     const setShowDeleteDialog = vi.fn();
     const user = userEvent.setup();
 
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={setShowDeleteDialog}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ setShowDeleteDialog });
 
     const deleteButton = screen.getByRole('button', { name: /Delete Account/i });
     await user.click(deleteButton);
@@ -139,38 +89,14 @@ describe('SettingsUI', () => {
   });
 
   it('delete button is disabled when isDeleting is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={true}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ isDeleting: true });
 
     const deleteButton = screen.getByRole('button', { name: /Delete Account/i });
     expect(deleteButton).toBeDisabled();
   });
 
   it('shows confirmation dialog when showDeleteDialog is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true });
 
     expect(screen.getByText('Are you absolutely sure?')).toBeInTheDocument();
     expect(
@@ -179,19 +105,7 @@ describe('SettingsUI', () => {
   });
 
   it('confirmation dialog has input field requiring DELETE to be typed', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true });
 
     expect(screen.getByText(/Type/i)).toBeInTheDocument();
     expect(screen.getByText('DELETE')).toBeInTheDocument();
@@ -202,19 +116,7 @@ describe('SettingsUI', () => {
     const setDeleteConfirmation = vi.fn();
     const user = userEvent.setup();
 
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={setDeleteConfirmation}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true, setDeleteConfirmation });
 
     const input = screen.getByPlaceholderText('DELETE');
     await user.type(input, 'D');
@@ -223,76 +125,28 @@ describe('SettingsUI', () => {
   });
 
   it('delete confirmation button is disabled when confirmation text is not DELETE', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation="delete"
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'delete' });
 
     const confirmButton = screen.getByRole('button', { name: /Delete Account/i });
     expect(confirmButton).toBeDisabled();
   });
 
   it('delete confirmation button is enabled when confirmation text is DELETE', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation="DELETE"
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'DELETE' });
 
     const confirmButton = screen.getByRole('button', { name: /Delete Account/i });
     expect(confirmButton).not.toBeDisabled();
   });
 
   it('delete confirmation button is disabled when isDeleting is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={true}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation="DELETE"
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ isDeleting: true, showDeleteDialog: true, deleteConfirmation: 'DELETE' });
 
     const confirmButton = screen.getByRole('button', { name: /Deleting.../i });
     expect(confirmButton).toBeDisabled();
   });
 
   it('shows Deleting... text when isDeleting is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={true}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation="DELETE"
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ isDeleting: true, showDeleteDialog: true, deleteConfirmation: 'DELETE' });
 
     expect(screen.getByText('Deleting...')).toBeInTheDocument();
   });
@@ -301,19 +155,7 @@ describe('SettingsUI', () => {
     const handleDeleteAccount = vi.fn();
     const user = userEvent.setup();
 
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation="DELETE"
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={handleDeleteAccount}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'DELETE', handleDeleteAccount });
 
     const confirmButton = screen.getByRole('button', { name: /Delete Account/i });
     await user.click(confirmButton);
@@ -322,19 +164,7 @@ describe('SettingsUI', () => {
   });
 
   it('has cancel button in confirmation dialog', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true });
 
     expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
   });
@@ -343,19 +173,7 @@ describe('SettingsUI', () => {
     const setDeleteConfirmation = vi.fn();
     const user = userEvent.setup();
 
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation="DELETE"
-        setDeleteConfirmation={setDeleteConfirmation}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'DELETE', setDeleteConfirmation });
 
     const cancelButton = screen.getByRole('button', { name: /Cancel/i });
     await user.click(cancelButton);
@@ -364,57 +182,21 @@ describe('SettingsUI', () => {
   });
 
   it('cancel button is disabled when isDeleting is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={true}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ isDeleting: true, showDeleteDialog: true });
 
     const cancelButton = screen.getByRole('button', { name: /Cancel/i });
     expect(cancelButton).toBeDisabled();
   });
 
   it('confirmation input is disabled when isDeleting is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={true}
-        showDeleteDialog={true}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ isDeleting: true, showDeleteDialog: true });
 
     const input = screen.getByPlaceholderText('DELETE');
     expect(input).toBeDisabled();
   });
 
   it('renders View FAQ button', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI();
 
     expect(screen.getByRole('button', { name: /View FAQ/i })).toBeInTheDocument();
   });
@@ -423,19 +205,7 @@ describe('SettingsUI', () => {
     const setShowFAQDialog = vi.fn();
     const user = userEvent.setup();
 
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={false}
-        setShowFAQDialog={setShowFAQDialog}
-      />
-    );
+    renderSettingsUI({ setShowFAQDialog });
 
     const faqButton = screen.getByRole('button', { name: /View FAQ/i });
     await user.click(faqButton);
@@ -444,19 +214,7 @@ describe('SettingsUI', () => {
   });
 
   it('renders FAQ dialog when showFAQDialog is true', () => {
-    render(
-      <SettingsUI
-        user={mockUser}
-        isDeleting={false}
-        showDeleteDialog={false}
-        setShowDeleteDialog={vi.fn()}
-        deleteConfirmation=""
-        setDeleteConfirmation={vi.fn()}
-        handleDeleteAccount={vi.fn()}
-        showFAQDialog={true}
-        setShowFAQDialog={vi.fn()}
-      />
-    );
+    renderSettingsUI({ showFAQDialog: true });
 
     expect(screen.getByText('Frequently Asked Questions')).toBeInTheDocument();
   });

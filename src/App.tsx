@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation/Navigation";
@@ -10,10 +11,14 @@ import { ResetPassword } from "./components/Login/ResetPassword/ResetPassword";
 import Settings from "./pages/Settings";
 import { Footer } from "./components/Footer/Footer";
 import { FAQPage } from "./components/FAQ/FAQPage";
+import { TermsOfService } from "./pages/TermsOfService";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { supabase } from "../supabase/client";
 
 function AppContent() {
   const { isGuest, loading, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentView, setCurrentView] = useState(() => {
     const saved = localStorage.getItem("currentView");
     return saved || "dashboard";
@@ -23,6 +28,9 @@ function AppContent() {
   useEffect(() => {
     if (isGuest) {
       setCurrentView("faq");
+      if (location.pathname === "/") {
+        navigate("/faq", { replace: true });
+      }
     } else {
       const saved = localStorage.getItem("currentView");
       if (saved && saved !== "faq") {
@@ -31,11 +39,12 @@ function AppContent() {
         setCurrentView("dashboard");
       }
     }
-  }, [isGuest, user]);
+  }, [isGuest, user, navigate, location.pathname]);
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
     localStorage.setItem("currentView", view);
+    navigate(`/${view === "dashboard" ? "" : view}`);
   };
 
   useEffect(() => {
@@ -86,33 +95,65 @@ function AppContent() {
     );
   }
 
-  const renderView = () => {
-    switch (currentView) {
-      case "dashboard":
-        return <Dashboard />;
-      case "translate":
-        return <TranslationPanel />;
-      case "vocabulary":
-        return <VocabularyList />;
-      case "test":
-        return <TestPanel />;
-      case "faq":
-        return <FAQPage />;
-      case "settings":
-        return <Settings />;
-      default:
-        return <Dashboard />;
-    }
-  };
-
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navigation currentView={currentView} onViewChange={handleViewChange} />
-        {renderView()}
-        <Footer />
-      </div>
-    </ProtectedRoute>
+    <Routes>
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/" element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navigation currentView={currentView} onViewChange={handleViewChange} />
+            <Dashboard />
+            <Footer />
+          </div>
+        </ProtectedRoute>
+      } />
+      <Route path="/translate" element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navigation currentView={currentView} onViewChange={handleViewChange} />
+            <TranslationPanel />
+            <Footer />
+          </div>
+        </ProtectedRoute>
+      } />
+      <Route path="/vocabulary" element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navigation currentView={currentView} onViewChange={handleViewChange} />
+            <VocabularyList />
+            <Footer />
+          </div>
+        </ProtectedRoute>
+      } />
+      <Route path="/test" element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navigation currentView={currentView} onViewChange={handleViewChange} />
+            <TestPanel />
+            <Footer />
+          </div>
+        </ProtectedRoute>
+      } />
+      <Route path="/faq" element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navigation currentView={currentView} onViewChange={handleViewChange} />
+            <FAQPage />
+            <Footer />
+          </div>
+        </ProtectedRoute>
+      } />
+      <Route path="/settings" element={
+        <ProtectedRoute>
+          <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Navigation currentView={currentView} onViewChange={handleViewChange} />
+            <Settings />
+            <Footer />
+          </div>
+        </ProtectedRoute>
+      } />
+    </Routes>
   );
 }
 

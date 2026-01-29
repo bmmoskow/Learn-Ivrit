@@ -115,7 +115,7 @@ You agree to indemnify, defend, and hold us harmless from any claims, damages, l
 ### By You
 You may terminate your account at any time by:
 - Using the account deletion feature in your Settings page
-- Contacting us at support@yourapp.com (replace with your actual contact email)
+- Contacting us at [CONTACT_EMAIL]
 
 ### By Us
 We may suspend or terminate your account immediately, without notice, for:
@@ -148,7 +148,7 @@ Either party may bring a lawsuit in court to:
 - Resolve disputes in small claims court
 
 ### Opt-Out
-You may opt out of this arbitration agreement by sending written notice within 30 days of first accepting these Terms to support@yourapp.com (replace with your actual contact email). The notice must include your name, email, and a clear statement that you wish to opt out of arbitration.
+You may opt out of this arbitration agreement by sending written notice within 30 days of first accepting these Terms to [CONTACT_EMAIL]. The notice must include your name, email, and a clear statement that you wish to opt out of arbitration.
 
 ## 14. Changes to Terms
 
@@ -196,7 +196,7 @@ You may not assign these Terms without our prior written consent. We may assign 
 
 For questions about these Terms, contact us at:
 
-**Email: support@yourapp.com** (replace with your actual contact email)
+**Email:** [CONTACT_EMAIL]
 
 You can also reach us through the Settings page in your account.
 
