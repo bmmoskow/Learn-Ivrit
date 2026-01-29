@@ -13,15 +13,30 @@ import { FAQPage } from "./components/FAQ/FAQPage";
 import { supabase } from "../supabase/client";
 
 function AppContent() {
-  const { isGuest, loading } = useAuth();
-  const [currentView, setCurrentView] = useState("dashboard");
+  const { isGuest, loading, user } = useAuth();
+  const [currentView, setCurrentView] = useState(() => {
+    const saved = localStorage.getItem("currentView");
+    return saved || "dashboard";
+  });
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   useEffect(() => {
     if (isGuest) {
       setCurrentView("faq");
+    } else {
+      const saved = localStorage.getItem("currentView");
+      if (saved && saved !== "faq") {
+        setCurrentView(saved);
+      } else if (!saved) {
+        setCurrentView("dashboard");
+      }
     }
-  }, [isGuest]);
+  }, [isGuest, user]);
+
+  const handleViewChange = (view: string) => {
+    setCurrentView(view);
+    localStorage.setItem("currentView", view);
+  };
 
   useEffect(() => {
     const checkHash = () => {
@@ -93,7 +108,7 @@ function AppContent() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navigation currentView={currentView} onViewChange={setCurrentView} />
+        <Navigation currentView={currentView} onViewChange={handleViewChange} />
         {renderView()}
         <Footer />
       </div>
