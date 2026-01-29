@@ -349,7 +349,7 @@ Deno.serve(async (req: Request) => {
           : "";
 
       const lineBreakInstruction =
-        " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
+        " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks. If the text contains numbered verses like (1), (2), (3), etc., you MUST keep each verse number at the start of its line and preserve all line breaks between verses. Each numbered verse must remain on its own separate line.";
 
       const MAX_CHUNK_LENGTH = 3000;
       const paragraphs = text.split(/\n\n+/);
