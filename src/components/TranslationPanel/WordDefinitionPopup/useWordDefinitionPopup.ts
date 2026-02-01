@@ -23,6 +23,7 @@ export interface UseWordDefinitionPopupReturn {
   saved: boolean;
   error: string;
   isGuest: boolean;
+  hasValidDefinition: boolean;
   setCurrentWord: (word: string) => void;
   handleRefresh: () => void;
   saveToVocabulary: () => Promise<void>;
@@ -42,19 +43,22 @@ export function useWordDefinitionPopup({
   const [error, setError] = useState("");
   const [forceRefresh, setForceRefresh] = useState(false);
 
-  const checkIfSaved = useCallback(async (wordToCheck?: string) => {
-    if (!user) return;
+  const checkIfSaved = useCallback(
+    async (wordToCheck?: string) => {
+      if (!user) return;
 
-    const checkWord = wordToCheck || currentWord;
-    const { data } = await supabase
-      .from("vocabulary_words")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("hebrew_word", checkWord)
-      .maybeSingle();
+      const checkWord = wordToCheck || currentWord;
+      const { data } = await supabase
+        .from("vocabulary_words")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("hebrew_word", checkWord)
+        .maybeSingle();
 
-    setSaved(!!data);
-  }, [user, currentWord]);
+      setSaved(!!data);
+    },
+    [user, currentWord],
+  );
 
   const fetchDefinition = useCallback(async () => {
     setLoading(true);
@@ -71,7 +75,7 @@ export function useWordDefinitionPopup({
           const { data: cachedData } = await supabase
             .from("word_definitions")
             .select(
-              "word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count"
+              "word, word_with_vowels, definition, transliteration, examples, notes, forms, short_english, access_count",
             )
             .eq("word", currentWord)
             .maybeSingle();
@@ -141,18 +145,20 @@ export function useWordDefinitionPopup({
         notes?: string;
       };
 
-      let relatedWords: Array<{ hebrew: string; english: string; relationship: string }> = (dataObj.forms || []).map((form) => ({
-        hebrew: form.hebrew,
-        english: form.transliteration,
-        relationship: form.relationship,
-      }));
+      let relatedWords: Array<{ hebrew: string; english: string; relationship: string }> = (dataObj.forms || []).map(
+        (form) => ({
+          hebrew: form.hebrew,
+          english: form.transliteration,
+          relationship: form.relationship,
+        }),
+      );
 
       if (relatedWords.length === 0) {
         const basicForms = generateBasicHebrewForms(
           dataObj.wordWithVowels || currentWord,
-          dataObj.transliteration || romanizeHebrew(currentWord)
+          dataObj.transliteration || romanizeHebrew(currentWord),
         );
-        relatedWords = basicForms.map(form => ({
+        relatedWords = basicForms.map((form) => ({
           hebrew: form.hebrew,
           english: form.transliteration,
           relationship: form.relationship,
@@ -191,8 +197,19 @@ export function useWordDefinitionPopup({
     setForceRefresh(true);
   }, []);
 
+  const hasValidDefinition = definition &&
+    definition.definition &&
+    definition.definition.trim() !== "" &&
+    definition.shortEnglish !== "Translation unavailable";
+
   const saveToVocabulary = useCallback(async () => {
     if (!user || !definition || saved) return;
+
+    // Prevent saving words with invalid definitions
+    if (!hasValidDefinition) {
+      setError("Cannot save word without a valid definition");
+      return;
+    }
 
     setSaving(true);
     setError("");
@@ -228,7 +245,7 @@ export function useWordDefinitionPopup({
       setSaved(true);
       onWordSaved();
     } catch (err) {
-      if (err && typeof err === 'object' && 'code' in err && err.code === "23505") {
+      if (err && typeof err === "object" && "code" in err && err.code === "23505") {
         setError("Word already in vocabulary");
         setSaved(true);
       } else {
@@ -238,7 +255,7 @@ export function useWordDefinitionPopup({
     } finally {
       setSaving(false);
     }
-  }, [user, definition, saved, currentWord, onWordSaved]);
+  }, [user, definition, saved, hasValidDefinition, currentWord, onWordSaved]);
 
   return {
     currentWord,
@@ -248,6 +265,7 @@ export function useWordDefinitionPopup({
     saved,
     error,
     isGuest,
+    hasValidDefinition,
     setCurrentWord,
     handleRefresh,
     saveToVocabulary,

@@ -2,12 +2,7 @@ import { useWordDefinitionPopup } from "./useWordDefinitionPopup";
 import { WordDefinitionPopupUI } from "./WordDefinitionPopupUI";
 import { WordDefinitionPopupProps } from "./wordDefinitionPopupUtils";
 
-export function WordDefinitionPopup({
-  word,
-  position,
-  onClose,
-  onWordSaved,
-}: WordDefinitionPopupProps) {
+export function WordDefinitionPopup({ word, position, onClose, onWordSaved }: WordDefinitionPopupProps) {
   const {
     currentWord,
     definition,
@@ -16,6 +11,7 @@ export function WordDefinitionPopup({
     saved,
     error,
     isGuest,
+    hasValidDefinition,
     setCurrentWord,
     handleRefresh,
     saveToVocabulary,
@@ -30,6 +26,7 @@ export function WordDefinitionPopup({
       saved={saved}
       error={error}
       isGuest={isGuest}
+      hasValidDefinition={hasValidDefinition}
       position={position}
       onClose={onClose}
       onRefresh={handleRefresh}
