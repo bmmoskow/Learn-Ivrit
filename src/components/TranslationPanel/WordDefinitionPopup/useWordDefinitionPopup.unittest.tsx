@@ -468,7 +468,9 @@ describe("useWordDefinitionPopup", () => {
       });
 
       expect(mockInsert).not.toHaveBeenCalled();
-      expect(result.current.error).toBe("Cannot save word without a valid definition");
+      await waitFor(() => {
+        expect(result.current.error).toBe("Cannot save word without a valid definition");
+      });
     });
 
     it("should set hasValidDefinition to true when definition is valid", async () => {
