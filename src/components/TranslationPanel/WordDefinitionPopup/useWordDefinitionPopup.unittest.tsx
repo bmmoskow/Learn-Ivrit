@@ -1,6 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { renderHook, act } from "@testing-library/react";
 import { useWordDefinitionPopup } from "./useWordDefinitionPopup";
+
+const waitFor = async (callback: () => void | Promise<void>, options?: { timeout?: number }) => {
+  const timeout = options?.timeout || 1000;
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      await callback();
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
+  await callback();
+};
 import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
 import React from "react";
 
@@ -26,9 +40,7 @@ let mockSession: { user: { id: string }; access_token: string } | null = {
 vi.mock("../../../../supabase/client", () => ({
   supabase: {
     auth: {
-      getSession: vi.fn().mockImplementation(() =>
-        Promise.resolve({ data: { session: mockSession } })
-      ),
+      getSession: vi.fn().mockImplementation(() => Promise.resolve({ data: { session: mockSession } })),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { unsubscribe: vi.fn() } },
       }),
@@ -79,9 +91,7 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe("useWordDefinitionPopup", () => {
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <AuthProvider>{children}</AuthProvider>
-  );
+  const wrapper = ({ children }: { children: React.ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
   const defaultProps = {
     word: "שלום",
@@ -92,6 +102,12 @@ describe("useWordDefinitionPopup", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Ensure AuthProvider doesn't early-return in CI when VITE_* env vars are missing.
+    // (When it early-returns, user stays null -> saveToVocabulary() becomes a no-op.)
+    vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+
     mockLocalStorage = {};
     Object.defineProperty(window, "localStorage", {
       value: {
@@ -123,15 +139,13 @@ describe("useWordDefinitionPopup", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
   describe("initial state", () => {
     it("should initialize with word trimmed", () => {
-      const { result } = renderHook(
-        () => useWordDefinitionPopup({ ...defaultProps, word: "  שלום  " }),
-        { wrapper }
-      );
+      const { result } = renderHook(() => useWordDefinitionPopup({ ...defaultProps, word: "  שלום  " }), { wrapper });
 
       expect(result.current.currentWord).toBe("שלום");
     });
@@ -208,7 +222,7 @@ describe("useWordDefinitionPopup", () => {
   describe("guest mode", () => {
     beforeEach(() => {
       mockSession = null;
-      mockLocalStorage = { guestMode: 'true' };
+      mockLocalStorage = { guestMode: "true" };
       vi.clearAllMocks();
     });
 
@@ -249,7 +263,7 @@ describe("useWordDefinitionPopup", () => {
           headers: expect.not.objectContaining({
             Authorization: expect.anything(),
           }),
-        })
+        }),
       );
     });
 
@@ -287,9 +301,7 @@ describe("useWordDefinitionPopup", () => {
             definition: "Peace, hello",
             transliteration: "shalom",
             wordWithVowels: "שָׁלוֹם",
-            examples: [
-              { hebrew: "שָׁלוֹם עֲלֵיכֶם", english: "Peace be upon you" },
-            ],
+            examples: [{ hebrew: "שָׁלוֹם עֲלֵיכֶם", english: "Peace be upon you" }],
             notes: "Common greeting",
           }),
       });
@@ -360,8 +372,210 @@ describe("useWordDefinitionPopup", () => {
           headers: expect.objectContaining({
             Authorization: "Bearer test-token",
           }),
-        })
+        }),
       );
+    });
+  });
+
+  describe("bad translation handling", () => {
+    beforeEach(() => {
+      mockSession = { user: { id: "test-user-id" }, access_token: "test-token" };
+      mockLocalStorage = {};
+    });
+
+    it("should set hasValidDefinition to false when definition is empty", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+            shortEnglish: "",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.hasValidDefinition).toBeFalsy();
+    });
+
+    it("should set hasValidDefinition to false when definition is whitespace only", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "   ",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+            shortEnglish: "peace",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.hasValidDefinition).toBeFalsy();
+    });
+
+    it("should set hasValidDefinition to false when shortEnglish becomes 'Translation unavailable'", async () => {
+      // Note: mapApiResponseToDefinition derives shortEnglish from definition field,
+      // so we need an empty definition to trigger "Translation unavailable"
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.definition?.shortEnglish).toBe("Translation unavailable");
+      expect(result.current.hasValidDefinition).toBeFalsy();
+    });
+
+    it("should prevent saving word when hasValidDefinition is false", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+            shortEnglish: "Translation unavailable",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      await act(async () => {
+        await result.current.saveToVocabulary();
+      });
+
+      expect(mockInsert).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(result.current.error).toBe("Cannot save word without a valid definition");
+      });
+    });
+
+    it("should set hasValidDefinition to true when definition is valid", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "Peace, hello",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+            shortEnglish: "peace",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.hasValidDefinition).toBeTruthy();
+    });
+
+    it("should handle API returning 500 error", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () =>
+          Promise.resolve({
+            error: "Internal server error",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.error).toBe("Internal server error");
+      expect(result.current.definition).toBeNull();
+      expect(result.current.hasValidDefinition).toBeFalsy();
+    });
+
+    it("should handle network failure", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockRejectedValue(new Error("Network error"));
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.error).toBe("Network error");
+      expect(result.current.definition).toBeNull();
+      expect(result.current.hasValidDefinition).toBeFalsy();
+    });
+
+    it("should handle malformed API response gracefully", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      // Should have definition object but with fallback values
+      expect(result.current.definition).not.toBeNull();
+      expect(result.current.definition?.definition).toBe("No definition available");
+    });
+
+    it("should handle API returning null definition", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: null,
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+          }),
+      });
+
+      const { result } = renderHook(() => useWordDefinitionPopup(defaultProps), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.definition?.definition).toBe("No definition available");
     });
   });
 });
