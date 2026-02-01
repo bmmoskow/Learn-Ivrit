@@ -9,6 +9,7 @@ interface WordDefinitionPopupUIProps {
   saved: boolean;
   error: string;
   isGuest: boolean;
+  hasValidDefinition: boolean;
   position: { x: number; y: number };
   onClose: () => void;
   onRefresh: () => void;
@@ -24,17 +25,14 @@ export function WordDefinitionPopupUI({
   saved,
   error,
   isGuest,
+  hasValidDefinition,
   position,
   onClose,
   onRefresh,
   onWordClick,
   onSave,
 }: WordDefinitionPopupUIProps) {
-  const { left, top, maxHeight } = calculatePopupPosition(
-    position,
-    window.innerWidth,
-    window.innerHeight
-  );
+  const { left, top, maxHeight } = calculatePopupPosition(position, window.innerWidth, window.innerHeight);
 
   const popupStyle = {
     position: "fixed" as const,
@@ -118,9 +116,14 @@ export function WordDefinitionPopupUI({
                 Sign up for an account to save words to your vocabulary
               </p>
             )}
+            {!hasValidDefinition && !isGuest && (
+              <p className="text-sm text-amber-600 text-center mb-2">
+                Cannot save word without a valid definition
+              </p>
+            )}
             <button
               onClick={onSave}
-              disabled={saving || saved || isGuest}
+              disabled={saving || saved || isGuest || !hasValidDefinition}
               className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {saving ? (

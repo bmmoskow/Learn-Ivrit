@@ -1,72 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.5-flash";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
-
-interface GeminiRequest {
-  prompt: string;
-  temperature?: number;
-  topK?: number;
-  topP?: number;
-  maxOutputTokens?: number;
-  inlineData?: {
-    mimeType: string;
-    data: string;
-  };
-}
-
-async function callGeminiAPI(request: GeminiRequest): Promise<string> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
-  }
-
-  const parts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [
-    { text: request.prompt }
-  ];
-
-  if (request.inlineData) {
-    parts.push({
-      inline_data: {
-        mime_type: request.inlineData.mimeType,
-        data: request.inlineData.data,
-      },
-    });
-  }
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: {
-          temperature: request.temperature ?? 0.3,
-          topK: request.topK ?? 40,
-          topP: request.topP ?? 0.95,
-          maxOutputTokens: request.maxOutputTokens ?? 8192,
-        },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error: ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-}
 
 const RATE_LIMITS = {
   word_definition: {
@@ -320,6 +259,11 @@ Deno.serve(async (req: Request) => {
     const rateLimitId = userId || "guest-user";
 
     if (path.includes("/translate")) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+      if (!GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set");
+      }
       const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
       const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
@@ -349,7 +293,7 @@ Deno.serve(async (req: Request) => {
           : "";
 
       const lineBreakInstruction =
-        " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks. If the text contains numbered verses like (1), (2), (3), etc., you MUST keep each verse number at the start of its line and preserve all line breaks between verses. Each numbered verse must remain on its own separate line.";
+        " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
 
       const MAX_CHUNK_LENGTH = 3000;
       const paragraphs = text.split(/\n\n+/);
@@ -385,8 +329,38 @@ Deno.serve(async (req: Request) => {
 
         const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
-        const chunkTranslation = await callGeminiAPI({ prompt });
-        const finishReason = "STOP";
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              contents: [
+                {
+                  parts: [{ text: prompt }],
+                },
+              ],
+              generationConfig: {
+                temperature: 0.3,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 8192,
+              },
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Gemini API error: ${errorText}`);
+        }
+
+        const data = await response.json();
+        const candidate = data.candidates?.[0];
+        const chunkTranslation = candidate?.content?.parts?.[0]?.text || "";
+        const finishReason = candidate?.finishReason;
 
         const translatedParaCount = chunkTranslation.trim().split(/\n\n+/).length;
         console.log(`Chunk ${translations.length + 1} finish reason:`, finishReason);
@@ -431,6 +405,12 @@ Deno.serve(async (req: Request) => {
         },
       });
     } else if (path.includes("/define")) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+      if (!GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set");
+      }
+
       const { word }: DefinitionRequest = await req.json();
 
       const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "word_definition");
@@ -446,45 +426,148 @@ Deno.serve(async (req: Request) => {
 
       await logRequest(supabase, rateLimitId, "word_definition");
 
+      // Check if word starts with common prefixes
+      const commonPrefixes = ['ה', 'ב', 'כ', 'ל', 'מ', 'ש', 'ו'];
+      const startsWithPrefix = commonPrefixes.some(p => word.startsWith(p)) && word.length > 2;
+      const startsWithLamed = word.startsWith('ל') && word.length > 2;
+
+      const prefixInstructions = startsWithPrefix ? `
+CRITICAL PREFIX HANDLING:
+- This word appears to start with a prefix letter (ה, ב, כ, ל, מ, ש, or ו)
+- The definition MUST reflect the prefix meaning:
+  * ה (ha-) = "the" (definite article) → "the book" not "book"
+  * ב (b'-) = "in/at" → "in the house" not "house"
+  * כ (k'-) = "like/as" → "like a king" not "king"
+  * ל (l'-) = "to/for" → "to the city" not "city" (BUT if it's an infinitive verb like לכתוב, translate as "to write")
+  * מ (m'-) = "from" → "from the place" not "place"
+  * ש (sh'-) = "that/which" → include "that" in translation
+  * ו (v'-) = "and" → include "and" in translation
+${startsWithLamed ? `
+- IMPORTANT: First determine if this ל word is an INFINITIVE VERB (like לכתוב, לראות, לשמוע)
+- If it IS an infinitive: translate as "to [verb]" and do NOT show the word without ל as a related word
+- If it is NOT an infinitive (like לבית meaning "to the house"): show the root word without ל as the first related word` :
+`- Show the ROOT WORD without the prefix as the FIRST related word`}
+` : '';
+
+      // Instruction for conjugated verbs to include infinitive form
+      const conjugatedVerbInstruction = `
+CONJUGATED VERB HANDLING:
+- If this word is a CONJUGATED VERB (any tense, person, gender, number - like הגביל "he limited", כתבתי "I wrote", יראו "they will see"):
+  * The definition should describe this specific form (e.g., "he limited", "I wrote", "they will see")
+  * The FIRST related word MUST be the INFINITIVE form (e.g., להגביל "to limit", לכתוב "to write", לראות "to see")
+  * The remaining related words should be NOUNS or ADJECTIVES from the same root - NOT other verb conjugations
+  * DO NOT show other tenses or persons of the same verb (e.g., don't show כתב, כתבה, יכתוב alongside לכתוב)
+- Recognize Hebrew verb patterns (binyanim): Pa'al, Nif'al, Pi'el, Pu'al, Hif'il, Huf'al, Hitpa'el
+`;
+
       const prompt = `For the Hebrew word "${word}":
 
 1. Add full nikud (vowel points) to the word
 2. Provide ONE primary English translation (the most common meaning only)
 3. Provide transliteration
-4. List 3 related Hebrew word forms WITH full nikud
+4. List 3 related Hebrew words
+${prefixInstructions}${conjugatedVerbInstruction}
+IMPORTANT for related words:
+${startsWithPrefix && !startsWithLamed ? `- FIRST, show the word WITHOUT the prefix as the first related word
+- Then show 2 more words from the same Hebrew root (שורש) as different parts of speech` :
+startsWithLamed ? `- If this is an infinitive verb, show 3 related words from the same root (שורש) as different parts of speech
+- If this is NOT an infinitive (has ל prefix meaning "to/for"), FIRST show the word without ל, then 2 more root-related words` :
+`- If this is a CONJUGATED VERB, the FIRST related word MUST be the INFINITIVE form
+- Show words from the same Hebrew root (שורש) as different parts of speech (verb, noun, adjective, adverb)
+- If the word is a noun, show the related verb infinitive
+- If the word is a verb, show related nouns or adjectives`}
+- DO NOT just add other prefixes (ה, ב, ל, כ, מ, ש, ו) or suffixes to the same word
+- DO NOT show plural forms or possessive forms of the same word
 
 You MUST respond in this EXACT format:
 WORD: [hebrew with vowel points]
-DEFINITION: [single most common english meaning]
+DEFINITION: [single most common english meaning - include prefix meaning like "the", "in", "to", "from", etc.]
 TRANSLITERATION: [how to pronounce in English]
 FORMS:
-- [hebrew with vowel points] ([transliteration]) - [relationship description]
-- [hebrew with vowel points] ([transliteration]) - [relationship description]
-- [hebrew with vowel points] ([transliteration]) - [relationship description]
+- [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
+- [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
+- [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
 
-Example for שלום:
+${startsWithPrefix ? `Example for הספר (the book):
+WORD: הַסֵּפֶר
+DEFINITION: the book
+TRANSLITERATION: hasefer
+FORMS:
+- סֵפֶר (sefer) - noun: book (without definite article)
+- לִסְפֹּר (lispor) - verb: to count
+- סוֹפֵר (sofer) - noun: writer, scribe
+
+Example for בבית (in the house):
+WORD: בַּבַּיִת
+DEFINITION: in the house
+TRANSLITERATION: babayit
+FORMS:
+- בַּיִת (bayit) - noun: house (without prefix)
+- בֵּיתִי (beiti) - adjective: domestic, homely
+- לְהָבִית (l'havit) - verb: to house, to shelter
+
+Example for לכתוב (infinitive - to write):
+WORD: לִכְתֹּב
+DEFINITION: to write
+TRANSLITERATION: likhtov
+FORMS:
+- כָּתַב (katav) - verb past: he wrote
+- כְּתִיבָה (ktiva) - noun: writing
+- מִכְתָּב (mikhtav) - noun: letter` :
+`Example for הגביל (conjugated verb - he limited):
+WORD: הִגְבִּיל
+DEFINITION: he limited
+TRANSLITERATION: higbil
+FORMS:
+- לְהַגְבִּיל (l'hagbil) - verb infinitive: to limit
+- גְּבוּל (gvul) - noun: border, limit
+- מֻגְבָּל (mugbal) - adjective: limited
+
+Example for שלום (root: ש-ל-מ):
 WORD: שָׁלוֹם
 DEFINITION: peace
 TRANSLITERATION: shalom
 FORMS:
-- הַשָּׁלוֹם (ha-shalom) - the peace (definite article)
-- שְׁלוֹמִי (shlomi) - my peace (possessive)
-- בְּשָׁלוֹם (be-shalom) - in peace (prepositional)`;
+- שָׁלֵם (shalem) - adjective: complete, whole
+- לְהַשְׁלִים (l'hashlim) - verb: to complete, to make peace
+- שְׁלֵמוּת (shlemut) - noun: completeness, wholeness`}`;
 
-      const rawResponse = await callGeminiAPI({
-        prompt,
-        temperature: 0.1,
-        topK: 20,
-        topP: 0.9,
-        maxOutputTokens: 800,
-      });
+      const geminiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              topK: 20,
+              topP: 0.9,
+              maxOutputTokens: 2048,
+            },
+          }),
+        },
+      );
 
       let wordWithVowels = word;
       let definition = "";
       let transliteration = "";
       let forms = [];
 
-      if (rawResponse) {
+      if (geminiResponse.ok) {
+        const geminiData = await geminiResponse.json();
+        console.log("Gemini full response:", JSON.stringify(geminiData).substring(0, 1000));
+        const rawResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        console.log("Gemini raw response for word definition:", rawResponse?.substring(0, 500));
+
+        if (rawResponse) {
           const wordMatch = rawResponse.match(/WORD:\s*([^\n]+)/i);
           const defMatch = rawResponse.match(/DEFINITION:\s*([^\n]+)/i);
           const translitMatch = rawResponse.match(/TRANSLITERATION:\s*([^\n]+)/i);
@@ -493,6 +576,9 @@ FORMS:
           wordWithVowels = wordMatch?.[1]?.trim() || word;
           definition = defMatch?.[1]?.trim() || "";
           transliteration = translitMatch?.[1]?.trim() || "";
+
+          console.log("Parsed definition:", definition);
+          console.log("Parsed transliteration:", transliteration);
 
           if (formsMatch) {
             const formsText = formsMatch[1].trim();
@@ -512,33 +598,44 @@ FORMS:
                 return null;
               })
               .filter((form: unknown) => form !== null);
+          }
         }
+      } else {
+        const errorText = await geminiResponse.text();
+        console.error("Gemini API error:", geminiResponse.status, errorText);
       }
 
-      // Cache the definition for future use
-      const shortEnglish = definition && definition.trim() !== ""
-        ? (definition.length > 40 ? definition.substring(0, 40).trim() + "..." : definition.trim())
-        : "Translation unavailable";
+      // Only cache if we got a valid definition
+      const hasValidDefinition = definition && definition.trim() !== "";
 
-      await supabase.from("word_definitions").upsert(
-        {
-          word: word,
-          word_with_vowels: wordWithVowels,
-          definition: definition || "",
-          transliteration: transliteration || "",
-          examples: [],
-          notes: "",
-          forms: forms || [],
-          short_english: shortEnglish,
-          last_accessed: new Date().toISOString(),
-          access_count: 1,
-        },
-        {
-          onConflict: "word",
-        }
-      );
+      if (hasValidDefinition) {
+        const shortEnglish =
+          definition.length > 40
+            ? definition.substring(0, 40).trim() + "..."
+            : definition.trim();
 
-      console.log("Cached word definition for:", word);
+        await supabase.from("word_definitions").upsert(
+          {
+            word: word,
+            word_with_vowels: wordWithVowels,
+            definition: definition,
+            transliteration: transliteration || "",
+            examples: [],
+            notes: "",
+            forms: forms || [],
+            short_english: shortEnglish,
+            last_accessed: new Date().toISOString(),
+            access_count: 1,
+          },
+          {
+            onConflict: "word",
+          },
+        );
+
+        console.log("Cached word definition for:", word);
+      } else {
+        console.log("Skipping cache for word with no valid definition:", word);
+      }
 
       return new Response(
         JSON.stringify({
@@ -639,6 +736,12 @@ FORMS:
         },
       );
     } else if (path.includes("/ocr")) {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+      if (!GEMINI_API_KEY) {
+        throw new Error("GEMINI_API_KEY environment variable is not set");
+      }
+
       const { imageData }: ImageOcrRequest = await req.json();
 
       if (!imageData) {
@@ -671,17 +774,45 @@ FORMS:
 
       const prompt = `Extract ALL Hebrew text from this image. Include vowel marks (nikud) if present. Return ONLY the extracted Hebrew text, nothing else.`;
 
-      const extractedText = await callGeminiAPI({
-        prompt,
-        temperature: 0.1,
-        topK: 20,
-        topP: 0.9,
-        maxOutputTokens: 4096,
-        inlineData: {
-          mimeType: "image/jpeg",
-          data: base64Data,
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inline_data: {
+                      mime_type: "image/jpeg",
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              topK: 20,
+              topP: 0.9,
+              maxOutputTokens: 4096,
+            },
+          }),
         },
-      });
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gemini API error:", errorText);
+        throw new Error(`Image OCR failed: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
       console.log("Extracted text length:", extractedText.length);
       console.log("First 200 chars:", extractedText.substring(0, 200));
@@ -699,15 +830,12 @@ FORMS:
         );
       }
 
-      return new Response(
-        JSON.stringify({ hebrewText: extractedText.trim() }),
-        {
-          headers: {
-            ...corsHeaders,
-            "Content-Type": "application/json",
-          },
+      return new Response(JSON.stringify({ hebrewText: extractedText.trim() }), {
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "application/json",
         },
-      );
+      });
     } else {
       return new Response(JSON.stringify({ error: "Invalid endpoint" }), {
         status: 404,
