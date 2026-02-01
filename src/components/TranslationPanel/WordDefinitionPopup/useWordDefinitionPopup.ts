@@ -197,10 +197,10 @@ export function useWordDefinitionPopup({
     setForceRefresh(true);
   }, []);
 
-  const hasValidDefinition = definition &&
+  const hasValidDefinition = !!(definition &&
     definition.definition &&
     definition.definition.trim() !== "" &&
-    definition.shortEnglish !== "Translation unavailable";
+    definition.shortEnglish !== "Translation unavailable");
 
   const saveToVocabulary = useCallback(async () => {
     if (!user || !definition || saved) return;
