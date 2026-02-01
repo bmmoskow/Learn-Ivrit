@@ -102,6 +102,12 @@ describe("useWordDefinitionPopup", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Ensure AuthProvider doesn't early-return in CI when VITE_* env vars are missing.
+    // (When it early-returns, user stays null -> saveToVocabulary() becomes a no-op.)
+    vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+
     mockLocalStorage = {};
     Object.defineProperty(window, "localStorage", {
       value: {
@@ -133,6 +139,7 @@ describe("useWordDefinitionPopup", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
