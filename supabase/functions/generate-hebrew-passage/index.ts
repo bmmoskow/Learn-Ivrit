@@ -1,59 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.5-flash";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
-
-interface GeminiRequest {
-  prompt: string;
-  temperature?: number;
-  topK?: number;
-  topP?: number;
-  maxOutputTokens?: number;
-}
-
-async function callGeminiAPI(request: GeminiRequest): Promise<string> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY environment variable is not set");
-  }
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: request.prompt }],
-          },
-        ],
-        generationConfig: {
-          temperature: request.temperature ?? 0.7,
-          topK: request.topK ?? 40,
-          topP: request.topP ?? 0.95,
-          maxOutputTokens: request.maxOutputTokens ?? 2048,
-        },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Gemini API error: ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-}
 
 const RATE_LIMITS = {
   passage_generation: {
@@ -196,14 +148,64 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating passage with prompt length: ${prompt.length}`);
 
+    // Get Gemini API key
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      console.error("GEMINI_API_KEY not configured");
+      throw new Error("GEMINI_API_KEY environment variable is not set");
+    }
+
     // Log the request for rate limiting
     await logRequest(supabase, rateLimitId);
 
     // Call Gemini API
-    const passage = await callGeminiAPI({ prompt });
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 16384,
+            // Disable thinking mode to prevent token budget consumption
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
+          },
+        }),
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errorText = await geminiResponse.text();
+      console.error("Gemini API error:", errorText);
+      throw new Error(`Gemini API error: ${geminiResponse.status}`);
+    }
+
+    const geminiData = await geminiResponse.json();
+    const candidate = geminiData.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const passage = candidate?.content?.parts?.[0]?.text;
+
+    console.log(`Gemini finish reason: ${finishReason}`);
 
     if (!passage) {
+      console.error("No passage generated from Gemini response:", geminiData);
       throw new Error("Failed to generate passage");
+    }
+
+    if (finishReason === "MAX_TOKENS") {
+      console.warn("Output may be truncated due to token limit");
     }
 
     console.log(`Successfully generated passage with length: ${passage.length}`);

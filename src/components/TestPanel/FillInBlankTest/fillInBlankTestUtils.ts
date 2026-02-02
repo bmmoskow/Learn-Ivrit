@@ -18,10 +18,16 @@ export type FillInBlankTestProps = {
 };
 
 /**
- * Check if user input matches the correct answer (case-insensitive, trimmed)
+ * Check if user input matches any of the correct answers (case-insensitive, trimmed).
+ * Supports multiple translations separated by semicolons.
  */
 export function checkFillInBlankAnswer(userInput: string, correctAnswer: string): boolean {
-  return userInput.trim().toLowerCase() === correctAnswer.toLowerCase();
+  const normalizedInput = userInput.trim().toLowerCase();
+
+  // Split by semicolon to support multiple translations (e.g., "peace; hello; goodbye")
+  const possibleAnswers = correctAnswer.split(";").map(answer => answer.trim().toLowerCase());
+
+  return possibleAnswers.some(answer => normalizedInput === answer);
 }
 
 /**
