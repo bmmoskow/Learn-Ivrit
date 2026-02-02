@@ -55,7 +55,16 @@ export function WordDefinitionPopupUI({
                 {definition?.wordWithVowels || currentWord}
               </h3>
             </div>
-            {definition && <p className="text-white text-base font-medium mt-2">{definition.shortEnglish}</p>}
+            {definition && definition.shortEnglish && (
+              <div className="mt-2 flex flex-wrap gap-x-1 gap-y-0.5">
+                {definition.shortEnglish.split(";").map((translation, idx, arr) => (
+                  <span key={idx} className="text-white text-base font-medium">
+                    {translation.trim()}
+                    {idx < arr.length - 1 && <span className="text-blue-200 mx-1">•</span>}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1 ml-2">
             <button

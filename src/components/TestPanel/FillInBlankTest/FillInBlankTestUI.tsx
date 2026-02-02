@@ -41,27 +41,20 @@ export function FillInBlankTestUI({
             Question {questionNumber} of {totalQuestions}
           </div>
           <div className="w-64 h-2 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-orange-600 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full bg-orange-600 transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
         {/* Main card */}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">
-            Type the English translation
-          </p>
+          <p className="text-sm font-semibold text-gray-500 uppercase mb-4 text-center">Type the English translation</p>
 
           {/* Hebrew word display */}
           <div className="text-center mb-8">
             <p className="text-6xl font-bold text-gray-900 mb-4" dir="rtl">
               {question.word.hebrew_word}
             </p>
-            {question.word.transliteration && (
-              <p className="text-xl text-gray-500">{question.word.transliteration}</p>
-            )}
+            {question.word.transliteration && <p className="text-xl text-gray-500">{question.word.transliteration}</p>}
           </div>
 
           {/* Input form */}
@@ -96,9 +89,7 @@ export function FillInBlankTestUI({
           {showFeedback && (
             <div
               className={`mt-6 p-6 rounded-xl ${
-                isCorrect
-                  ? "bg-green-100 border-2 border-green-300"
-                  : "bg-red-100 border-2 border-red-300"
+                isCorrect ? "bg-green-100 border-2 border-green-300" : "bg-red-100 border-2 border-red-300"
               }`}
             >
               <div className="flex items-center gap-3 mb-2">
@@ -116,9 +107,11 @@ export function FillInBlankTestUI({
               </div>
               {!isCorrect && (
                 <div className="mt-4">
-                  <p className="text-sm text-red-700 mb-1">Correct answer:</p>
+                  <p className="text-sm text-red-700 mb-1">
+                    {question.word.english_translation.includes(";") ? "Accepted answers:" : "Correct answer:"}
+                  </p>
                   <p className="text-2xl font-bold text-red-900">
-                    {question.word.english_translation}
+                    {question.word.english_translation.split(";").map(t => t.trim()).join(" • ")}
                   </p>
                 </div>
               )}
