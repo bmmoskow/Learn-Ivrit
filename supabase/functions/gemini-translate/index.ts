@@ -463,7 +463,7 @@ CONJUGATED VERB HANDLING:
       const prompt = `For the Hebrew word "${word}":
 
 1. Add full nikud (vowel points) to the word
-2. Provide ONE primary English translation (the most common meaning only)
+2. Provide up to 3 English translations separated by semicolons (most common first), e.g., "peace; hello; goodbye"
 3. Provide transliteration
 4. List 3 related Hebrew words
 ${prefixInstructions}${conjugatedVerbInstruction}
@@ -481,7 +481,7 @@ startsWithLamed ? `- If this is an infinitive verb, show 3 related words from th
 
 You MUST respond in this EXACT format:
 WORD: [hebrew with vowel points]
-DEFINITION: [single most common english meaning - include prefix meaning like "the", "in", "to", "from", etc.]
+DEFINITION: [up to 3 english translations separated by semicolons - include prefix meaning like "the", "in", "to", "from", etc.]
 TRANSLITERATION: [how to pronounce in English]
 FORMS:
 - [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
@@ -516,7 +516,7 @@ FORMS:
 - מִכְתָּב (mikhtav) - noun: letter` :
 `Example for הגביל (conjugated verb - he limited):
 WORD: הִגְבִּיל
-DEFINITION: he limited
+DEFINITION: he limited; he restricted
 TRANSLITERATION: higbil
 FORMS:
 - לְהַגְבִּיל (l'hagbil) - verb infinitive: to limit
@@ -525,7 +525,7 @@ FORMS:
 
 Example for שלום (root: ש-ל-מ):
 WORD: שָׁלוֹם
-DEFINITION: peace
+DEFINITION: peace; hello; goodbye
 TRANSLITERATION: shalom
 FORMS:
 - שָׁלֵם (shalem) - adjective: complete, whole
@@ -609,10 +609,8 @@ FORMS:
       const hasValidDefinition = definition && definition.trim() !== "";
 
       if (hasValidDefinition) {
-        const shortEnglish =
-          definition.length > 40
-            ? definition.substring(0, 40).trim() + "..."
-            : definition.trim();
+        // Keep the full semicolon-delimited translation list; the UI handles wrapping.
+        const shortEnglish = definition.trim();
 
         await supabase.from("word_definitions").upsert(
           {
