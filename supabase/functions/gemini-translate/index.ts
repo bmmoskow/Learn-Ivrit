@@ -292,8 +292,12 @@ Deno.serve(async (req: Request) => {
           ? " CRITICAL: Include ALL vowel marks (nikud) in the Hebrew translation. The Hebrew text must have full vocalization with all vowel points (nikud)."
           : "";
 
-      const lineBreakInstruction =
-        " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
+      // Detect if text contains verse numbers like (1), (2), etc.
+      const hasVerseNumbers = /^\(\d+\)\s/.test(text.trim());
+
+      const lineBreakInstruction = hasVerseNumbers
+        ? " CRITICAL: This text contains numbered verses like (1), (2), (3). You MUST preserve each verse number exactly as-is at the start of each translated verse. Keep each verse on its own paragraph separated by double line breaks. Output format: (1) translated verse 1\\n\\n(2) translated verse 2\\n\\n(3) translated verse 3"
+        : " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
 
       const MAX_CHUNK_LENGTH = 3000;
       const paragraphs = text.split(/\n\n+/);
