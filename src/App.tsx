@@ -1,19 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation/Navigation";
-import { Dashboard } from "./components/Dashboard/Dashboard";
-import { TranslationPanel } from "./components/TranslationPanel/TranslationPanel";
-import { VocabularyList } from "./components/VocabularyList/VocabularyList";
-import { TestPanel } from "./components/TestPanel/TestPanel";
-import { ResetPassword } from "./components/Login/ResetPassword/ResetPassword";
-import Settings from "./pages/Settings";
 import { Footer } from "./components/Footer/Footer";
-import { FAQPage } from "./components/FAQ/FAQPage";
-import { TermsOfService } from "./pages/TermsOfService";
-import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { supabase } from "../supabase/client";
+
+// Lazy load route components for code-splitting
+const Dashboard = lazy(() => import("./components/Dashboard/Dashboard").then(m => ({ default: m.Dashboard })));
+const TranslationPanel = lazy(() => import("./components/TranslationPanel/TranslationPanel").then(m => ({ default: m.TranslationPanel })));
+const VocabularyList = lazy(() => import("./components/VocabularyList/VocabularyList").then(m => ({ default: m.VocabularyList })));
+const TestPanel = lazy(() => import("./components/TestPanel/TestPanel").then(m => ({ default: m.TestPanel })));
+const FAQPage = lazy(() => import("./components/FAQ/FAQPage").then(m => ({ default: m.FAQPage })));
+const Settings = lazy(() => import("./pages/Settings"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
+const ResetPassword = lazy(() => import("./components/Login/ResetPassword/ResetPassword").then(m => ({ default: m.ResetPassword })));
+
+// Loading fallback for lazy-loaded routes
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
 
 function AppContent() {
   const { isGuest, loading, user } = useAuth();
@@ -86,74 +98,96 @@ function AppContent() {
 
   if (isResettingPassword) {
     return (
-      <ResetPassword
-        onComplete={() => {
-          setIsResettingPassword(false);
-          window.location.hash = "";
-        }}
-      />
+      <Suspense fallback={<PageLoader />}>
+        <ResetPassword
+          onComplete={() => {
+            setIsResettingPassword(false);
+            window.location.hash = "";
+          }}
+        />
+      </Suspense>
     );
   }
 
   return (
-    <Routes>
-      <Route path="/terms" element={<TermsOfService />} />
-      <Route path="/privacy" element={<PrivacyPolicy />} />
-      <Route path="/" element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation currentView={currentView} onViewChange={handleViewChange} />
-            <Dashboard />
-            <Footer />
-          </div>
-        </ProtectedRoute>
-      } />
-      <Route path="/translate" element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation currentView={currentView} onViewChange={handleViewChange} />
-            <TranslationPanel />
-            <Footer />
-          </div>
-        </ProtectedRoute>
-      } />
-      <Route path="/vocabulary" element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation currentView={currentView} onViewChange={handleViewChange} />
-            <VocabularyList />
-            <Footer />
-          </div>
-        </ProtectedRoute>
-      } />
-      <Route path="/test" element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation currentView={currentView} onViewChange={handleViewChange} />
-            <TestPanel />
-            <Footer />
-          </div>
-        </ProtectedRoute>
-      } />
-      <Route path="/faq" element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation currentView={currentView} onViewChange={handleViewChange} />
-            <FAQPage />
-            <Footer />
-          </div>
-        </ProtectedRoute>
-      } />
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navigation currentView={currentView} onViewChange={handleViewChange} />
-            <Settings />
-            <Footer />
-          </div>
-        </ProtectedRoute>
-      } />
-    </Routes>
+    <Suspense fallback={<PageLoader />}>
+      <Routes>
+        <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navigation currentView={currentView} onViewChange={handleViewChange} />
+                <Dashboard />
+                <Footer />
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/translate"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navigation currentView={currentView} onViewChange={handleViewChange} />
+                <TranslationPanel />
+                <Footer />
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/vocabulary"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navigation currentView={currentView} onViewChange={handleViewChange} />
+                <VocabularyList />
+                <Footer />
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navigation currentView={currentView} onViewChange={handleViewChange} />
+                <TestPanel />
+                <Footer />
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/faq"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navigation currentView={currentView} onViewChange={handleViewChange} />
+                <FAQPage />
+                <Footer />
+              </div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <div className="min-h-screen bg-gray-50 flex flex-col">
+                <Navigation currentView={currentView} onViewChange={handleViewChange} />
+                <Settings />
+                <Footer />
+              </div>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }
 
