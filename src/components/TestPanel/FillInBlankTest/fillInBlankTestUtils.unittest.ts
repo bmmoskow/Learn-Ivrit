@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  checkFillInBlankAnswer,
-  calculateProgress,
-  isLastQuestion,
-  isValidInput,
-} from "./fillInBlankTestUtils";
+import { checkFillInBlankAnswer, calculateProgress, isLastQuestion, isValidInput } from "./fillInBlankTestUtils";
 
 describe("fillInBlankTestUtils", () => {
   describe("checkFillInBlankAnswer", () => {
@@ -36,6 +31,26 @@ describe("fillInBlankTestUtils", () => {
     it("handles multi-word answers", () => {
       expect(checkFillInBlankAnswer("good morning", "good morning")).toBe(true);
       expect(checkFillInBlankAnswer("Good Morning", "good morning")).toBe(true);
+    });
+
+    it("accepts any of multiple semicolon-separated translations", () => {
+      const multipleTranslations = "peace; hello; goodbye";
+      expect(checkFillInBlankAnswer("peace", multipleTranslations)).toBe(true);
+      expect(checkFillInBlankAnswer("hello", multipleTranslations)).toBe(true);
+      expect(checkFillInBlankAnswer("goodbye", multipleTranslations)).toBe(true);
+      expect(checkFillInBlankAnswer("Peace", multipleTranslations)).toBe(true);
+      expect(checkFillInBlankAnswer("  hello  ", multipleTranslations)).toBe(true);
+    });
+
+    it("rejects incorrect answers when multiple translations exist", () => {
+      const multipleTranslations = "peace; hello; goodbye";
+      expect(checkFillInBlankAnswer("hi", multipleTranslations)).toBe(false);
+      expect(checkFillInBlankAnswer("peac", multipleTranslations)).toBe(false);
+    });
+
+    it("handles single translation with no semicolons", () => {
+      expect(checkFillInBlankAnswer("book", "book")).toBe(true);
+      expect(checkFillInBlankAnswer("books", "book")).toBe(false);
     });
   });
 

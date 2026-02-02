@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { TestQuestion } from "../testPanelUtils";
-import {
-  checkFillInBlankAnswer,
-  isLastQuestion,
-  isValidInput,
-} from "./fillInBlankTestUtils";
+import { checkFillInBlankAnswer, isLastQuestion, isValidInput } from "./fillInBlankTestUtils";
 
 export interface UseFillInBlankTestProps {
   question: TestQuestion;
@@ -69,7 +65,7 @@ export function useFillInBlankTest({
         onAnswer(answer, correct);
       }, FEEDBACK_DELAY_MS);
     },
-    [userInput, showFeedback, question.word.english_translation, questionNumber, totalQuestions, onAnswer]
+    [userInput, showFeedback, question.word.english_translation, questionNumber, totalQuestions, onAnswer],
   );
 
   return {
