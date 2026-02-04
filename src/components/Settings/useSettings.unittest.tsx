@@ -1,9 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useSettings } from './useSettings';
 import { supabase } from '../../../supabase/client';
 import { toast } from 'sonner';
 import type { User } from '@supabase/supabase-js';
+
+const waitFor = async (callback: () => void | Promise<void>, options?: { timeout?: number }) => {
+  const timeout = options?.timeout || 1000;
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      await callback();
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 50));
+    }
+  }
+  await callback();
+};
 
 vi.mock('../../../supabase/client', () => ({
   supabase: {
@@ -40,7 +54,6 @@ describe('useSettings', () => {
     expect(result.current.isDeleting).toBe(false);
     expect(result.current.showDeleteDialog).toBe(false);
     expect(result.current.deleteConfirmation).toBe('');
-    expect(result.current.showFAQDialog).toBe(false);
   });
 
   it('can toggle delete dialog', () => {
@@ -274,21 +287,5 @@ describe('useSettings', () => {
     await waitFor(() => {
       expect(result.current.isDeleting).toBe(false);
     });
-  });
-
-  it('can toggle FAQ dialog', () => {
-    const { result } = renderHook(() => useSettings());
-
-    act(() => {
-      result.current.setShowFAQDialog(true);
-    });
-
-    expect(result.current.showFAQDialog).toBe(true);
-
-    act(() => {
-      result.current.setShowFAQDialog(false);
-    });
-
-    expect(result.current.showFAQDialog).toBe(false);
   });
 });

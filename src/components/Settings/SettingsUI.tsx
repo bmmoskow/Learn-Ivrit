@@ -15,7 +15,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Trash2, Mail, AlertTriangle, HelpCircle } from 'lucide-react';
-import { FAQDialog } from '../FAQ/FAQDialog';
 import { Link } from 'react-router-dom';
 
 interface SettingsUIProps {
@@ -26,8 +25,6 @@ interface SettingsUIProps {
   deleteConfirmation: string;
   setDeleteConfirmation: (value: string) => void;
   handleDeleteAccount: () => Promise<void>;
-  showFAQDialog: boolean;
-  setShowFAQDialog: (show: boolean) => void;
 }
 
 export default function SettingsUI({
@@ -38,8 +35,6 @@ export default function SettingsUI({
   deleteConfirmation,
   setDeleteConfirmation,
   handleDeleteAccount,
-  showFAQDialog,
-  setShowFAQDialog,
 }: SettingsUIProps) {
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
@@ -80,11 +75,13 @@ export default function SettingsUI({
             <div>
               <Button
                 variant="outline"
-                onClick={() => setShowFAQDialog(true)}
+                asChild
                 className="w-full sm:w-auto"
               >
-                <HelpCircle className="h-4 w-4 mr-2" />
-                View FAQ
+                <Link to="/faq">
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  View FAQ
+                </Link>
               </Button>
               <p className="text-sm text-muted-foreground mt-2">
                 Find answers to frequently asked questions
@@ -236,8 +233,6 @@ export default function SettingsUI({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <FAQDialog open={showFAQDialog} onOpenChange={setShowFAQDialog} />
     </div>
   );
 }

@@ -11,7 +11,7 @@ const Dashboard = lazy(() => import("./components/Dashboard/Dashboard").then(m =
 const TranslationPanel = lazy(() => import("./components/TranslationPanel/TranslationPanel").then(m => ({ default: m.TranslationPanel })));
 const VocabularyList = lazy(() => import("./components/VocabularyList/VocabularyList").then(m => ({ default: m.VocabularyList })));
 const TestPanel = lazy(() => import("./components/TestPanel/TestPanel").then(m => ({ default: m.TestPanel })));
-const FAQPage = lazy(() => import("./components/FAQ/FAQPage").then(m => ({ default: m.FAQPage })));
+const FAQ = lazy(() => import("./pages/FAQ").then(m => ({ default: m.FAQ })));
 const Settings = lazy(() => import("./pages/Settings"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
@@ -168,7 +168,7 @@ function AppContent() {
             <ProtectedRoute>
               <div className="min-h-screen bg-gray-50 flex flex-col">
                 <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <FAQPage />
+                <FAQ />
                 <Footer />
               </div>
             </ProtectedRoute>
