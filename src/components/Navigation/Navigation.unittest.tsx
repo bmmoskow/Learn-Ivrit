@@ -61,7 +61,7 @@ describe("Navigation", () => {
     });
   });
 
-  describe("Desktop Layout", () => {
+describe("Desktop Layout", () => {
     it("renders desktop navigation as hidden on mobile", () => {
       render(<Navigation {...defaultProps} />);
 
@@ -81,6 +81,62 @@ describe("Navigation", () => {
         expect(button).toHaveClass("px-4");
         expect(button).toHaveClass("py-2");
       });
+    });
+  });
+
+  describe("FAQ Navigation Item", () => {
+    it("renders FAQ item in the navigation for authenticated users", () => {
+      render(<Navigation {...defaultProps} />);
+
+      // Check that FAQ button exists
+      const faqButtons = document.querySelectorAll("button");
+      const faqButton = Array.from(faqButtons).find((btn) =>
+        btn.textContent?.includes("FAQ")
+      );
+      expect(faqButton).toBeInTheDocument();
+    });
+
+    it("renders FAQ item positioned before Settings in nav order", () => {
+      render(<Navigation {...defaultProps} />);
+
+      const desktopNav = document.querySelector(".hidden.lg\\:flex");
+      const navItemsContainer = desktopNav?.querySelector(".flex.items-center.gap-2");
+      const buttons = navItemsContainer?.querySelectorAll("button");
+
+      if (buttons) {
+        const buttonLabels = Array.from(buttons).map((btn) => btn.textContent?.trim());
+        const faqIndex = buttonLabels.findIndex((label) => label?.includes("FAQ"));
+        const settingsIndex = buttonLabels.findIndex((label) => label?.includes("Settings"));
+
+        // FAQ should appear before Settings
+        expect(faqIndex).toBeLessThan(settingsIndex);
+        expect(faqIndex).toBeGreaterThan(-1);
+      }
+    });
+
+    it("highlights FAQ when it is the current view", () => {
+      render(<Navigation {...defaultProps} currentView="faq" />);
+
+      const faqButtons = document.querySelectorAll("button");
+      const faqButton = Array.from(faqButtons).find((btn) =>
+        btn.textContent?.includes("FAQ")
+      );
+
+      expect(faqButton).toHaveClass("bg-blue-50");
+      expect(faqButton).toHaveClass("text-blue-700");
+    });
+
+    it("calls onViewChange with 'faq' when FAQ button is clicked", () => {
+      const mockOnViewChange = vi.fn();
+      render(<Navigation {...defaultProps} onViewChange={mockOnViewChange} />);
+
+      const faqButtons = document.querySelectorAll("button");
+      const faqButton = Array.from(faqButtons).find((btn) =>
+        btn.textContent?.includes("FAQ")
+      );
+
+      faqButton?.click();
+      expect(mockOnViewChange).toHaveBeenCalledWith("faq");
     });
   });
 });
