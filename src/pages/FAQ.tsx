@@ -7,6 +7,7 @@ export function FAQ() {
       markdownPath="/FAQ.md"
       icon={<HelpCircle className="h-8 w-8 text-blue-600" />}
       title="Frequently Asked Questions"
+      showBackButton={false}
     />
   );
 }
