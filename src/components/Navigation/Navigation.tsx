@@ -15,13 +15,13 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
     { id: "translate", label: "Translate", icon: Languages, guestHidden: false },
     { id: "vocabulary", label: "Vocabulary", icon: BookOpen, guestHidden: false },
     { id: "test", label: "Test", icon: GraduationCap, guestHidden: false },
-    { id: "faq", label: "FAQ", icon: HelpCircle, guestHidden: false, guestOnly: true },
+    { id: "faq", label: "FAQ", icon: HelpCircle, guestHidden: false },
     { id: "settings", label: "Settings", icon: Settings, guestHidden: true },
   ].filter((item) => {
     if (isGuest) {
       return !item.guestHidden;
     } else {
-      return !item.guestOnly;
+      return true;
     }
   });
 

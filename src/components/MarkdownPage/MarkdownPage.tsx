@@ -11,9 +11,10 @@ interface MarkdownPageProps {
   markdownPath: string;
   icon: React.ReactNode;
   title: string;
+  showBackButton?: boolean;
 }
 
-export function MarkdownPage({ markdownPath, icon, title }: MarkdownPageProps) {
+export function MarkdownPage({ markdownPath, icon, title, showBackButton = true }: MarkdownPageProps) {
   const [content, setContent] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -22,7 +23,9 @@ export function MarkdownPage({ markdownPath, icon, title }: MarkdownPageProps) {
     fetch(markdownPath)
       .then((response) => response.text())
       .then((text) => {
-        const processedText = text.replace(/\[CONTACT_EMAIL\]/g, APP_CONFIG.supportEmail);
+        const processedText = text
+          .replace(/\[CONTACT_EMAIL\]/g, APP_CONFIG.supportEmail)
+          .replace(/\[APP_NAME\]/g, APP_CONFIG.appName);
         setContent(processedText);
         setLoading(false);
       })
@@ -53,7 +56,7 @@ export function MarkdownPage({ markdownPath, icon, title }: MarkdownPageProps) {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4 max-w-4xl">
-        <BackButton />
+        {showBackButton && <BackButton />}
 
         <Card className="my-4">
           <CardContent className="p-8">
@@ -129,7 +132,7 @@ export function MarkdownPage({ markdownPath, icon, title }: MarkdownPageProps) {
           </CardContent>
         </Card>
 
-        <BackButton />
+        {showBackButton && <BackButton />}
       </div>
     </div>
   );
