@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SettingsUI from './SettingsUI';
@@ -14,6 +14,43 @@ const mockUser: User = {
   created_at: '2024-01-01T00:00:00.000Z',
 };
 
+const getByText = (container: HTMLElement, text: string | RegExp): HTMLElement | null => {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+  let node;
+  while ((node = walker.nextNode())) {
+    const parent = node.parentElement;
+    if (!parent) continue;
+    const content = node.textContent || '';
+    if (text instanceof RegExp ? text.test(content) : content.includes(text)) {
+      return parent;
+    }
+  }
+  return null;
+};
+
+const getByRole = (container: HTMLElement, role: string, options?: { name?: RegExp }): HTMLElement | null => {
+  const selector = role === 'link' ? 'a' : role === 'button' ? 'button' : `[role="${role}"]`;
+  const elements = container.querySelectorAll(selector);
+  if (!options?.name) return elements[0] as HTMLElement || null;
+  for (const el of elements) {
+    const text = el.textContent || el.getAttribute('aria-label') || '';
+    if (options.name.test(text)) return el as HTMLElement;
+  }
+  return null;
+};
+
+const getByDisplayValue = (container: HTMLElement, value: string): HTMLInputElement | null => {
+  const inputs = container.querySelectorAll('input');
+  for (const input of inputs) {
+    if (input.value === value) return input;
+  }
+  return null;
+};
+
+const getByPlaceholderText = (container: HTMLElement, placeholder: string): HTMLInputElement | null => {
+  return container.querySelector(`input[placeholder="${placeholder}"]`) as HTMLInputElement;
+};
+
 const renderSettingsUI = (props: Partial<React.ComponentProps<typeof SettingsUI>> = {}) => {
   const defaultProps = {
     user: mockUser,
@@ -23,8 +60,6 @@ const renderSettingsUI = (props: Partial<React.ComponentProps<typeof SettingsUI>
     deleteConfirmation: '',
     setDeleteConfirmation: vi.fn(),
     handleDeleteAccount: vi.fn(),
-    showFAQDialog: false,
-    setShowFAQDialog: vi.fn(),
     ...props,
   };
 
@@ -37,79 +72,79 @@ const renderSettingsUI = (props: Partial<React.ComponentProps<typeof SettingsUI>
 
 describe('SettingsUI', () => {
   it('renders account information', () => {
-    renderSettingsUI();
+    const { container } = renderSettingsUI();
 
-    expect(screen.getByText('Account Settings')).toBeInTheDocument();
-    expect(screen.getByText('Account Information')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('test@example.com')).toBeInTheDocument();
+    expect(getByText(container, 'Account Settings')).toBeInTheDocument();
+    expect(getByText(container, 'Account Information')).toBeInTheDocument();
+    expect(getByDisplayValue(container, 'test@example.com')).toBeInTheDocument();
   });
 
   it('email input is disabled', () => {
-    renderSettingsUI();
+    const { container } = renderSettingsUI();
 
-    const emailInput = screen.getByDisplayValue('test@example.com');
+    const emailInput = getByDisplayValue(container, 'test@example.com');
     expect(emailInput).toBeDisabled();
   });
 
   it('renders help and support section', () => {
-    renderSettingsUI();
+    const { container } = renderSettingsUI();
 
-    expect(screen.getByText('Help & Support')).toBeInTheDocument();
-    expect(screen.getByText('support@yourapp.com')).toBeInTheDocument();
+    expect(getByText(container, 'Help & Support')).toBeInTheDocument();
+    expect(getByText(container, 'support@yourapp.com')).toBeInTheDocument();
   });
 
   it('renders danger zone with delete account button', () => {
-    renderSettingsUI();
+    const { container } = renderSettingsUI();
 
-    expect(screen.getByText('To Delete Your Account')).toBeInTheDocument();
-    expect(screen.getByText(/This action cannot be undone/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Delete Account/i })).toBeInTheDocument();
+    expect(getByText(container, 'To Delete Your Account')).toBeInTheDocument();
+    expect(getByText(container, /This action cannot be undone/i)).toBeInTheDocument();
+    expect(getByRole(container, 'button', { name: /Delete Account/i })).toBeInTheDocument();
   });
 
   it('lists what will be deleted', () => {
-    renderSettingsUI();
+    const { container } = renderSettingsUI();
 
-    expect(screen.getByText(/All vocabulary words and definitions/i)).toBeInTheDocument();
-    expect(screen.getByText(/Test history and statistics/i)).toBeInTheDocument();
-    expect(screen.getByText(/Progress tracking and confidence scores/i)).toBeInTheDocument();
-    expect(screen.getByText(/All bookmarks and folders/i)).toBeInTheDocument();
-    expect(screen.getByText(/Your profile and account information/i)).toBeInTheDocument();
+    expect(getByText(container, /All vocabulary words and definitions/i)).toBeInTheDocument();
+    expect(getByText(container, /Test history and statistics/i)).toBeInTheDocument();
+    expect(getByText(container, /Progress tracking and confidence scores/i)).toBeInTheDocument();
+    expect(getByText(container, /All bookmarks and folders/i)).toBeInTheDocument();
+    expect(getByText(container, /Your profile and account information/i)).toBeInTheDocument();
   });
 
   it('opens delete dialog when delete button is clicked', async () => {
     const setShowDeleteDialog = vi.fn();
     const user = userEvent.setup();
 
-    renderSettingsUI({ setShowDeleteDialog });
+    const { container } = renderSettingsUI({ setShowDeleteDialog });
 
-    const deleteButton = screen.getByRole('button', { name: /Delete Account/i });
-    await user.click(deleteButton);
+    const deleteButton = getByRole(container, 'button', { name: /Delete Account/i });
+    await user.click(deleteButton!);
 
     expect(setShowDeleteDialog).toHaveBeenCalledWith(true);
   });
 
   it('delete button is disabled when isDeleting is true', () => {
-    renderSettingsUI({ isDeleting: true });
+    const { container } = renderSettingsUI({ isDeleting: true });
 
-    const deleteButton = screen.getByRole('button', { name: /Delete Account/i });
+    const deleteButton = getByRole(container, 'button', { name: /Delete Account/i });
     expect(deleteButton).toBeDisabled();
   });
 
   it('shows confirmation dialog when showDeleteDialog is true', () => {
     renderSettingsUI({ showDeleteDialog: true });
 
-    expect(screen.getByText('Are you absolutely sure?')).toBeInTheDocument();
+    expect(getByText(document.body, 'Are you absolutely sure?')).toBeInTheDocument();
     expect(
-      screen.getByText(/This action cannot be undone. This will permanently delete your account/i)
+      getByText(document.body, /This action cannot be undone. This will permanently delete your account/i)
     ).toBeInTheDocument();
   });
 
   it('confirmation dialog has input field requiring DELETE to be typed', () => {
     renderSettingsUI({ showDeleteDialog: true });
 
-    expect(screen.getByText(/Type/i)).toBeInTheDocument();
-    expect(screen.getByText('DELETE')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('DELETE')).toBeInTheDocument();
+    expect(getByText(document.body, /Type/i)).toBeInTheDocument();
+    expect(getByText(document.body, 'DELETE')).toBeInTheDocument();
+    expect(getByPlaceholderText(document.body, 'DELETE')).toBeInTheDocument();
   });
 
   it('updates delete confirmation when typing in input', async () => {
@@ -118,8 +153,8 @@ describe('SettingsUI', () => {
 
     renderSettingsUI({ showDeleteDialog: true, setDeleteConfirmation });
 
-    const input = screen.getByPlaceholderText('DELETE');
-    await user.type(input, 'D');
+    const input = getByPlaceholderText(document.body, 'DELETE');
+    await user.type(input!, 'D');
 
     expect(setDeleteConfirmation).toHaveBeenCalledWith('D');
   });
@@ -127,28 +162,29 @@ describe('SettingsUI', () => {
   it('delete confirmation button is disabled when confirmation text is not DELETE', () => {
     renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'delete' });
 
-    const confirmButton = screen.getByRole('button', { name: /Delete Account/i });
+    const dialog = document.body.querySelector('[role="alertdialog"]');
+    const confirmButton = getByRole(dialog as HTMLElement, 'button', { name: /Delete Account/i });
     expect(confirmButton).toBeDisabled();
   });
 
   it('delete confirmation button is enabled when confirmation text is DELETE', () => {
     renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'DELETE' });
 
-    const confirmButton = screen.getByRole('button', { name: /Delete Account/i });
+    const confirmButton = getByRole(document.body, 'button', { name: /Delete Account/i });
     expect(confirmButton).not.toBeDisabled();
   });
 
   it('delete confirmation button is disabled when isDeleting is true', () => {
     renderSettingsUI({ isDeleting: true, showDeleteDialog: true, deleteConfirmation: 'DELETE' });
 
-    const confirmButton = screen.getByRole('button', { name: /Deleting.../i });
+    const confirmButton = getByRole(document.body, 'button', { name: /Deleting.../i });
     expect(confirmButton).toBeDisabled();
   });
 
   it('shows Deleting... text when isDeleting is true', () => {
     renderSettingsUI({ isDeleting: true, showDeleteDialog: true, deleteConfirmation: 'DELETE' });
 
-    expect(screen.getByText('Deleting...')).toBeInTheDocument();
+    expect(getByText(document.body, 'Deleting...')).toBeInTheDocument();
   });
 
   it('calls handleDeleteAccount when confirmation button is clicked', async () => {
@@ -157,8 +193,9 @@ describe('SettingsUI', () => {
 
     renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'DELETE', handleDeleteAccount });
 
-    const confirmButton = screen.getByRole('button', { name: /Delete Account/i });
-    await user.click(confirmButton);
+    const dialog = document.body.querySelector('[role="alertdialog"]');
+    const confirmButton = getByRole(dialog as HTMLElement, 'button', { name: /Delete Account/i });
+    await user.click(confirmButton!);
 
     expect(handleDeleteAccount).toHaveBeenCalled();
   });
@@ -166,7 +203,7 @@ describe('SettingsUI', () => {
   it('has cancel button in confirmation dialog', () => {
     renderSettingsUI({ showDeleteDialog: true });
 
-    expect(screen.getByRole('button', { name: /Cancel/i })).toBeInTheDocument();
+    expect(getByRole(document.body, 'button', { name: /Cancel/i })).toBeInTheDocument();
   });
 
   it('clears confirmation text when cancel button is clicked', async () => {
@@ -175,8 +212,8 @@ describe('SettingsUI', () => {
 
     renderSettingsUI({ showDeleteDialog: true, deleteConfirmation: 'DELETE', setDeleteConfirmation });
 
-    const cancelButton = screen.getByRole('button', { name: /Cancel/i });
-    await user.click(cancelButton);
+    const cancelButton = getByRole(document.body, 'button', { name: /Cancel/i });
+    await user.click(cancelButton!);
 
     expect(setDeleteConfirmation).toHaveBeenCalledWith('');
   });
@@ -184,38 +221,28 @@ describe('SettingsUI', () => {
   it('cancel button is disabled when isDeleting is true', () => {
     renderSettingsUI({ isDeleting: true, showDeleteDialog: true });
 
-    const cancelButton = screen.getByRole('button', { name: /Cancel/i });
+    const cancelButton = getByRole(document.body, 'button', { name: /Cancel/i });
     expect(cancelButton).toBeDisabled();
   });
 
   it('confirmation input is disabled when isDeleting is true', () => {
     renderSettingsUI({ isDeleting: true, showDeleteDialog: true });
 
-    const input = screen.getByPlaceholderText('DELETE');
+    const input = getByPlaceholderText(document.body, 'DELETE');
     expect(input).toBeDisabled();
   });
 
-  it('renders View FAQ button', () => {
-    renderSettingsUI();
+  it('renders View FAQ link', () => {
+    const { container } = renderSettingsUI();
 
-    expect(screen.getByRole('button', { name: /View FAQ/i })).toBeInTheDocument();
+    expect(getByRole(container, 'link', { name: /View FAQ/i })).toBeInTheDocument();
   });
 
-  it('opens FAQ dialog when View FAQ button is clicked', async () => {
-    const setShowFAQDialog = vi.fn();
-    const user = userEvent.setup();
+  it('renders FAQ link that navigates to /faq', () => {
+    const { container } = renderSettingsUI({});
 
-    renderSettingsUI({ setShowFAQDialog });
-
-    const faqButton = screen.getByRole('button', { name: /View FAQ/i });
-    await user.click(faqButton);
-
-    expect(setShowFAQDialog).toHaveBeenCalledWith(true);
-  });
-
-  it('renders FAQ dialog when showFAQDialog is true', () => {
-    renderSettingsUI({ showFAQDialog: true });
-
-    expect(screen.getByText('Frequently Asked Questions')).toBeInTheDocument();
+    const faqLink = container.querySelector('a[href="/faq"]');
+    expect(faqLink).toBeInTheDocument();
+    expect(faqLink).toHaveTextContent('View FAQ');
   });
 });

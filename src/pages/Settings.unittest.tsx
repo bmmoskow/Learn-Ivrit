@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import Settings from './Settings';
 import type { User } from '@supabase/supabase-js';
 
@@ -24,6 +24,10 @@ vi.mock('../components/Settings/useSettings', () => ({
   useSettings: vi.fn(),
 }));
 
+const getByTestId = (container: HTMLElement, testId: string): HTMLElement | null => {
+  return container.querySelector(`[data-testid="${testId}"]`) as HTMLElement;
+};
+
 describe('Settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,14 +43,12 @@ describe('Settings', () => {
       deleteConfirmation: '',
       setDeleteConfirmation: vi.fn(),
       handleDeleteAccount: vi.fn(),
-      showFAQDialog: false,
-      setShowFAQDialog: vi.fn(),
     });
 
-    render(<Settings />);
+    const { container } = render(<Settings />);
 
-    expect(screen.getByTestId('settings-ui')).toBeInTheDocument();
-    expect(screen.getByTestId('user-email')).toHaveTextContent('test@example.com');
+    expect(getByTestId(container, 'settings-ui')).toBeInTheDocument();
+    expect(getByTestId(container, 'user-email')).toHaveTextContent('test@example.com');
   });
 
   it('renders nothing when user is not authenticated', async () => {
@@ -59,8 +61,6 @@ describe('Settings', () => {
       deleteConfirmation: '',
       setDeleteConfirmation: vi.fn(),
       handleDeleteAccount: vi.fn(),
-      showFAQDialog: false,
-      setShowFAQDialog: vi.fn(),
     });
 
     const { container } = render(<Settings />);
@@ -77,8 +77,6 @@ describe('Settings', () => {
       deleteConfirmation: 'DELETE',
       setDeleteConfirmation: vi.fn(),
       handleDeleteAccount: vi.fn(),
-      showFAQDialog: true,
-      setShowFAQDialog: vi.fn(),
     };
 
     const { useSettings } = await import('../components/Settings/useSettings');
@@ -94,7 +92,6 @@ describe('Settings', () => {
         isDeleting: true,
         showDeleteDialog: true,
         deleteConfirmation: 'DELETE',
-        showFAQDialog: true,
       }),
       {}
     );
