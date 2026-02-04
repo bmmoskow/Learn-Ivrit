@@ -14,7 +14,6 @@ export function useSettings() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const [showFAQDialog, setShowFAQDialog] = useState(false);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirmation !== 'DELETE') {
@@ -55,7 +54,5 @@ export function useSettings() {
     deleteConfirmation,
     setDeleteConfirmation,
     handleDeleteAccount,
-    showFAQDialog,
-    setShowFAQDialog,
   };
 }
