@@ -126,11 +126,7 @@ You have the right to:
 - Request we stop processing certain data
 
 ### How to Exercise Your Rights
-<<<<<<< HEAD:public/PRIVACY_POLICY.md
 Contact us at [CONTACT_EMAIL] with your request. We will respond within 30 days.
-=======
-Contact us at [CONTACT EMAIL - TO BE CONFIGURED] with your request. We will respond within 30 days.
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0:PRIVACY_POLICY.md
 
 ## 6. Security Measures
 
@@ -189,22 +185,14 @@ If you are a California resident, you have the right to:
 - Opt out of the "sale" of personal information (we do not sell data)
 - Non-discrimination for exercising your rights
 
-<<<<<<< HEAD:public/PRIVACY_POLICY.md
 To exercise these rights, email us at [CONTACT_EMAIL] with "CCPA Request" in the subject line.
-=======
-To exercise these rights, email us at [CONTACT EMAIL - TO BE CONFIGURED] with "CCPA Request" in the subject line.
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0:PRIVACY_POLICY.md
 
 ## 8. Children's Privacy (COPPA Compliance)
 
 The Service is NOT intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
 
 If you believe a child under 13 has provided us with personal information:
-<<<<<<< HEAD:public/PRIVACY_POLICY.md
 - Contact us immediately at [CONTACT_EMAIL]
-=======
-- Contact us immediately at [CONTACT EMAIL - TO BE CONFIGURED]
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0:PRIVACY_POLICY.md
 - We will delete the account and all associated data promptly
 
 If you are between 13 and 18, you should review these policies with a parent or guardian.
@@ -249,11 +237,7 @@ The Service may contain links to third-party websites or services (e.g., Sefaria
 ## 12. Data Processing Agreements
 
 ### For Enterprise or Educational Users
-<<<<<<< HEAD:public/PRIVACY_POLICY.md
 If you use the Service on behalf of an organization, additional data processing terms may apply. Contact us at [CONTACT_EMAIL] to discuss enterprise privacy requirements.
-=======
-If you use the Service on behalf of an organization, additional data processing terms may apply. Contact us at [CONTACT EMAIL - TO BE CONFIGURED] to discuss enterprise privacy requirements.
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0:PRIVACY_POLICY.md
 
 ## 13. No Tracking
 
@@ -271,7 +255,6 @@ By using the Service, you consent to:
 For questions, concerns, or requests regarding your privacy or this Privacy Policy:
 
 **Privacy Contact:**
-<<<<<<< HEAD:public/PRIVACY_POLICY.md
 **Email: [CONTACT_EMAIL]**
 
 For GDPR-related requests (EU users):
@@ -279,15 +262,6 @@ For GDPR-related requests (EU users):
 
 For CCPA-related requests (California users):
 **Email: [CONTACT_EMAIL]** (subject: "CCPA Request")
-=======
-**Email: [CONTACT EMAIL - TO BE CONFIGURED]**
-
-For GDPR-related requests (EU users):
-**Email: [CONTACT EMAIL - TO BE CONFIGURED]** (subject: "GDPR Request")
-
-For CCPA-related requests (California users):
-**Email: [CONTACT EMAIL - TO BE CONFIGURED]** (subject: "CCPA Request")
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0:PRIVACY_POLICY.md
 
 We will respond to all requests within 30 days.
 
@@ -305,10 +279,6 @@ We will respond to all requests within 30 days.
 **Retention:** Until you delete your account (plus 30-90 days for backups)
 **No tracking:** We don't use analytics cookies or collect browsing data
 **Age requirement:** Must be 13 or older
-<<<<<<< HEAD:public/PRIVACY_POLICY.md
 **Contact:** [CONTACT_EMAIL] for any privacy questions
-=======
-**Contact:** [CONTACT EMAIL - TO BE CONFIGURED] for any privacy questions
->>>>>>> d32ad4fb18ebbecf318508cf4c3df0334cd09fb0:PRIVACY_POLICY.md
 
 By using our Service, you acknowledge that you have read and understood this Privacy Policy.
