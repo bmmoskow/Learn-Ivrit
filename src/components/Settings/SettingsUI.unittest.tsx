@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import SettingsUI from './SettingsUI';
 import type { User } from '@supabase/supabase-js';
+import { APP_CONFIG } from '@/config/app';
 
 const mockUser: User = {
   id: 'test-user-id',
@@ -90,7 +91,7 @@ describe('SettingsUI', () => {
     const { container } = renderSettingsUI();
 
     expect(getByText(container, 'Help & Support')).toBeInTheDocument();
-    expect(getByText(container, 'support@yourapp.com')).toBeInTheDocument();
+    expect(getByText(container, APP_CONFIG.supportEmail)).toBeInTheDocument();
   });
 
   it('renders danger zone with delete account button', () => {
