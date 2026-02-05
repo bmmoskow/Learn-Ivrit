@@ -1,5 +1,3 @@
-# Privacy Policy
-
 **Last Updated: January 28, 2026**
 
 This Privacy Policy describes how we collect, use, store, and protect your personal information when you use our Hebrew learning platform (the "Service").
