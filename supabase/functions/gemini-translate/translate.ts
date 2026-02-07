@@ -4,7 +4,6 @@ import {
   checkRateLimit,
   logRequest,
   hashText,
-  createErrorResponse,
   createJsonResponse,
   SupabaseClient,
 } from "./shared.ts";
