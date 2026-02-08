@@ -7,14 +7,9 @@ export const GEMINI_URL = `${GEMINI_API_BASE_URL}/${GEMINI_MODEL}:generateConten
 
 // Rate limiting configuration
 export const RATE_LIMITS = {
-  word_definition: {
-    hourly: 100,
-    daily: 500,
-    name: "word definition",
-  },
-  passage_translation: {
-    hourly: 30,
-    daily: 100,
-    name: "passage translation",
+  passage_generation: {
+    hourly: 20,
+    daily: 50,
+    name: "passage generation",
   },
 };
