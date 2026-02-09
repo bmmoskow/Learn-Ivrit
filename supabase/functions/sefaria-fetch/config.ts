@@ -1,10 +1,10 @@
 // Sefaria API configuration
 export const SEFARIA_API_BASE_URL = "https://www.sefaria.org/api/texts";
 
-// Cache configuration (in days)
+// Cache configuration (in days) - values from Supabase secrets with sensible defaults
 export const CACHE_CONFIG = {
-  maxAgeDays: 30,
-  staleAfterDays: 7,
+  maxAgeDays: parseInt(Deno.env.get("SEFARIA_CACHE_MAX_AGE_DAYS") || "30", 10),
+  staleAfterDays: parseInt(Deno.env.get("SEFARIA_CACHE_STALE_AFTER_DAYS") || "7", 10),
 };
 
 // CORS headers
