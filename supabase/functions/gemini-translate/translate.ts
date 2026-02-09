@@ -1,4 +1,4 @@
-import { getGeminiUrl } from "./config.ts";
+import { GEMINI_URL } from "./config.ts";
 import {
   corsHeaders,
   checkRateLimit,
@@ -55,17 +55,59 @@ export async function handleTranslate(
     : " CRITICAL: Preserve the exact line breaks and paragraph structure from the original text in your translation. Keep single line breaks as single line breaks and double line breaks as double line breaks.";
 
   const MAX_CHUNK_LENGTH = 3000;
-  const paragraphs = text.split(/\n\n+/);
+
+  // Smarter paragraph detection: handles whitespace between newlines (spaces, tabs, etc.)
+  // Also handles Windows line endings (\r\n) and multiple blank lines
+  const paragraphs = text.split(/(?:\r?\n\s*){2,}/);
+
+  // Helper: split a long paragraph into sentences for fallback chunking
+  const splitIntoSentences = (paragraph: string): string[] => {
+    // Hebrew/English sentence endings: period, exclamation, question mark, or Hebrew punctuation
+    // Keep the punctuation with the sentence
+    const sentences = paragraph.match(/[^.!?؟]+[.!?؟]+|[^.!?؟]+$/g) || [paragraph];
+    return sentences.map(s => s.trim()).filter(s => s.length > 0);
+  };
+
   const chunks: string[] = [];
   let currentChunk = "";
 
   for (const paragraph of paragraphs) {
-    const paragraphWithBreak = currentChunk ? "\n\n" + paragraph : paragraph;
-    if ((currentChunk + paragraphWithBreak).length > MAX_CHUNK_LENGTH && currentChunk) {
-      chunks.push(currentChunk.trim());
-      currentChunk = paragraph;
+    const trimmedParagraph = paragraph.trim();
+    if (!trimmedParagraph) continue;
+
+    // If this single paragraph exceeds MAX_CHUNK_LENGTH, split by sentences
+    if (trimmedParagraph.length > MAX_CHUNK_LENGTH) {
+      // First, flush any existing chunk
+      if (currentChunk) {
+        chunks.push(currentChunk.trim());
+        currentChunk = "";
+      }
+
+      // Split the long paragraph into sentences and chunk them
+      const sentences = splitIntoSentences(trimmedParagraph);
+      let sentenceChunk = "";
+
+      for (const sentence of sentences) {
+        const sentenceWithSpace = sentenceChunk ? " " + sentence : sentence;
+        if ((sentenceChunk + sentenceWithSpace).length > MAX_CHUNK_LENGTH && sentenceChunk) {
+          chunks.push(sentenceChunk.trim());
+          sentenceChunk = sentence;
+        } else {
+          sentenceChunk += sentenceWithSpace;
+        }
+      }
+      if (sentenceChunk) {
+        chunks.push(sentenceChunk.trim());
+      }
     } else {
-      currentChunk += paragraphWithBreak;
+      // Normal paragraph handling
+      const paragraphWithBreak = currentChunk ? "\n\n" + trimmedParagraph : trimmedParagraph;
+      if ((currentChunk + paragraphWithBreak).length > MAX_CHUNK_LENGTH && currentChunk) {
+        chunks.push(currentChunk.trim());
+        currentChunk = trimmedParagraph;
+      } else {
+        currentChunk += paragraphWithBreak;
+      }
     }
   }
   if (currentChunk) {
@@ -88,7 +130,7 @@ export async function handleTranslate(
 
     const prompt = `Translate the following ${sourceLanguage} text to ${targetLanguage}.${vowelInstruction}${lineBreakInstruction} Provide only the translation, nothing else:\n\n${chunk}`;
 
-    const response = await fetch(getGeminiUrl(), {
+    const response = await fetch(GEMINI_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

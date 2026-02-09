@@ -1,4 +1,4 @@
-import { getGeminiUrl } from "./config.ts";
+import { GEMINI_URL } from "./config.ts";
 import {
   corsHeaders,
   checkRateLimit,
@@ -150,7 +150,7 @@ FORMS:
 - שְׁלֵמוּת (shlemut) - noun: completeness, wholeness`
 }`;
 
-  const geminiResponse = await fetch(getGeminiUrl(), {
+  const geminiResponse = await fetch(GEMINI_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

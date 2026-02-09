@@ -53,6 +53,26 @@ function extractArticleStructuredData(html: string): {
 function extractTextFromHtml(html: string): string {
   let text = html;
 
+  // Try to find the main article content first
+  // Use GREEDY matching to capture all content within containers
+  // Match specific article body containers first (e.g. ynet's ArticleBodyComponent)
+  const contentMatch = text.match(/<div[^>]*(?:class="[^"]*(?:article-body|ArticleBodyComponent|ArticleBody|post-content|entry-content|story-body)[^"]*"|id="[^"]*(?:ArticleBody|article-body|ArticleBodyComponent)[^"]*")[^>]*>([\s\S]*)<\/div>/i);
+  const articleMatch = text.match(/<article[^>]*>([\s\S]*)<\/article>/i);
+  const mainMatch = text.match(/<main[^>]*>([\s\S]*)<\/main>/i);
+
+  if (contentMatch) {
+    text = contentMatch[1];
+  } else if (articleMatch) {
+    text = articleMatch[1];
+  } else if (mainMatch) {
+    text = mainMatch[1];
+  }
+
+  // Insert paragraph breaks before Draft.js paragraph blocks and similar patterns
+  // This preserves paragraph structure from CMS editors
+  text = text.replace(/<div[^>]*class="[^"]*text_editor_paragraph[^"]*"[^>]*>/gi, "\n\n");
+  text = text.replace(/<div[^>]*data-block="true"[^>]*>/gi, "\n\n");
+
   text = text.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "");
   text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "");
   text = text.replace(/<nav[^>]*>([\s\S]*?)<\/nav>/gi, "");
@@ -67,7 +87,7 @@ function extractTextFromHtml(html: string): string {
   text = text.replace(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, "");
 
   text = text.replace(
-    /<div[^>]*class="[^"]*(?:caption|credit|photo|image|img|media|video|gallery|sidebar|related|comment|ad|advertisement|promo|banner)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
+    /<div[^>]*class="[^"]*(?:caption|credit|photo|image|img|media|video|gallery|sidebar|related|comment|ad|advertisement|promo|banner|social|share|tags|breadcrumb|navigation|menu)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
     "",
   );
   text = text.replace(
@@ -79,10 +99,13 @@ function extractTextFromHtml(html: string): string {
     "",
   );
 
+  // Convert block elements to paragraph breaks
   text = text.replace(/<br\s*\/?>/gi, "\n");
   text = text.replace(/<\/p>/gi, "\n\n");
-  text = text.replace(/<\/div>/gi, "\n");
+  text = text.replace(/<\/div>/gi, "\n\n"); // Changed from \n to \n\n
   text = text.replace(/<\/h[1-6]>/gi, "\n\n");
+  text = text.replace(/<\/li>/gi, "\n");
+  text = text.replace(/<\/blockquote>/gi, "\n\n");
 
   text = text.replace(/<[^>]+>/g, "");
 
@@ -101,15 +124,26 @@ function extractTextFromHtml(html: string): string {
   const lines = text.split("\n");
   const filteredLines = lines.filter((line) => {
     const trimmed = line.trim();
-    if (trimmed.length === 0) return false;
-    if (trimmed.length < 10) return false;
-    if (/^(תמונה|צילום|photo|credit|image):/i.test(trimmed)) return false;
+    if (trimmed.length === 0) return true;
+    if (trimmed.length < 15) return false;
+    if (/^(תמונה|צילום|photo|credit|image|עקבו|הוספת תגובה|הדפסה|מצאתם טעות|מצאתם טעות\?)/i.test(trimmed)) return false;
+    // Filter trailing site UI text
+    if (/^(אין לשלוח|תגובות|כתבו לנו|המייל האדום)/i.test(trimmed)) return false;
     if (/\.(jpg|jpeg|png|gif|webp)$/i.test(trimmed)) return false;
+    // Filter common navigation/UI text
+    if (/^(ערוצי|ערוצים נוספים|אתרים נוספים|צור קשר|מדיניות|תנאי שימוש|מפת האתר)/i.test(trimmed)) return false;
     return true;
   });
 
   text = filteredLines.join("\n");
-  text = text.replace(/\n\s*\n\s*\n/g, "\n\n");
+
+  // Normalize paragraph breaks: multiple newlines become exactly two
+  text = text.replace(/\n\s*\n\s*\n+/g, "\n\n");
+  // Single newlines followed by content that looks like a new paragraph (starts with capital or Hebrew letter after whitespace)
+  // Keep single newlines that are actually paragraph breaks
+  text = text.replace(/\n(?=\s*[א-ת])/g, "\n\n");
+  // Clean up excessive breaks
+  text = text.replace(/\n{3,}/g, "\n\n");
   text = text.trim();
 
   return text;
@@ -150,19 +184,47 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   const structuredData = extractArticleStructuredData(html);
   console.log("Structured data found:", structuredData);
 
+  const htmlExtracted = extractTextFromHtml(html);
+
   let title = structuredData.title || "";
   let content = "";
 
-  const htmlExtracted = extractTextFromHtml(html);
-
-  if (structuredData.articleBody && structuredData.articleBody.length > htmlExtracted.length * 0.7) {
-    const parts = [];
-    if (title) parts.push(title);
-    if (structuredData.description && !structuredData.articleBody.includes(structuredData.description)) {
-      parts.push(structuredData.description);
+  // Always prefer HTML extraction as it preserves paragraph structure with \n\n breaks
+  // JSON-LD articleBody often collapses all paragraphs into a single string
+  // Only use articleBody if HTML extraction completely failed
+  if (htmlExtracted && htmlExtracted.length > 100) {
+    content = htmlExtracted;
+    // Some sites (e.g. ynet) put the title and first paragraph/subtitle outside the article body container
+    // Prepend title and description if not already included in the extracted content
+    const preamble: string[] = [];
+    if (title) {
+      const titleStart = title.substring(0, 40);
+      if (!content.includes(titleStart)) {
+        preamble.push(title);
+      }
     }
-    parts.push(structuredData.articleBody);
-    content = parts.join("\n\n\n\n");
+    if (structuredData.description) {
+      const descStart = structuredData.description.substring(0, 50);
+      if (!content.includes(descStart)) {
+        preamble.push(structuredData.description);
+      }
+    }
+    if (preamble.length > 0) {
+      content = preamble.join("\n\n") + "\n\n" + content;
+    }
+  } else if (structuredData.articleBody) {
+    // Fallback to articleBody only if HTML extraction failed
+    // Many sites (e.g. ynet) separate paragraphs with multiple spaces in articleBody
+    let articleText = structuredData.articleBody;
+    // Convert sequences of 3+ whitespace chars (spaces/tabs) to paragraph breaks
+    articleText = articleText.replace(/ {3,}/g, "\n\n");
+    // Also handle tab-separated paragraphs
+    articleText = articleText.replace(/\t+/g, "\n\n");
+    // Clean up excessive breaks
+    articleText = articleText.replace(/\n{3,}/g, "\n\n");
+
+    content = articleText.trim();
+    console.log("Using articleBody fallback with space-to-paragraph conversion");
   } else {
     content = htmlExtracted;
   }

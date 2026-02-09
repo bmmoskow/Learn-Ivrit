@@ -1,4 +1,4 @@
-import { getGeminiUrl } from "./config.ts";
+import { GEMINI_URL } from "./config.ts";
 import {
   corsHeaders,
   checkRateLimit,
@@ -43,7 +43,7 @@ export async function handleOcr(
 
   const prompt = `Extract ALL Hebrew text from this image. Include vowel marks (nikud) if present. Return ONLY the extracted Hebrew text, nothing else.`;
 
-  const response = await fetch(getGeminiUrl(), {
+  const response = await fetch(GEMINI_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
