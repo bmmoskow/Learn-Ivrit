@@ -1,18 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { GEMINI_URL, RATE_LIMITS } from "./config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-};
-
-const RATE_LIMITS = {
-  passage_generation: {
-    hourly: 20,
-    daily: 50,
-    name: "passage generation",
-  },
 };
 
 async function checkRateLimit(
@@ -148,20 +141,11 @@ Deno.serve(async (req: Request) => {
 
     console.log(`Generating passage with prompt length: ${prompt.length}`);
 
-    // Get Gemini API key
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      console.error("GEMINI_API_KEY not configured");
-      throw new Error("GEMINI_API_KEY environment variable is not set");
-    }
-
     // Log the request for rate limiting
     await logRequest(supabase, rateLimitId);
 
     // Call Gemini API
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
+    const geminiResponse = await fetch(GEMINI_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
