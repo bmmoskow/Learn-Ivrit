@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { TranslationPanelUI } from "./TranslationPanelUI";
+import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 import React from "react";
 
 describe("TranslationPanelUI", () => {
@@ -127,5 +128,76 @@ describe("TranslationPanelUI", () => {
         expect(icon).toHaveClass("h-5");
       });
     });
+  });
+
+  describe("Text Input Dialog", () => {
+    it("renders 'Paste or type Hebrew or English' link in empty state", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+
+      const link = document.body.querySelector("span.cursor-pointer");
+      expect(link).toBeInTheDocument();
+      expect(link?.textContent).toContain("Paste or type Hebrew or English");
+    });
+
+    it("opens dialog when 'Paste or type' link is clicked", async () => {
+      const { userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+
+      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
+      await user.click(link);
+
+      const dialogTitle = document.body.querySelector("[role='dialog']");
+      expect(dialogTitle).toBeInTheDocument();
+    });
+  });
+});
+
+describe("TextInputDialog", () => {
+  it("renders with white background class when open", () => {
+    render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+
+    const dialogContent = document.body.querySelector("[role='dialog']");
+    expect(dialogContent).toHaveClass("bg-white");
+  });
+
+  it("calls onSubmit with trimmed text when Translate is clicked", async () => {
+    const { userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+
+    const textarea = document.body.querySelector("textarea") as HTMLTextAreaElement;
+    await user.type(textarea, "שלום עולם");
+
+    const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (btn) => btn.textContent === "Translate"
+    ) as HTMLElement;
+    await user.click(translateBtn);
+
+    expect(onSubmit).toHaveBeenCalledWith("שלום עולם");
+  });
+
+  it("disables Translate button when textarea is empty", () => {
+    render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
+
+    const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (btn) => btn.textContent === "Translate"
+    ) as HTMLElement;
+    expect(translateBtn).toBeDisabled();
+  });
+
+  it("calls onOpenChange(false) when Cancel is clicked", async () => {
+    const { userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(<TextInputDialog open={true} onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
+
+    const cancelBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (btn) => btn.textContent === "Cancel"
+    ) as HTMLElement;
+    await user.click(cancelBtn);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
