@@ -5,7 +5,6 @@ import {
   X,
   Loader2,
   BookPlus,
-  Link as LinkIcon,
   ChevronLeft,
   ChevronRight,
   Book,
@@ -14,16 +13,11 @@ import {
   BookmarkPlus,
   ArrowRightLeft,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
+import { BibleInput } from "./BibleInput/BibleInput";
+import { UrlInput } from "./UrlInput/UrlInput";
+import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 
 interface TranslationPanelUIProps {
   // State
@@ -112,14 +106,9 @@ export function TranslationPanelUI({
   fileInputRef,
 }: TranslationPanelUIProps) {
   const [showTextInput, setShowTextInput] = useState(false);
-  const [textInputValue, setTextInputValue] = useState("");
 
-  const handleTextInputSubmit = () => {
-    if (textInputValue.trim()) {
-      setSourceText(textInputValue.trim());
-      setShowTextInput(false);
-      setTextInputValue("");
-    }
+  const handleTextInputSubmit = (text: string) => {
+    setSourceText(text);
   };
 
   const isHebrewToEnglish = translationDirection === "hebrew-to-english";
@@ -356,106 +345,23 @@ export function TranslationPanelUI({
           {sourceText ? (
             renderSyncedText()
           ) : showBibleInput ? (
-            <div className="h-full flex flex-col items-center justify-center space-y-4">
-              <div className="w-full max-w-md space-y-3">
-                <div className="flex flex-col gap-3">
-                  <select
-                    value={selectedBook}
-                    onChange={(e) => setSelectedBook(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Select Book</option>
-                    {BIBLE_BOOKS.map((book) => (
-                      <option key={book.name} value={book.name}>
-                        {book.hebrewName} ({book.name})
-                      </option>
-                    ))}
-                  </select>
-                  {selectedBook && (
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        max={BIBLE_BOOKS.find((b) => b.name === selectedBook)?.chapters || 1}
-                        value={selectedChapter}
-                        onChange={(e) => setSelectedChapter(Number(e.target.value))}
-                        placeholder="Chapter"
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <button
-                        onClick={() => loadFromBible()}
-                        disabled={!selectedBook || !selectedChapter || loadingBible}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {loadingBible ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <Book className="w-4 h-4" />
-                            Load
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    setShowBibleInput(false);
-                    setSelectedBook("");
-                    setSelectedChapter(1);
-                  }}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <BibleInput
+              selectedBook={selectedBook}
+              selectedChapter={selectedChapter}
+              loadingBible={loadingBible}
+              setSelectedBook={setSelectedBook}
+              setSelectedChapter={setSelectedChapter}
+              setShowBibleInput={setShowBibleInput}
+              loadFromBible={loadFromBible}
+            />
           ) : showUrlInput ? (
-            <div className="h-full flex flex-col items-center justify-center space-y-4">
-              <div className="w-full max-w-md space-y-3">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && loadFromUrl()}
-                    placeholder="Enter URL (e.g., https://www.ynet.co.il/...)"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                  />
-                  <button
-                    onClick={loadFromUrl}
-                    disabled={!urlInput.trim() || loadingUrl}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {loadingUrl ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <LinkIcon className="w-4 h-4" />
-                        Load
-                      </>
-                    )}
-                  </button>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowUrlInput(false);
-                    setUrlInput("");
-                  }}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <UrlInput
+              urlInput={urlInput}
+              loadingUrl={loadingUrl}
+              setUrlInput={setUrlInput}
+              setShowUrlInput={setShowUrlInput}
+              loadFromUrl={loadFromUrl}
+            />
           ) : (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <div className="text-center text-gray-400 text-sm leading-relaxed max-w-md">
@@ -540,29 +446,11 @@ export function TranslationPanelUI({
         )}
       </div>
 
-      <Dialog open={showTextInput} onOpenChange={setShowTextInput}>
-        <DialogContent className="sm:max-w-lg bg-white">
-          <DialogHeader>
-            <DialogTitle>Paste or Type Hebrew or English</DialogTitle>
-          </DialogHeader>
-          <textarea
-            value={textInputValue}
-            onChange={(e) => setTextInputValue(e.target.value)}
-            placeholder="Type or paste your text here..."
-            className="w-full min-h-[200px] p-3 border border-input rounded-md bg-background text-foreground resize-y outline-none focus:ring-2 focus:ring-ring text-base"
-            dir="auto"
-            autoFocus
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setShowTextInput(false); setTextInputValue(""); }}>
-              Cancel
-            </Button>
-            <Button onClick={handleTextInputSubmit} disabled={!textInputValue.trim()}>
-              Translate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TextInputDialog
+        open={showTextInput}
+        onOpenChange={setShowTextInput}
+        onSubmit={handleTextInputSubmit}
+      />
     </div>
   );
 }

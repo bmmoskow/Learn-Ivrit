@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { TranslationPanelUI } from "./TranslationPanelUI";
+import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 import React from "react";
 
 describe("TranslationPanelUI", () => {
@@ -149,51 +150,54 @@ describe("TranslationPanelUI", () => {
       const dialogTitle = document.body.querySelector("[role='dialog']");
       expect(dialogTitle).toBeInTheDocument();
     });
+  });
+});
 
-    it("dialog has white background class", async () => {
-      const { userEvent } = await import("@testing-library/user-event");
-      const user = userEvent.setup();
-      render(<TranslationPanelUI {...createDefaultProps()} />);
+describe("TextInputDialog", () => {
+  it("renders with white background class when open", () => {
+    render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
 
-      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
-      await user.click(link);
+    const dialogContent = document.body.querySelector("[role='dialog']");
+    expect(dialogContent).toHaveClass("bg-white");
+  });
 
-      const dialogContent = document.body.querySelector("[role='dialog']");
-      expect(dialogContent).toHaveClass("bg-white");
-    });
+  it("calls onSubmit with trimmed text when Translate is clicked", async () => {
+    const { userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={onSubmit} />);
 
-    it("calls setSourceText when Translate is clicked with text", async () => {
-      const { userEvent } = await import("@testing-library/user-event");
-      const user = userEvent.setup();
-      const props = createDefaultProps();
-      render(<TranslationPanelUI {...props} />);
+    const textarea = document.body.querySelector("textarea") as HTMLTextAreaElement;
+    await user.type(textarea, "שלום עולם");
 
-      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
-      await user.click(link);
+    const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (btn) => btn.textContent === "Translate"
+    ) as HTMLElement;
+    await user.click(translateBtn);
 
-      const textarea = document.body.querySelector("textarea") as HTMLTextAreaElement;
-      await user.type(textarea, "שלום עולם");
+    expect(onSubmit).toHaveBeenCalledWith("שלום עולם");
+  });
 
-      const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
-        (btn) => btn.textContent === "Translate"
-      ) as HTMLElement;
-      await user.click(translateBtn);
+  it("disables Translate button when textarea is empty", () => {
+    render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
 
-      expect(props.setSourceText).toHaveBeenCalledWith("שלום עולם");
-    });
+    const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (btn) => btn.textContent === "Translate"
+    ) as HTMLElement;
+    expect(translateBtn).toBeDisabled();
+  });
 
-    it("disables Translate button when textarea is empty", async () => {
-      const { userEvent } = await import("@testing-library/user-event");
-      const user = userEvent.setup();
-      render(<TranslationPanelUI {...createDefaultProps()} />);
+  it("calls onOpenChange(false) when Cancel is clicked", async () => {
+    const { userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    const onOpenChange = vi.fn();
+    render(<TextInputDialog open={true} onOpenChange={onOpenChange} onSubmit={vi.fn()} />);
 
-      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
-      await user.click(link);
+    const cancelBtn = Array.from(document.body.querySelectorAll("button")).find(
+      (btn) => btn.textContent === "Cancel"
+    ) as HTMLElement;
+    await user.click(cancelBtn);
 
-      const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
-        (btn) => btn.textContent === "Translate"
-      ) as HTMLElement;
-      expect(translateBtn).toBeDisabled();
-    });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
