@@ -209,8 +209,8 @@ function normalizeArticleBody(articleBody: string): string {
   text = text.replace(/\r\n/g, "\n\n");
   // Convert remaining single \n to double (paragraph break) if not already doubled
   text = text.replace(/(?<!\n)\n(?!\n)/g, "\n\n");
-  // Convert sequences of 3+ spaces to paragraph breaks (ynet pattern)
-  text = text.replace(/ {3,}/g, "\n\n");
+  // Convert sequences of 2+ spaces to paragraph breaks (ynet pattern)
+  text = text.replace(/ {2,}/g, "\n\n");
   // Convert tabs to paragraph breaks
   text = text.replace(/\t+/g, "\n\n");
   // Clean up excessive breaks
@@ -257,26 +257,41 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     articleBody: structuredData.articleBody ? `length: ${structuredData.articleBody.length}` : undefined,
   });
 
+
+
+
   const htmlExtracted = extractTextFromHtml(html);
 
   let title = structuredData.title || "";
   let content = "";
 
   // Decide between HTML extraction and articleBody
-  // HTML extraction preserves paragraph structure but may fail on some sites (e.g. Maariv)
-  // where the article body is only available via JSON-LD articleBody
+  // HTML extraction preserves paragraph structure via <p> tags but may fail on some sites
+  // (e.g. Maariv) where the article body is only available via JSON-LD articleBody.
+  // articleBody is a flat string that often loses paragraph boundaries.
   const normalizedArticleBody = structuredData.articleBody
     ? normalizeArticleBody(structuredData.articleBody)
     : "";
 
-  // Use articleBody if:
-  // 1. HTML extraction failed (< 100 chars), OR
-  // 2. articleBody is substantially longer than HTML extraction (HTML only got chrome/UI text)
   const htmlIsSubstantial = htmlExtracted && htmlExtracted.length > 100;
-  const articleBodyIsBetter = normalizedArticleBody.length > 0 &&
-    normalizedArticleBody.length > htmlExtracted.length * 0.8;
+  const htmlParagraphs = htmlExtracted ? htmlExtracted.split(/\n\n+/).filter(p => p.trim().length > 0).length : 0;
+  const articleBodyParagraphs = normalizedArticleBody ? normalizedArticleBody.split(/\n\n+/).filter(p => p.trim().length > 0).length : 0;
 
-  if (htmlIsSubstantial && !articleBodyIsBetter) {
+  // Prefer HTML extraction when:
+  // 1. It has substantial content, AND
+  // 2. It has more paragraphs than articleBody (meaning HTML preserved structure that articleBody lost), OR
+  //    articleBody isn't substantially longer (meaning HTML captured the full content)
+  const htmlHasBetterStructure = htmlParagraphs > articleBodyParagraphs;
+  const articleBodyIsMuchLonger = normalizedArticleBody.length > htmlExtracted.length * 1.5;
+  const preferHtml = htmlIsSubstantial && (htmlHasBetterStructure || !articleBodyIsMuchLonger);
+
+  console.log("Content decision:", {
+    htmlLen: htmlExtracted.length, htmlParas: htmlParagraphs,
+    abLen: normalizedArticleBody.length, abParas: articleBodyParagraphs,
+    preferHtml,
+  });
+
+  if (preferHtml) {
     content = htmlExtracted;
     // Prepend title and description if not already included in the extracted content
     const preamble: string[] = [];
