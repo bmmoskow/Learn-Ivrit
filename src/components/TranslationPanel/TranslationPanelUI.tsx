@@ -1,23 +1,17 @@
 import { useState } from "react";
 import {
   Languages,
-  Copy,
-  X,
-  Loader2,
   BookPlus,
-  ChevronLeft,
-  ChevronRight,
-  Book,
-  Upload,
-  Bookmark,
-  BookmarkPlus,
+  Loader2,
   ArrowRightLeft,
 } from "lucide-react";
-import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 import { BibleInput } from "./BibleInput/BibleInput";
 import { UrlInput } from "./UrlInput/UrlInput";
 import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
+import { SyncedTextDisplay } from "./SyncedTextDisplay/SyncedTextDisplay";
+import { Toolbar } from "./Toolbar/Toolbar";
+import { BibleNavigationBar } from "./BibleNavigationBar/BibleNavigationBar";
 
 interface TranslationPanelUIProps {
   // State
@@ -106,126 +100,7 @@ export function TranslationPanelUI({
   fileInputRef,
 }: TranslationPanelUIProps) {
   const [showTextInput, setShowTextInput] = useState(false);
-
-  const handleTextInputSubmit = (text: string) => {
-    setSourceText(text);
-  };
-
   const isHebrewToEnglish = translationDirection === "hebrew-to-english";
-  const renderSyncedText = () => {
-    // If we have sourceText but no syncedParagraphs yet (translation pending), render a pending state
-    if (!syncedParagraphs) {
-      // Show source text immediately with translation placeholder
-      const sourceIsHebrew = isHebrewToEnglish;
-      return (
-        <div className="grid grid-cols-2 gap-6">
-          <div
-            className={`prose max-w-none ${sourceIsHebrew ? "text-right" : ""}`}
-            dir={sourceIsHebrew ? "rtl" : "ltr"}
-          >
-            <p className="whitespace-pre-wrap">{sourceText}</p>
-          </div>
-          <div
-            className={`prose max-w-none ${!sourceIsHebrew ? "text-right" : ""}`}
-            dir={!sourceIsHebrew ? "rtl" : "ltr"}
-          >
-            <p className="whitespace-pre-wrap">
-              <span className="text-gray-400">
-                {translating ? "Translating..." : "Translation will appear here..."}
-              </span>
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        {syncedParagraphs.map(({ hebrew, english, index: paraIndex }) => {
-          // For Hebrew→English: Hebrew is source (left), English is translation (right)
-          // For English→Hebrew: English is source (left), Hebrew is translation (right)
-          const leftText = isHebrewToEnglish ? hebrew : english;
-          const rightText = isHebrewToEnglish ? english : hebrew;
-          const leftIsHebrew = isHebrewToEnglish;
-          const rightIsHebrew = !isHebrewToEnglish;
-
-          const renderClickableHebrew = (text: string, isTranslation: boolean) => {
-            if (!text.trim()) {
-              if (!isTranslation) return <p className="whitespace-pre-wrap" />;
-
-              return (
-                <p className="whitespace-pre-wrap">
-                  <span className="text-gray-400">
-                    {translating ? "Translating..." : "Translation will appear here..."}
-                  </span>
-                </p>
-              );
-            }
-
-            const words = text.split(/(\s+|\n)/);
-            return (
-              <p className="whitespace-pre-wrap">
-                {words.map((word, index) => {
-                  if (word === "\n") return <br key={index} />;
-
-                  const trimmedWord = word.trim();
-                  if (!trimmedWord) return <span key={index}>{word}</span>;
-
-                  const isSaved = savedWords.has(trimmedWord);
-
-                  return (
-                    <span
-                      key={index}
-                      onClick={handleWordClick}
-                      className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                        isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
-                      }`}
-                    >
-                      {word}
-                    </span>
-                  );
-                })}
-              </p>
-            );
-          };
-
-          const renderPlainText = (text: string, isTranslation: boolean) => (
-            <p className="whitespace-pre-wrap">
-              {translating && isTranslation ? (
-                <span className="text-gray-400">Translating...</span>
-              ) : text ? (
-                text
-              ) : isTranslation ? (
-                <span className="text-gray-400">Translation will appear here...</span>
-              ) : null}
-            </p>
-          );
-
-          return (
-            <div key={paraIndex} className="grid grid-cols-2 gap-6">
-              {/* Left side */}
-              <div
-                className="text-xl leading-relaxed"
-                dir={leftIsHebrew ? "rtl" : "ltr"}
-                lang={leftIsHebrew ? "he" : "en"}
-              >
-                {leftIsHebrew ? renderClickableHebrew(leftText, false) : renderPlainText(leftText, false)}
-              </div>
-
-              {/* Right side */}
-              <div
-                className="text-xl leading-relaxed"
-                dir={rightIsHebrew ? "rtl" : "ltr"}
-                lang={rightIsHebrew ? "he" : "en"}
-              >
-                {rightIsHebrew ? renderClickableHebrew(rightText, true) : renderPlainText(rightText, true)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   return (
     <div className="flex-1 flex flex-col p-6">
@@ -244,84 +119,27 @@ export function TranslationPanelUI({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
-            {!isGuest && (
-              <>
-                <button
-                  onClick={() => setShowBookmarkManager(true)}
-                  className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                  title="Bookmarks"
-                >
-                  <Bookmark className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setShowSaveBookmark(true)}
-                  disabled={!sourceText}
-                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Save bookmark"
-                >
-                  <BookmarkPlus className="w-5 h-5" />
-                </button>
-              </>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-            <button
-              onClick={triggerFileInput}
-              disabled={processingImage}
-              className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Upload image with Hebrew text"
-            >
-              {processingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => handleCopy(sourceText)}
-              disabled={!sourceText}
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Copy source text"
-            >
-              <Copy className="w-5 h-5" />
-            </button>
-            <button
-              onClick={clearAll}
-              disabled={!sourceText}
-              className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Clear all"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <Toolbar
+            sourceText={sourceText}
+            processingImage={processingImage}
+            isGuest={isGuest}
+            setShowBookmarkManager={setShowBookmarkManager}
+            setShowSaveBookmark={setShowSaveBookmark}
+            handleCopy={handleCopy}
+            handleFileSelect={handleFileSelect}
+            clearAll={clearAll}
+            triggerFileInput={triggerFileInput}
+            fileInputRef={fileInputRef}
+          />
         </div>
 
         {bibleLoaded && currentBibleRef && (
-          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Book className="w-5 h-5 text-purple-600" />
-                <span className="font-semibold text-gray-800">
-                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter} /{" "}
-                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigateChapter("prev")}
-                  disabled={!canNavigatePrev()}
-                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Previous chapter"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => navigateChapter("next")}
-                  disabled={!canNavigateNext()}
-                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Next chapter"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <BibleNavigationBar
+            currentBibleRef={currentBibleRef}
+            navigateChapter={navigateChapter}
+            canNavigatePrev={canNavigatePrev}
+            canNavigateNext={canNavigateNext}
+          />
         )}
 
         {sourceText && !isGuest && !bibleLoaded && (
@@ -343,7 +161,14 @@ export function TranslationPanelUI({
 
         <div className="flex-1 min-h-[500px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition">
           {sourceText ? (
-            renderSyncedText()
+            <SyncedTextDisplay
+              sourceText={sourceText}
+              translationDirection={translationDirection}
+              translating={translating}
+              savedWords={savedWords}
+              syncedParagraphs={syncedParagraphs}
+              handleWordClick={handleWordClick}
+            />
           ) : showBibleInput ? (
             <BibleInput
               selectedBook={selectedBook}
@@ -449,7 +274,7 @@ export function TranslationPanelUI({
       <TextInputDialog
         open={showTextInput}
         onOpenChange={setShowTextInput}
-        onSubmit={handleTextInputSubmit}
+        onSubmit={(text) => setSourceText(text)}
       />
     </div>
   );
