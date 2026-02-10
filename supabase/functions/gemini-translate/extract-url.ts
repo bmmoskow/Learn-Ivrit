@@ -196,12 +196,19 @@ function extractTextFromHtml(html: string): string {
 
 /**
  * Normalize articleBody text into clean paragraphs.
- * Handles various paragraph separators: \r\n, multiple spaces, tabs.
+ * Different sites use different separators between paragraphs in their JSON-LD articleBody:
+ * - ynet: multiple spaces (3+) between paragraphs
+ * - Maariv: \r\n between paragraphs (single line break = paragraph break)
+ * - Others: tabs, double newlines, etc.
+ * Since articleBody is a flat string (no HTML), any line break likely represents a paragraph boundary.
  */
 function normalizeArticleBody(articleBody: string): string {
   let text = articleBody;
-  // Normalize \r\n to \n
-  text = text.replace(/\r\n/g, "\n");
+  // Normalize all line-break variants to \n\n (paragraph breaks)
+  // In articleBody, each \r\n or \n typically represents a real paragraph boundary
+  text = text.replace(/\r\n/g, "\n\n");
+  // Convert remaining single \n to double (paragraph break) if not already doubled
+  text = text.replace(/(?<!\n)\n(?!\n)/g, "\n\n");
   // Convert sequences of 3+ spaces to paragraph breaks (ynet pattern)
   text = text.replace(/ {3,}/g, "\n\n");
   // Convert tabs to paragraph breaks
