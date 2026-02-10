@@ -1,20 +1,17 @@
+import { useState } from "react";
 import {
   Languages,
-  Copy,
-  X,
-  Loader2,
   BookPlus,
-  Link as LinkIcon,
-  ChevronLeft,
-  ChevronRight,
-  Book,
-  Upload,
-  Bookmark,
-  BookmarkPlus,
+  Loader2,
   ArrowRightLeft,
 } from "lucide-react";
-import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
+import { BibleInput } from "./BibleInput/BibleInput";
+import { UrlInput } from "./UrlInput/UrlInput";
+import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
+import { SyncedTextDisplay } from "./SyncedTextDisplay/SyncedTextDisplay";
+import { Toolbar } from "./Toolbar/Toolbar";
+import { BibleNavigationBar } from "./BibleNavigationBar/BibleNavigationBar";
 
 interface TranslationPanelUIProps {
   // State
@@ -102,111 +99,8 @@ export function TranslationPanelUI({
   triggerFileInput,
   fileInputRef,
 }: TranslationPanelUIProps) {
+  const [showTextInput, setShowTextInput] = useState(false);
   const isHebrewToEnglish = translationDirection === "hebrew-to-english";
-  const renderSyncedText = () => {
-    // If we have sourceText but no syncedParagraphs yet (translation pending), render a pending state
-    if (!syncedParagraphs) {
-      // Show source text immediately with translation placeholder
-      const sourceIsHebrew = isHebrewToEnglish;
-      return (
-        <div className="grid grid-cols-2 gap-6">
-          <div className={`prose max-w-none ${sourceIsHebrew ? "text-right" : ""}`} dir={sourceIsHebrew ? "rtl" : "ltr"}>
-            <p className="whitespace-pre-wrap">{sourceText}</p>
-          </div>
-          <div className={`prose max-w-none ${!sourceIsHebrew ? "text-right" : ""}`} dir={!sourceIsHebrew ? "rtl" : "ltr"}>
-            <p className="whitespace-pre-wrap">
-              <span className="text-gray-400">{translating ? "Translating..." : "Translation will appear here..."}</span>
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="space-y-6">
-        {syncedParagraphs.map(({ hebrew, english, index: paraIndex }) => {
-          // For Hebrew→English: Hebrew is source (left), English is translation (right)
-          // For English→Hebrew: English is source (left), Hebrew is translation (right)
-          const leftText = isHebrewToEnglish ? hebrew : english;
-          const rightText = isHebrewToEnglish ? english : hebrew;
-          const leftIsHebrew = isHebrewToEnglish;
-          const rightIsHebrew = !isHebrewToEnglish;
-
-          const renderClickableHebrew = (text: string, isTranslation: boolean) => {
-            if (!text.trim()) {
-              if (!isTranslation) return <p className="whitespace-pre-wrap" />;
-
-              return (
-                <p className="whitespace-pre-wrap">
-                  <span className="text-gray-400">{translating ? "Translating..." : "Translation will appear here..."}</span>
-                </p>
-              );
-            }
-
-            const words = text.split(/(\s+|\n)/);
-            return (
-              <p className="whitespace-pre-wrap">
-                {words.map((word, index) => {
-                  if (word === "\n") return <br key={index} />;
-
-                  const trimmedWord = word.trim();
-                  if (!trimmedWord) return <span key={index}>{word}</span>;
-
-                  const isSaved = savedWords.has(trimmedWord);
-
-                  return (
-                    <span
-                      key={index}
-                      onClick={handleWordClick}
-                      className={`cursor-pointer hover:bg-blue-100 px-0.5 rounded transition ${
-                        isSaved ? "bg-green-50 border-b-2 border-green-400" : ""
-                      }`}
-                    >
-                      {word}
-                    </span>
-                  );
-                })}
-              </p>
-            );
-          };
-
-          const renderPlainText = (text: string, isTranslation: boolean) => (
-            <p className="whitespace-pre-wrap">
-              {translating && isTranslation ? (
-                <span className="text-gray-400">Translating...</span>
-              ) : text ? (
-                text
-              ) : isTranslation ? (
-                <span className="text-gray-400">Translation will appear here...</span>
-              ) : null}
-            </p>
-          );
-
-          return (
-            <div key={paraIndex} className="grid grid-cols-2 gap-6">
-              {/* Left side */}
-              <div
-                className="text-xl leading-relaxed"
-                dir={leftIsHebrew ? "rtl" : "ltr"}
-                lang={leftIsHebrew ? "he" : "en"}
-              >
-                {leftIsHebrew ? renderClickableHebrew(leftText, false) : renderPlainText(leftText, false)}
-              </div>
-
-              {/* Right side */}
-              <div
-                className="text-xl leading-relaxed"
-                dir={rightIsHebrew ? "rtl" : "ltr"}
-                lang={rightIsHebrew ? "he" : "en"}
-              >
-                {rightIsHebrew ? renderClickableHebrew(rightText, true) : renderPlainText(rightText, true)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
 
   return (
     <div className="flex-1 flex flex-col p-6">
@@ -225,84 +119,27 @@ export function TranslationPanelUI({
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1 sm:gap-2">
-            {!isGuest && (
-              <>
-                <button
-                  onClick={() => setShowBookmarkManager(true)}
-                  className="p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                  title="Bookmarks"
-                >
-                  <Bookmark className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => setShowSaveBookmark(true)}
-                  disabled={!sourceText}
-                  className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Save bookmark"
-                >
-                  <BookmarkPlus className="w-5 h-5" />
-                </button>
-              </>
-            )}
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-            <button
-              onClick={triggerFileInput}
-              disabled={processingImage}
-              className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Upload image with Hebrew text"
-            >
-              {processingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-            </button>
-            <button
-              onClick={() => handleCopy(sourceText)}
-              disabled={!sourceText}
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Copy source text"
-            >
-              <Copy className="w-5 h-5" />
-            </button>
-            <button
-              onClick={clearAll}
-              disabled={!sourceText}
-              className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Clear all"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <Toolbar
+            sourceText={sourceText}
+            processingImage={processingImage}
+            isGuest={isGuest}
+            setShowBookmarkManager={setShowBookmarkManager}
+            setShowSaveBookmark={setShowSaveBookmark}
+            handleCopy={handleCopy}
+            handleFileSelect={handleFileSelect}
+            clearAll={clearAll}
+            triggerFileInput={triggerFileInput}
+            fileInputRef={fileInputRef}
+          />
         </div>
 
         {bibleLoaded && currentBibleRef && (
-          <div className="mb-3 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Book className="w-5 h-5 text-purple-600" />
-                <span className="font-semibold text-gray-800">
-                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.hebrewName} {currentBibleRef.chapter} /{" "}
-                  {BIBLE_BOOKS.find((b) => b.name === currentBibleRef.book)?.name} {currentBibleRef.chapter}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => navigateChapter("prev")}
-                  disabled={!canNavigatePrev()}
-                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Previous chapter"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => navigateChapter("next")}
-                  disabled={!canNavigateNext()}
-                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
-                  title="Next chapter"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
+          <BibleNavigationBar
+            currentBibleRef={currentBibleRef}
+            navigateChapter={navigateChapter}
+            canNavigatePrev={canNavigatePrev}
+            canNavigateNext={canNavigateNext}
+          />
         )}
 
         {sourceText && !isGuest && !bibleLoaded && (
@@ -324,142 +161,65 @@ export function TranslationPanelUI({
 
         <div className="flex-1 min-h-[500px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition">
           {sourceText ? (
-            renderSyncedText()
+            <SyncedTextDisplay
+              sourceText={sourceText}
+              translationDirection={translationDirection}
+              translating={translating}
+              savedWords={savedWords}
+              syncedParagraphs={syncedParagraphs}
+              handleWordClick={handleWordClick}
+            />
           ) : showBibleInput ? (
-            <div className="h-full flex flex-col items-center justify-center space-y-4">
-              <div className="w-full max-w-md space-y-3">
-                <div className="flex flex-col gap-3">
-                  <select
-                    value={selectedBook}
-                    onChange={(e) => setSelectedBook(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  >
-                    <option value="">Select Book</option>
-                    {BIBLE_BOOKS.map((book) => (
-                      <option key={book.name} value={book.name}>
-                        {book.hebrewName} ({book.name})
-                      </option>
-                    ))}
-                  </select>
-                  {selectedBook && (
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        min="1"
-                        max={BIBLE_BOOKS.find((b) => b.name === selectedBook)?.chapters || 1}
-                        value={selectedChapter}
-                        onChange={(e) => setSelectedChapter(Number(e.target.value))}
-                        placeholder="Chapter"
-                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <button
-                        onClick={() => loadFromBible()}
-                        disabled={!selectedBook || !selectedChapter || loadingBible}
-                        className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {loadingBible ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <Book className="w-4 h-4" />
-                            Load
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <button
-                  onClick={() => {
-                    setShowBibleInput(false);
-                    setSelectedBook("");
-                    setSelectedChapter(1);
-                  }}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <BibleInput
+              selectedBook={selectedBook}
+              selectedChapter={selectedChapter}
+              loadingBible={loadingBible}
+              setSelectedBook={setSelectedBook}
+              setSelectedChapter={setSelectedChapter}
+              setShowBibleInput={setShowBibleInput}
+              loadFromBible={loadFromBible}
+            />
           ) : showUrlInput ? (
-            <div className="h-full flex flex-col items-center justify-center space-y-4">
-              <div className="w-full max-w-md space-y-3">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && loadFromUrl()}
-                    placeholder="Enter URL (e.g., https://www.ynet.co.il/...)"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    autoFocus
-                  />
-                  <button
-                    onClick={loadFromUrl}
-                    disabled={!urlInput.trim() || loadingUrl}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {loadingUrl ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      <>
-                        <LinkIcon className="w-4 h-4" />
-                        Load
-                      </>
-                    )}
-                  </button>
-                </div>
-                <button
-                  onClick={() => {
-                    setShowUrlInput(false);
-                    setUrlInput("");
-                  }}
-                  className="text-sm text-gray-600 hover:text-gray-800"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <UrlInput
+              urlInput={urlInput}
+              loadingUrl={loadingUrl}
+              setUrlInput={setUrlInput}
+              setShowUrlInput={setShowUrlInput}
+              loadFromUrl={loadFromUrl}
+            />
           ) : (
-            <div className="relative h-full">
-              <textarea
-                value={sourceText}
-                onChange={(e) => setSourceText(e.target.value)}
-                placeholder=""
-                className="w-full h-full resize-none outline-none text-xl"
-                dir="auto"
-              />
-              <div className="absolute top-2 left-2 text-gray-400 pointer-events-none text-sm leading-relaxed">
-                Paste Hebrew or English text here,{" "}
+            <div className="h-full flex flex-col items-center justify-center space-y-4">
+              <div className="text-center text-gray-400 text-sm leading-relaxed max-w-md">
                 <span
-                  className="text-green-600 underline cursor-pointer pointer-events-auto"
+                  className="text-indigo-600 underline cursor-pointer"
+                  onClick={() => setShowTextInput(true)}
+                >
+                  Paste or type Hebrew or English
+                </span>
+                ,{" "}
+                <span
+                  className="text-green-600 underline cursor-pointer"
                   onClick={triggerFileInput}
                 >
                   upload image
                 </span>
                 ,{" "}
                 <span
-                  className="text-blue-600 underline cursor-pointer pointer-events-auto"
+                  className="text-blue-600 underline cursor-pointer"
                   onClick={() => setShowUrlInput(true)}
                 >
                   load from URL
                 </span>
                 ,{" "}
                 <span
-                  className="text-purple-600 underline cursor-pointer pointer-events-auto"
+                  className="text-purple-600 underline cursor-pointer"
                   onClick={() => setShowBibleInput(true)}
                 >
                   load from Bible
                 </span>
                 , or{" "}
                 <span
-                  className="text-amber-600 underline cursor-pointer pointer-events-auto"
+                  className="text-amber-600 underline cursor-pointer"
                   onClick={() => setShowPassageGenerator(true)}
                 >
                   generate with AI
@@ -510,6 +270,12 @@ export function TranslationPanelUI({
           <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
         )}
       </div>
+
+      <TextInputDialog
+        open={showTextInput}
+        onOpenChange={setShowTextInput}
+        onSubmit={(text) => setSourceText(text)}
+      />
     </div>
   );
 }
