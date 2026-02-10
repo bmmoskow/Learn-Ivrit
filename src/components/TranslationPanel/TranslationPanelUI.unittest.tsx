@@ -128,4 +128,72 @@ describe("TranslationPanelUI", () => {
       });
     });
   });
+
+  describe("Text Input Dialog", () => {
+    it("renders 'Paste or type Hebrew or English' link in empty state", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+
+      const link = document.body.querySelector("span.cursor-pointer");
+      expect(link).toBeInTheDocument();
+      expect(link?.textContent).toContain("Paste or type Hebrew or English");
+    });
+
+    it("opens dialog when 'Paste or type' link is clicked", async () => {
+      const { userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+
+      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
+      await user.click(link);
+
+      const dialogTitle = document.body.querySelector("[role='dialog']");
+      expect(dialogTitle).toBeInTheDocument();
+    });
+
+    it("dialog has white background class", async () => {
+      const { userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+
+      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
+      await user.click(link);
+
+      const dialogContent = document.body.querySelector("[role='dialog']");
+      expect(dialogContent).toHaveClass("bg-white");
+    });
+
+    it("calls setSourceText when Translate is clicked with text", async () => {
+      const { userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      const props = createDefaultProps();
+      render(<TranslationPanelUI {...props} />);
+
+      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
+      await user.click(link);
+
+      const textarea = document.body.querySelector("textarea") as HTMLTextAreaElement;
+      await user.type(textarea, "שלום עולם");
+
+      const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
+        (btn) => btn.textContent === "Translate"
+      ) as HTMLElement;
+      await user.click(translateBtn);
+
+      expect(props.setSourceText).toHaveBeenCalledWith("שלום עולם");
+    });
+
+    it("disables Translate button when textarea is empty", async () => {
+      const { userEvent } = await import("@testing-library/user-event");
+      const user = userEvent.setup();
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+
+      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
+      await user.click(link);
+
+      const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
+        (btn) => btn.textContent === "Translate"
+      ) as HTMLElement;
+      expect(translateBtn).toBeDisabled();
+    });
+  });
 });
