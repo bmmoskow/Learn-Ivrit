@@ -4,6 +4,49 @@ export interface ExtractUrlRequest {
   url: string;
 }
 
+/**
+ * Process a JSON-LD candidate object, extracting article fields into result.
+ */
+function processJsonLdCandidate(
+  candidate: Record<string, unknown>,
+  result: { title?: string; description?: string; articleBody?: string },
+): void {
+  const type = candidate["@type"];
+  const ARTICLE_TYPES = ["NewsArticle", "Article", "WebPage", "ReportageNewsArticle"];
+  const isArticle =
+    (typeof type === "string" && ARTICLE_TYPES.includes(type)) ||
+    (Array.isArray(type) && type.some((t: string) => ARTICLE_TYPES.includes(t)));
+
+  // Also accept any object that has articleBody regardless of type
+  if (isArticle || candidate.articleBody) {
+    if (candidate.headline && !result.title) {
+      result.title = candidate.headline as string;
+    }
+    if (candidate.description && !result.description) {
+      result.description = candidate.description as string;
+    }
+    if (candidate.articleBody && !result.articleBody) {
+      result.articleBody = candidate.articleBody as string;
+    }
+  }
+}
+
+/**
+ * Process a parsed JSON-LD object (may contain @graph array).
+ */
+function processJsonLdObject(
+  jsonData: Record<string, unknown>,
+  result: { title?: string; description?: string; articleBody?: string },
+): void {
+  const candidates = jsonData["@graph"]
+    ? [...(jsonData["@graph"] as Record<string, unknown>[]), jsonData]
+    : [jsonData];
+
+  for (const candidate of candidates) {
+    processJsonLdCandidate(candidate, result);
+  }
+}
+
 function extractArticleStructuredData(html: string): {
   title?: string;
   description?: string;
@@ -11,30 +54,37 @@ function extractArticleStructuredData(html: string): {
 } {
   const result: { title?: string; description?: string; articleBody?: string } = {};
 
+  // 1. Standard <script type="application/ld+json"> blocks
   const jsonLdMatches = html.matchAll(
     /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
   );
-
   for (const match of jsonLdMatches) {
     try {
-      const jsonData = JSON.parse(match[1]);
-
-      if (jsonData["@type"] === "NewsArticle" || jsonData["@type"] === "Article") {
-        if (jsonData.headline && !result.title) {
-          result.title = jsonData.headline;
-        }
-        if (jsonData.description && !result.description) {
-          result.description = jsonData.description;
-        }
-        if (jsonData.articleBody && !result.articleBody) {
-          result.articleBody = jsonData.articleBody;
-        }
-      }
+      processJsonLdObject(JSON.parse(match[1]), result);
     } catch {
-      // Ignore JSON parse errors for structured data extraction
+      // Ignore JSON parse errors
     }
   }
 
+  // 2. Next.js / Cloudflare Rocket Loader obfuscated JSON-LD
+  // Sites like Maariv use Cloudflare Rocket Loader which rewrites script types.
+  // The JSON-LD ends up inside: self.__next_s.push([0,{"type":"application/ld+json","children":"..."}])
+  // Extract by finding the pattern and parsing the children string
+  const nextLdJsonPattern = /"type"\s*:\s*"application\/ld\+json"\s*,\s*"children"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+  let nextMatch;
+  while ((nextMatch = nextLdJsonPattern.exec(html)) !== null) {
+    try {
+      // The children value is a JSON string that's been escaped (quotes are \")
+      // We need to unescape it first by parsing it as a JSON string value
+      const childrenStr = JSON.parse(`"${nextMatch[1]}"`);
+      const jsonData = JSON.parse(childrenStr);
+      processJsonLdObject(jsonData, result);
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
+  // 3. Fallback: og:title and og:description meta tags
   if (!result.title) {
     const ogTitle = html.match(/<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i);
     if (ogTitle) result.title = ogTitle[1];
@@ -102,7 +152,7 @@ function extractTextFromHtml(html: string): string {
   // Convert block elements to paragraph breaks
   text = text.replace(/<br\s*\/?>/gi, "\n");
   text = text.replace(/<\/p>/gi, "\n\n");
-  text = text.replace(/<\/div>/gi, "\n\n"); // Changed from \n to \n\n
+  text = text.replace(/<\/div>/gi, "\n\n");
   text = text.replace(/<\/h[1-6]>/gi, "\n\n");
   text = text.replace(/<\/li>/gi, "\n");
   text = text.replace(/<\/blockquote>/gi, "\n\n");
@@ -127,26 +177,38 @@ function extractTextFromHtml(html: string): string {
     if (trimmed.length === 0) return true;
     if (trimmed.length < 15) return false;
     if (/^(תמונה|צילום|photo|credit|image|עקבו|הוספת תגובה|הדפסה|מצאתם טעות|מצאתם טעות\?)/i.test(trimmed)) return false;
-    // Filter trailing site UI text
     if (/^(אין לשלוח|תגובות|כתבו לנו|המייל האדום)/i.test(trimmed)) return false;
     if (/\.(jpg|jpeg|png|gif|webp)$/i.test(trimmed)) return false;
-    // Filter common navigation/UI text
     if (/^(ערוצי|ערוצים נוספים|אתרים נוספים|צור קשר|מדיניות|תנאי שימוש|מפת האתר)/i.test(trimmed)) return false;
     return true;
   });
 
   text = filteredLines.join("\n");
 
-  // Normalize paragraph breaks: multiple newlines become exactly two
+  // Normalize paragraph breaks
   text = text.replace(/\n\s*\n\s*\n+/g, "\n\n");
-  // Single newlines followed by content that looks like a new paragraph (starts with capital or Hebrew letter after whitespace)
-  // Keep single newlines that are actually paragraph breaks
   text = text.replace(/\n(?=\s*[א-ת])/g, "\n\n");
-  // Clean up excessive breaks
   text = text.replace(/\n{3,}/g, "\n\n");
   text = text.trim();
 
   return text;
+}
+
+/**
+ * Normalize articleBody text into clean paragraphs.
+ * Handles various paragraph separators: \r\n, multiple spaces, tabs.
+ */
+function normalizeArticleBody(articleBody: string): string {
+  let text = articleBody;
+  // Normalize \r\n to \n
+  text = text.replace(/\r\n/g, "\n");
+  // Convert sequences of 3+ spaces to paragraph breaks (ynet pattern)
+  text = text.replace(/ {3,}/g, "\n\n");
+  // Convert tabs to paragraph breaks
+  text = text.replace(/\t+/g, "\n\n");
+  // Clean up excessive breaks
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
 }
 
 export async function handleExtractUrl(req: Request): Promise<Response> {
@@ -182,19 +244,33 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   }
 
   const structuredData = extractArticleStructuredData(html);
-  console.log("Structured data found:", structuredData);
+  console.log("Structured data found:", {
+    title: structuredData.title ? `${structuredData.title.substring(0, 50)}...` : undefined,
+    description: structuredData.description ? `${structuredData.description.substring(0, 50)}...` : undefined,
+    articleBody: structuredData.articleBody ? `length: ${structuredData.articleBody.length}` : undefined,
+  });
 
   const htmlExtracted = extractTextFromHtml(html);
 
   let title = structuredData.title || "";
   let content = "";
 
-  // Always prefer HTML extraction as it preserves paragraph structure with \n\n breaks
-  // JSON-LD articleBody often collapses all paragraphs into a single string
-  // Only use articleBody if HTML extraction completely failed
-  if (htmlExtracted && htmlExtracted.length > 100) {
+  // Decide between HTML extraction and articleBody
+  // HTML extraction preserves paragraph structure but may fail on some sites (e.g. Maariv)
+  // where the article body is only available via JSON-LD articleBody
+  const normalizedArticleBody = structuredData.articleBody
+    ? normalizeArticleBody(structuredData.articleBody)
+    : "";
+
+  // Use articleBody if:
+  // 1. HTML extraction failed (< 100 chars), OR
+  // 2. articleBody is substantially longer than HTML extraction (HTML only got chrome/UI text)
+  const htmlIsSubstantial = htmlExtracted && htmlExtracted.length > 100;
+  const articleBodyIsBetter = normalizedArticleBody.length > 0 &&
+    normalizedArticleBody.length > htmlExtracted.length * 0.8;
+
+  if (htmlIsSubstantial && !articleBodyIsBetter) {
     content = htmlExtracted;
-    // Some sites (e.g. ynet) put the title and first paragraph/subtitle outside the article body container
     // Prepend title and description if not already included in the extracted content
     const preamble: string[] = [];
     if (title) {
@@ -212,19 +288,21 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     if (preamble.length > 0) {
       content = preamble.join("\n\n") + "\n\n" + content;
     }
-  } else if (structuredData.articleBody) {
-    // Fallback to articleBody only if HTML extraction failed
-    // Many sites (e.g. ynet) separate paragraphs with multiple spaces in articleBody
-    let articleText = structuredData.articleBody;
-    // Convert sequences of 3+ whitespace chars (spaces/tabs) to paragraph breaks
-    articleText = articleText.replace(/ {3,}/g, "\n\n");
-    // Also handle tab-separated paragraphs
-    articleText = articleText.replace(/\t+/g, "\n\n");
-    // Clean up excessive breaks
-    articleText = articleText.replace(/\n{3,}/g, "\n\n");
-
-    content = articleText.trim();
-    console.log("Using articleBody fallback with space-to-paragraph conversion");
+    console.log("Using HTML extraction, length:", content.length);
+  } else if (normalizedArticleBody.length > 0) {
+    // Use articleBody — prepend title and description
+    const preamble: string[] = [];
+    if (title) preamble.push(title);
+    if (structuredData.description) {
+      const descStart = structuredData.description.substring(0, 50);
+      if (!normalizedArticleBody.includes(descStart)) {
+        preamble.push(structuredData.description);
+      }
+    }
+    content = preamble.length > 0
+      ? preamble.join("\n\n") + "\n\n" + normalizedArticleBody
+      : normalizedArticleBody;
+    console.log("Using articleBody, paragraphs:", content.split(/\n\n+/).length);
   } else {
     content = htmlExtracted;
   }
