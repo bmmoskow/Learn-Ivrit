@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Languages,
   Copy,
@@ -13,6 +14,14 @@ import {
   BookmarkPlus,
   ArrowRightLeft,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../ui/dialog";
+import { Button } from "../ui/button";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 
@@ -102,6 +111,17 @@ export function TranslationPanelUI({
   triggerFileInput,
   fileInputRef,
 }: TranslationPanelUIProps) {
+  const [showTextInput, setShowTextInput] = useState(false);
+  const [textInputValue, setTextInputValue] = useState("");
+
+  const handleTextInputSubmit = () => {
+    if (textInputValue.trim()) {
+      setSourceText(textInputValue.trim());
+      setShowTextInput(false);
+      setTextInputValue("");
+    }
+  };
+
   const isHebrewToEnglish = translationDirection === "hebrew-to-english";
   const renderSyncedText = () => {
     // If we have sourceText but no syncedParagraphs yet (translation pending), render a pending state
@@ -110,12 +130,20 @@ export function TranslationPanelUI({
       const sourceIsHebrew = isHebrewToEnglish;
       return (
         <div className="grid grid-cols-2 gap-6">
-          <div className={`prose max-w-none ${sourceIsHebrew ? "text-right" : ""}`} dir={sourceIsHebrew ? "rtl" : "ltr"}>
+          <div
+            className={`prose max-w-none ${sourceIsHebrew ? "text-right" : ""}`}
+            dir={sourceIsHebrew ? "rtl" : "ltr"}
+          >
             <p className="whitespace-pre-wrap">{sourceText}</p>
           </div>
-          <div className={`prose max-w-none ${!sourceIsHebrew ? "text-right" : ""}`} dir={!sourceIsHebrew ? "rtl" : "ltr"}>
+          <div
+            className={`prose max-w-none ${!sourceIsHebrew ? "text-right" : ""}`}
+            dir={!sourceIsHebrew ? "rtl" : "ltr"}
+          >
             <p className="whitespace-pre-wrap">
-              <span className="text-gray-400">{translating ? "Translating..." : "Translation will appear here..."}</span>
+              <span className="text-gray-400">
+                {translating ? "Translating..." : "Translation will appear here..."}
+              </span>
             </p>
           </div>
         </div>
@@ -138,7 +166,9 @@ export function TranslationPanelUI({
 
               return (
                 <p className="whitespace-pre-wrap">
-                  <span className="text-gray-400">{translating ? "Translating..." : "Translation will appear here..."}</span>
+                  <span className="text-gray-400">
+                    {translating ? "Translating..." : "Translation will appear here..."}
+                  </span>
                 </p>
               );
             }
@@ -427,39 +457,38 @@ export function TranslationPanelUI({
               </div>
             </div>
           ) : (
-            <div className="relative h-full">
-              <textarea
-                value={sourceText}
-                onChange={(e) => setSourceText(e.target.value)}
-                placeholder=""
-                className="w-full h-full resize-none outline-none text-xl"
-                dir="auto"
-              />
-              <div className="absolute top-2 left-2 text-gray-400 pointer-events-none text-sm leading-relaxed">
-                Paste Hebrew or English text here,{" "}
+            <div className="h-full flex flex-col items-center justify-center space-y-4">
+              <div className="text-center text-gray-400 text-sm leading-relaxed max-w-md">
                 <span
-                  className="text-green-600 underline cursor-pointer pointer-events-auto"
+                  className="text-indigo-600 underline cursor-pointer"
+                  onClick={() => setShowTextInput(true)}
+                >
+                  Paste or type Hebrew or English
+                </span>
+                ,{" "}
+                <span
+                  className="text-green-600 underline cursor-pointer"
                   onClick={triggerFileInput}
                 >
                   upload image
                 </span>
                 ,{" "}
                 <span
-                  className="text-blue-600 underline cursor-pointer pointer-events-auto"
+                  className="text-blue-600 underline cursor-pointer"
                   onClick={() => setShowUrlInput(true)}
                 >
                   load from URL
                 </span>
                 ,{" "}
                 <span
-                  className="text-purple-600 underline cursor-pointer pointer-events-auto"
+                  className="text-purple-600 underline cursor-pointer"
                   onClick={() => setShowBibleInput(true)}
                 >
                   load from Bible
                 </span>
                 , or{" "}
                 <span
-                  className="text-amber-600 underline cursor-pointer pointer-events-auto"
+                  className="text-amber-600 underline cursor-pointer"
                   onClick={() => setShowPassageGenerator(true)}
                 >
                   generate with AI
@@ -510,6 +539,30 @@ export function TranslationPanelUI({
           <div className="mt-3 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">{error}</div>
         )}
       </div>
+
+      <Dialog open={showTextInput} onOpenChange={setShowTextInput}>
+        <DialogContent className="sm:max-w-lg bg-white">
+          <DialogHeader>
+            <DialogTitle>Paste or Type Hebrew or English</DialogTitle>
+          </DialogHeader>
+          <textarea
+            value={textInputValue}
+            onChange={(e) => setTextInputValue(e.target.value)}
+            placeholder="Type or paste your text here..."
+            className="w-full min-h-[200px] p-3 border border-input rounded-md bg-background text-foreground resize-y outline-none focus:ring-2 focus:ring-ring text-base"
+            dir="auto"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowTextInput(false); setTextInputValue(""); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleTextInputSubmit} disabled={!textInputValue.trim()}>
+              Translate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
