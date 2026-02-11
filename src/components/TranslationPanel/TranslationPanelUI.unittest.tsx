@@ -4,6 +4,11 @@ import { TranslationPanelUI } from "./TranslationPanelUI";
 import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 import React from "react";
 
+const findByText = (text: string) =>
+  Array.from(document.body.querySelectorAll("*")).find(
+    (e) => e.textContent === text && e.children.length === 0
+  ) as HTMLElement | undefined;
+
 describe("TranslationPanelUI", () => {
   const createDefaultProps = () => ({
     hebrewText: "",
@@ -47,108 +52,70 @@ describe("TranslationPanelUI", () => {
     fileInputRef: { current: null } as React.RefObject<HTMLInputElement>,
   });
 
-  describe("Header Responsive Layout", () => {
-    it("renders header with responsive flex classes for stacking on mobile", () => {
+  describe("Empty state - InputLauncher", () => {
+    it("renders InputLauncher card grid when no source text", () => {
       render(<TranslationPanelUI {...createDefaultProps()} />);
+      expect(findByText("Paste or Type")).toBeTruthy();
+      expect(findByText("Upload Image")).toBeTruthy();
+      expect(findByText("Load from URL")).toBeTruthy();
+      expect(findByText("Load from Bible")).toBeTruthy();
+      expect(findByText("Generate with AI")).toBeTruthy();
+    });
 
-      // Find the header container - it should have flex-col for mobile and sm:flex-row for larger
+    it("does not show translation direction badge in empty state", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} />);
+      expect(findByText("Hebrew → English")).toBeUndefined();
+    });
+  });
+
+  describe("URL/Bible input states", () => {
+    it("hides launcher when showUrlInput is true", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} showUrlInput={true} />);
+      expect(findByText("Paste or Type")).toBeUndefined();
+    });
+
+    it("hides launcher when showBibleInput is true", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} showBibleInput={true} />);
+      expect(findByText("Paste or Type")).toBeUndefined();
+    });
+  });
+
+  describe("Translation view", () => {
+    it("renders header with responsive flex classes when source text exists", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} sourceText="שלום" />);
       const headerContainer = document.querySelector(".flex.flex-col.sm\\:flex-row");
       expect(headerContainer).toBeInTheDocument();
     });
 
-    it("renders header with proper gap for mobile spacing", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
-      const headerContainer = document.querySelector(".flex.flex-col.sm\\:flex-row");
-      expect(headerContainer).toHaveClass("gap-3");
-    });
-
-    it("renders icon button container with compact gap for mobile", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
-      // Find the icons container - should have gap-1 for mobile, sm:gap-2 for larger
-      const iconsContainer = document.querySelector(".flex.items-center.gap-1.sm\\:gap-2");
-      expect(iconsContainer).toBeInTheDocument();
-    });
-
-    it("renders icon buttons horizontally in a flex container", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
-      const iconsContainer = document.querySelector(".flex.items-center.gap-1.sm\\:gap-2");
-      expect(iconsContainer).toBeInTheDocument();
-
-      // All buttons should be direct children arranged horizontally via flex
-      const buttons = iconsContainer?.querySelectorAll("button");
-      expect(buttons?.length).toBeGreaterThan(0);
-    });
-
-    it("renders title section with min-w-0 to prevent overflow", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
-      // The title container should have min-w-0 to allow text truncation if needed
-      const titleContainer = document.querySelector(".flex.items-center.gap-2.sm\\:gap-4.min-w-0");
-      expect(titleContainer).toBeInTheDocument();
-    });
-  });
-
-  describe("Translation Direction Badge Visibility", () => {
-    it("hides translation direction badge on mobile when source text exists", () => {
-      const props = {
-        ...createDefaultProps(),
-        sourceText: "שלום",
-      };
-      render(<TranslationPanelUI {...props} />);
-
-      // Badge should have hidden class for mobile, sm:flex for larger
+    it("shows translation direction badge when source text exists", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} sourceText="שלום" />);
       const badge = document.querySelector(".hidden.sm\\:flex");
       expect(badge).toBeInTheDocument();
     });
-  });
 
-  describe("Icon Button Sizing", () => {
-    it("renders icon buttons with consistent p-2 padding", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
+    it("shows toolbar when source text exists", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} sourceText="שלום" />);
       const iconsContainer = document.querySelector(".flex.items-center.gap-1.sm\\:gap-2");
-      const buttons = iconsContainer?.querySelectorAll("button");
-
-      buttons?.forEach((button) => {
-        expect(button).toHaveClass("p-2");
-      });
+      expect(iconsContainer).toBeInTheDocument();
     });
 
-    it("renders icons with w-5 h-5 size", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
-      const iconsContainer = document.querySelector(".flex.items-center.gap-1.sm\\:gap-2");
-      const icons = iconsContainer?.querySelectorAll("svg");
-
-      icons?.forEach((icon) => {
-        expect(icon).toHaveClass("w-5");
-        expect(icon).toHaveClass("h-5");
-      });
+    it("does not show InputLauncher when source text exists", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} sourceText="שלום" />);
+      expect(findByText("Choose how you'd like to input text")).toBeUndefined();
     });
   });
 
   describe("Text Input Dialog", () => {
-    it("renders 'Paste or type Hebrew or English' link in empty state", () => {
-      render(<TranslationPanelUI {...createDefaultProps()} />);
-
-      const link = document.body.querySelector("span.cursor-pointer");
-      expect(link).toBeInTheDocument();
-      expect(link?.textContent).toContain("Paste or type Hebrew or English");
-    });
-
-    it("opens dialog when 'Paste or type' link is clicked", async () => {
+    it("opens dialog when Paste or Type card is clicked", async () => {
       const { userEvent } = await import("@testing-library/user-event");
       const user = userEvent.setup();
       render(<TranslationPanelUI {...createDefaultProps()} />);
 
-      const link = document.body.querySelector("span.cursor-pointer") as HTMLElement;
-      await user.click(link);
+      const btn = findByText("Paste or Type")!;
+      await user.click(btn);
 
-      const dialogTitle = document.body.querySelector("[role='dialog']");
-      expect(dialogTitle).toBeInTheDocument();
+      const dialog = document.body.querySelector("[role='dialog']");
+      expect(dialog).toBeInTheDocument();
     });
   });
 });
@@ -156,7 +123,6 @@ describe("TranslationPanelUI", () => {
 describe("TextInputDialog", () => {
   it("renders with white background class when open", () => {
     render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
-
     const dialogContent = document.body.querySelector("[role='dialog']");
     expect(dialogContent).toHaveClass("bg-white");
   });
@@ -180,7 +146,6 @@ describe("TextInputDialog", () => {
 
   it("disables Translate button when textarea is empty", () => {
     render(<TextInputDialog open={true} onOpenChange={vi.fn()} onSubmit={vi.fn()} />);
-
     const translateBtn = Array.from(document.body.querySelectorAll("button")).find(
       (btn) => btn.textContent === "Translate"
     ) as HTMLElement;
