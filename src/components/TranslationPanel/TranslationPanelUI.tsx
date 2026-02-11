@@ -4,7 +4,6 @@ import {
   BookPlus,
   Loader2,
   ArrowRightLeft,
-  X,
 } from "lucide-react";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 import { BibleInput } from "./BibleInput/BibleInput";

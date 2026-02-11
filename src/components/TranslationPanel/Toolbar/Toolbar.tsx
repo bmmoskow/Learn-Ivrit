@@ -27,10 +27,8 @@ export function Toolbar({
   setShowBookmarkManager,
   setShowSaveBookmark,
   handleCopy,
-  handleFileSelect,
   clearAll,
   triggerFileInput,
-  fileInputRef,
 }: ToolbarProps) {
   return (
     <div className="flex items-center gap-1 sm:gap-2">
