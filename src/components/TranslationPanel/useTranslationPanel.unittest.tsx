@@ -296,7 +296,7 @@ describe("useTranslationPanel", () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
       // Wait a bit for any pending async operations from previous tests to complete
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Clear any lingering calls from previous tests
       mockFetch.mockClear();
@@ -417,10 +417,7 @@ describe("useTranslationPanel", () => {
       });
 
       // Should not call extract-url endpoint when urlInput is empty
-      expect(mockFetch).not.toHaveBeenCalledWith(
-        expect.stringContaining("/extract-url"),
-        expect.anything(),
-      );
+      expect(mockFetch).not.toHaveBeenCalledWith(expect.stringContaining("/extract-url"), expect.anything());
       expect(result.current.loadingUrl).toBe(false);
     });
 
@@ -433,7 +430,14 @@ describe("useTranslationPanel", () => {
             refresh_token: "test-refresh",
             expires_in: 3600,
             token_type: "bearer",
-            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            user: {
+              id: "test-user",
+              email: "test@test.com",
+              aud: "authenticated",
+              app_metadata: {},
+              user_metadata: {},
+              created_at: "",
+            },
           },
         },
         error: null,
@@ -463,7 +467,14 @@ describe("useTranslationPanel", () => {
             refresh_token: "test-refresh",
             expires_in: 3600,
             token_type: "bearer",
-            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            user: {
+              id: "test-user",
+              email: "test@test.com",
+              aud: "authenticated",
+              app_metadata: {},
+              user_metadata: {},
+              created_at: "",
+            },
           },
         },
         error: null,
@@ -561,7 +572,14 @@ describe("useTranslationPanel", () => {
             refresh_token: "test-refresh",
             expires_in: 3600,
             token_type: "bearer",
-            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+            user: {
+              id: "test-user",
+              email: "test@test.com",
+              aud: "authenticated",
+              app_metadata: {},
+              user_metadata: {},
+              created_at: "",
+            },
           },
         },
         error: null,
@@ -809,10 +827,7 @@ describe("useTranslationPanel", () => {
       });
 
       // Should have called sefaria-fetch for chapter 4
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/sefaria-fetch"),
-        expect.anything(),
-      );
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/sefaria-fetch"), expect.anything());
     });
 
     it("navigates to next chapter when possible", async () => {
@@ -842,10 +857,7 @@ describe("useTranslationPanel", () => {
       });
 
       // Should have called sefaria-fetch for chapter 2
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/sefaria-fetch"),
-        expect.anything(),
-      );
+      expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/sefaria-fetch"), expect.anything());
     });
   });
 
@@ -1367,7 +1379,7 @@ describe("useTranslationPanel", () => {
     });
   });
 
-describe("syncedParagraphs edge cases", () => {
+  describe("syncedParagraphs edge cases", () => {
     it("handles single paragraph with translation", async () => {
       setupTranslationMocks();
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -1655,7 +1667,14 @@ describe("syncedParagraphs edge cases", () => {
               refresh_token: "test-refresh",
               expires_in: 3600,
               token_type: "bearer",
-              user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+              user: {
+                id: "test-user",
+                email: "test@test.com",
+                aud: "authenticated",
+                app_metadata: {},
+                user_metadata: {},
+                created_at: "",
+              },
             },
           },
           error: null,
@@ -1775,7 +1794,14 @@ describe("syncedParagraphs edge cases", () => {
               refresh_token: "test-refresh",
               expires_in: 3600,
               token_type: "bearer",
-              user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+              user: {
+                id: "test-user",
+                email: "test@test.com",
+                aud: "authenticated",
+                app_metadata: {},
+                user_metadata: {},
+                created_at: "",
+              },
             },
           },
           error: null,
@@ -1858,10 +1884,7 @@ describe("syncedParagraphs edge cases", () => {
         });
 
         expect(result.current.error).toBe("Please upload an image file");
-        expect(mockFetch).not.toHaveBeenCalledWith(
-          expect.stringContaining("/ocr"),
-          expect.anything(),
-        );
+        expect(mockFetch).not.toHaveBeenCalledWith(expect.stringContaining("/ocr"), expect.anything());
       });
     });
   });
