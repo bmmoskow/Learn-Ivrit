@@ -4,6 +4,7 @@ import {
   BookPlus,
   Loader2,
   ArrowRightLeft,
+  X,
 } from "lucide-react";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 import { BibleInput } from "./BibleInput/BibleInput";
@@ -12,6 +13,7 @@ import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 import { SyncedTextDisplay } from "./SyncedTextDisplay/SyncedTextDisplay";
 import { Toolbar } from "./Toolbar/Toolbar";
 import { BibleNavigationBar } from "./BibleNavigationBar/BibleNavigationBar";
+import { InputLauncher } from "./InputLauncher/InputLauncher";
 
 interface TranslationPanelUIProps {
   // State
@@ -102,8 +104,70 @@ export function TranslationPanelUI({
   const [showTextInput, setShowTextInput] = useState(false);
   const isHebrewToEnglish = translationDirection === "hebrew-to-english";
 
+  // Hidden file input is always rendered
+  const fileInput = (
+    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+  );
+
+  // Empty state: show launcher grid
+  if (!sourceText && !showUrlInput && !showBibleInput && !processingImage) {
+    return (
+      <div className="flex-1 flex flex-col p-4 sm:p-6">
+        {fileInput}
+        <InputLauncher
+          isGuest={isGuest}
+          onPasteType={() => setShowTextInput(true)}
+          onUploadImage={triggerFileInput}
+          onLoadUrl={() => setShowUrlInput(true)}
+          onLoadBible={() => setShowBibleInput(true)}
+          onGenerateAI={() => setShowPassageGenerator(true)}
+          onLoadBookmark={() => setShowBookmarkManager(true)}
+        />
+        <TextInputDialog
+          open={showTextInput}
+          onOpenChange={setShowTextInput}
+          onSubmit={(text) => setSourceText(text)}
+        />
+      </div>
+    );
+  }
+
+  // Inline input states (URL input, Bible input) before text is loaded
+  if (!sourceText && (showUrlInput || showBibleInput)) {
+    return (
+      <div className="flex-1 flex flex-col p-4 sm:p-6">
+        {fileInput}
+        <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col flex-1">
+          <div className="flex-1 min-h-[400px] border-2 border-gray-200 rounded-lg p-4">
+            {showBibleInput ? (
+              <BibleInput
+                selectedBook={selectedBook}
+                selectedChapter={selectedChapter}
+                loadingBible={loadingBible}
+                setSelectedBook={setSelectedBook}
+                setSelectedChapter={setSelectedChapter}
+                setShowBibleInput={setShowBibleInput}
+                loadFromBible={loadFromBible}
+              />
+            ) : (
+              <UrlInput
+                urlInput={urlInput}
+                loadingUrl={loadingUrl}
+                setUrlInput={setUrlInput}
+                setShowUrlInput={setShowUrlInput}
+                loadFromUrl={loadFromUrl}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Translation view: text loaded
   return (
-    <div className="flex-1 flex flex-col p-6">
+    <div className="flex-1 flex flex-col p-4 sm:p-6">
+      {fileInput}
       <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
@@ -160,93 +224,15 @@ export function TranslationPanelUI({
         )}
 
         <div className="flex-1 min-h-[500px] border-2 border-gray-200 rounded-lg p-4 focus-within:border-blue-500 transition">
-          {sourceText ? (
-            <SyncedTextDisplay
-              sourceText={sourceText}
-              translationDirection={translationDirection}
-              translating={translating}
-              savedWords={savedWords}
-              syncedParagraphs={syncedParagraphs}
-              handleWordClick={handleWordClick}
-            />
-          ) : showBibleInput ? (
-            <BibleInput
-              selectedBook={selectedBook}
-              selectedChapter={selectedChapter}
-              loadingBible={loadingBible}
-              setSelectedBook={setSelectedBook}
-              setSelectedChapter={setSelectedChapter}
-              setShowBibleInput={setShowBibleInput}
-              loadFromBible={loadFromBible}
-            />
-          ) : showUrlInput ? (
-            <UrlInput
-              urlInput={urlInput}
-              loadingUrl={loadingUrl}
-              setUrlInput={setUrlInput}
-              setShowUrlInput={setShowUrlInput}
-              loadFromUrl={loadFromUrl}
-            />
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center space-y-4">
-              <div className="text-center text-gray-400 text-sm leading-relaxed max-w-md">
-                <span
-                  className="text-indigo-600 underline cursor-pointer"
-                  onClick={() => setShowTextInput(true)}
-                >
-                  Paste or type Hebrew or English
-                </span>
-                ,{" "}
-                <span
-                  className="text-green-600 underline cursor-pointer"
-                  onClick={triggerFileInput}
-                >
-                  upload image
-                </span>
-                ,{" "}
-                <span
-                  className="text-blue-600 underline cursor-pointer"
-                  onClick={() => setShowUrlInput(true)}
-                >
-                  load from URL
-                </span>
-                ,{" "}
-                <span
-                  className="text-purple-600 underline cursor-pointer"
-                  onClick={() => setShowBibleInput(true)}
-                >
-                  load from Bible
-                </span>
-                , or{" "}
-                <span
-                  className="text-amber-600 underline cursor-pointer"
-                  onClick={() => setShowPassageGenerator(true)}
-                >
-                  generate with AI
-                </span>
-              </div>
-            </div>
-          )}
+          <SyncedTextDisplay
+            sourceText={sourceText}
+            translationDirection={translationDirection}
+            translating={translating}
+            savedWords={savedWords}
+            syncedParagraphs={syncedParagraphs}
+            handleWordClick={handleWordClick}
+          />
         </div>
-
-        {!sourceText && !showUrlInput && (
-          <div className="mt-4 space-y-3">
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSourceText("שלום עולם")}
-                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                Try "שלום עולם"
-              </button>
-              <button
-                onClick={() => setSourceText("Hello world")}
-                className="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                Try "Hello world"
-              </button>
-            </div>
-          </div>
-        )}
 
         {processingImage && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">

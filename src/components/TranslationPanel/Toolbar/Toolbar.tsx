@@ -53,7 +53,7 @@ export function Toolbar({
           </button>
         </>
       )}
-      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+
       <button
         onClick={triggerFileInput}
         disabled={processingImage}
