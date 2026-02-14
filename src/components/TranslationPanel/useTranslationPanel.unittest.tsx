@@ -3,6 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { ReactNode } from "react";
 import { useTranslationPanel } from "./useTranslationPanel";
 import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
+import { requestDeduplicator } from "../../utils/requestDeduplicator/requestDeduplicator";
 
 // Mock the Supabase client
 vi.mock("../../../supabase/client", () => ({
@@ -73,6 +74,7 @@ describe("useTranslationPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    requestDeduplicator.clear();
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn(), id: "test-sub", callback: vi.fn() } },
@@ -775,12 +777,11 @@ describe("useTranslationPanel", () => {
         result.current.setHebrewText("פסקה ראשונה\n\nפסקה שנייה");
       });
 
-      // Wait for translation to complete
+      // Wait for translation to complete and synced paragraphs to be computed
       await vi.waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
+        expect(result.current.syncedParagraphs).toHaveLength(2);
       });
 
-      expect(result.current.syncedParagraphs).toHaveLength(2);
       expect(result.current.syncedParagraphs![0].hebrew).toBe("פסקה ראשונה");
       expect(result.current.syncedParagraphs![1].hebrew).toBe("פסקה שנייה");
     });
@@ -1388,15 +1389,13 @@ describe("useTranslationPanel", () => {
         result.current.setHebrewText("משפט בודד");
       });
 
-      // Wait for translation to complete
+      // Wait for translation to complete and state to update
       await vi.waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
+        expect(result.current.syncedParagraphs).toHaveLength(1);
+        expect(result.current.syncedParagraphs![0].english).toBe("Translation result");
       });
 
-      expect(result.current.syncedParagraphs).toHaveLength(1);
       expect(result.current.syncedParagraphs![0].hebrew).toBe("משפט בודד");
-      // Translation should be populated now since we waited for it
-      expect(result.current.syncedParagraphs![0].english).toBe("Translation result");
     });
 
     it("returns multiple synced paragraphs for multi-paragraph text", async () => {
@@ -1407,12 +1406,11 @@ describe("useTranslationPanel", () => {
         result.current.setHebrewText("פסקה א\n\nפסקה ב\n\nפסקה ג");
       });
 
-      // Wait for translation to complete
+      // Wait for translation to complete and synced paragraphs to be computed
       await vi.waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
+        expect(result.current.syncedParagraphs).toHaveLength(3);
       });
 
-      expect(result.current.syncedParagraphs).toHaveLength(3);
       expect(result.current.syncedParagraphs![0].hebrew).toBe("פסקה א");
       expect(result.current.syncedParagraphs![2].hebrew).toBe("פסקה ג");
     });

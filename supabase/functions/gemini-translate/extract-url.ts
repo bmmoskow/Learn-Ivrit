@@ -293,6 +293,27 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
 
   if (preferHtml) {
     content = htmlExtracted;
+
+    // Check if articleBody has leading paragraphs missing from HTML extraction.
+    // This happens when the first paragraph is in a separate container (e.g. lead/subtitle div)
+    // outside the main article body div that HTML extraction targets.
+    if (normalizedArticleBody.length > 0) {
+      const abParagraphs = normalizedArticleBody.split(/\n\n+/).filter(p => p.trim().length > 0);
+      const htmlStart = htmlExtracted.substring(0, 80);
+      const missingLeadParagraphs: string[] = [];
+      for (const para of abParagraphs) {
+        if (htmlStart.includes(para.substring(0, 40))) break;
+        // Only include paragraphs that aren't already the title or description
+        if (title && para.substring(0, 40) === title.substring(0, 40)) continue;
+        if (structuredData.description && para.substring(0, 40) === structuredData.description.substring(0, 40)) continue;
+        missingLeadParagraphs.push(para);
+      }
+      if (missingLeadParagraphs.length > 0) {
+        console.log("Recovered missing lead paragraphs:", missingLeadParagraphs.length);
+        content = missingLeadParagraphs.join("\n\n") + "\n\n" + content;
+      }
+    }
+
     // Prepend title and description if not already included in the extracted content
     const preamble: string[] = [];
     if (title) {
