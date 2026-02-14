@@ -81,12 +81,12 @@ export function SyncedTextDisplay({
 
   const renderPlainText = (text: string, isTranslation: boolean) => (
     <p className="whitespace-pre-wrap">
-      {translating && isTranslation ? (
-        <span className="text-gray-400">Translating...</span>
-      ) : text ? (
+      {text ? (
         text
       ) : isTranslation ? (
-        <span className="text-gray-400">Translation will appear here...</span>
+        <span className="text-gray-400">
+          {translating ? "Translating..." : "Translation will appear here..."}
+        </span>
       ) : null}
     </p>
   );

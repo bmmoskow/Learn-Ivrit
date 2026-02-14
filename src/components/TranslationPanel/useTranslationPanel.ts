@@ -4,7 +4,8 @@ import { supabase } from "../../../supabase/client";
 import { BIBLE_BOOKS } from "../../data/bibleBooks";
 import { requestDeduplicator, createRequestKey } from "../../utils/requestDeduplicator/requestDeduplicator";
 import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks";
-import { getAuthHeader, getAuthToken } from "../../utils/auth/getAuthHeader";
+import { getAuthHeader } from "../../utils/auth/getAuthHeader";
+import { APP_CONFIG } from "../../config/app";
 import {
   cleanWord,
   getSentenceContext,
@@ -14,6 +15,7 @@ import {
   canNavigatePrev as utilCanNavigatePrev,
   canNavigateNext as utilCanNavigateNext,
   detectLanguage,
+  splitIntoChunks,
   SyncedParagraph,
   TranslationDirection,
 } from "./translationPanelUtils";
@@ -380,6 +382,59 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   const canNavigatePrev = () => utilCanNavigatePrev(currentBibleRef);
   const canNavigateNext = () => utilCanNavigateNext(currentBibleRef, BIBLE_BOOKS);
 
+  /**
+   * Translate a single chunk of text via cache or edge function.
+   * Returns the translated text for that chunk.
+   */
+  const translateChunk = async (
+    chunkText: string,
+    sourceLanguage: string,
+    targetLanguage: string,
+  ): Promise<string> => {
+    const cacheKey = `${sourceLanguage}->${targetLanguage}:${chunkText}`;
+    const contentHash = await generateContentHash(cacheKey);
+    const requestKey = createRequestKey("translate", { contentHash });
+
+    return requestDeduplicator.dedupe(requestKey, async () => {
+      // Check frontend cache first
+      const { data: cached } = await supabase
+        .from("translation_cache")
+        .select("id, translation")
+        .eq("content_hash", contentHash)
+        .maybeSingle();
+
+      if (cached?.translation) {
+        console.log("Cache hit for chunk hash:", contentHash);
+        supabase.rpc("increment_translation_access", { cache_id: cached.id }).then();
+        return cached.translation;
+      }
+
+      console.log("Cache miss, translating chunk, hash:", contentHash);
+      const authHeader = await getAuthHeader();
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          Authorization: authHeader,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: chunkText, targetLanguage, sourceLanguage }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (response.status === 429) {
+          throw new Error(errorData.error || "Rate limit exceeded. Please try again later.");
+        }
+        throw new Error(errorData.error || "Translation failed");
+      }
+
+      const data = await response.json();
+      return data.translation || "";
+    });
+  };
+
   const translateText = async (text?: string, direction?: TranslationDirection) => {
     const textToTranslate = (text || sourceText).trim();
     const currentDirection = direction || translationDirection;
@@ -393,71 +448,71 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     setError("");
 
     try {
-      // Include direction in cache key
-      const cacheKey = `${sourceLanguage}->${targetLanguage}:${textToTranslate}`;
-      const contentHash = await generateContentHash(cacheKey);
+      const chunks = splitIntoChunks(textToTranslate, APP_CONFIG.translationChunkSize);
+      console.log(`Translating ${sourceLanguage}->${targetLanguage}: ${chunks.length} chunk(s)`);
 
-      console.log(`Translating ${sourceLanguage} to ${targetLanguage}, hash:`, contentHash);
-
-      const requestKey = createRequestKey("translate", { contentHash });
-
-      const translation = await requestDeduplicator.dedupe(requestKey, async () => {
-        // Check frontend cache first (faster than edge function round-trip)
-        const { data: cached } = await supabase
-          .from("translation_cache")
-          .select("id, translation")
-          .eq("content_hash", contentHash)
-          .maybeSingle();
-
-        if (cached?.translation) {
-          console.log("Frontend cache hit for hash:", contentHash);
-          supabase.rpc("increment_translation_access", { cache_id: cached.id }).then();
-          return cached.translation;
-        }
-
-        console.log("Cache miss, calling edge function for translation");
-        const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/translate`;
-
-        const authToken = await getAuthToken();
-
-        const response = await fetch(apiUrl, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            text: textToTranslate,
-            targetLanguage,
-            sourceLanguage,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          if (response.status === 429) {
-            throw new Error(errorData.error || "Rate limit exceeded. Please try again later.");
-          }
-          throw new Error(errorData.error || "Translation failed");
-        }
-
-        const responseData = await response.json();
-        console.log("Translation received, length:", responseData.translation?.length);
+      if (chunks.length === 1) {
+        // Single chunk — simple path, no progressive rendering needed
+        const translation = await translateChunk(chunks[0], sourceLanguage, targetLanguage);
+        setTranslatedText(translation);
 
         // Cache Bible translations to Sefaria cache
         if (bibleLoaded && currentBibleRef && !isGuest && user && currentDirection === "hebrew-to-english") {
           const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
           supabase
             .from("sefaria_cache")
-            .update({ translation: responseData.translation })
+            .update({ translation })
             .eq("reference", reference)
             .then(() => {});
         }
+      } else {
+        // Multiple chunks — translate in parallel, render once all complete
+        const maxConcurrency = APP_CONFIG.translationMaxConcurrency;
+        const results: string[] = new Array(chunks.length).fill("");
 
-        return responseData.translation;
-      });
+        // Simple concurrency pool using a semaphore
+        let active = 0;
+        let nextIndex = 0;
 
-      setTranslatedText(translation);
+        await new Promise<void>((resolve, reject) => {
+          let completed = 0;
+
+          const launchNext = () => {
+            while (active < maxConcurrency && nextIndex < chunks.length) {
+              const i = nextIndex++;
+              active++;
+              translateChunk(chunks[i], sourceLanguage, targetLanguage)
+                .then((result) => {
+                  results[i] = result;
+                  active--;
+                  completed++;
+                  if (completed === chunks.length) {
+                    resolve();
+                  } else {
+                    launchNext();
+                  }
+                })
+                .catch(reject);
+            }
+          };
+
+          launchNext();
+        });
+
+        const fullTranslation = results.join("\n\n");
+        setTranslatedText(fullTranslation);
+        console.log("All chunks translated, total length:", fullTranslation.length);
+
+        // Cache Bible translations to Sefaria cache
+        if (bibleLoaded && currentBibleRef && !isGuest && user && currentDirection === "hebrew-to-english") {
+          const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
+          supabase
+            .from("sefaria_cache")
+            .update({ translation: fullTranslation })
+            .eq("reference", reference)
+            .then(() => {});
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to translate. Please try again.");
       console.error("Translation error:", err);
