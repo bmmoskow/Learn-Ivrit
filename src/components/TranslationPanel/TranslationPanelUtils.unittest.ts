@@ -11,6 +11,7 @@ import {
   canNavigateNext,
   detectLanguage,
   isHebrewText,
+  splitIntoChunks,
 } from "./translationPanelUtils";
 describe("translationPanelUtils", () => {
   describe("detectLanguage", () => {
@@ -290,6 +291,39 @@ describe("translationPanelUtils", () => {
 
     it("returns false for unknown book", () => {
       expect(canNavigateNext({ book: "Unknown", chapter: 1 }, mockBooks)).toBe(false);
+    });
+  });
+
+  describe("splitIntoChunks", () => {
+    it("returns single chunk for short text", () => {
+      const result = splitIntoChunks("Hello world", 3000);
+      expect(result).toEqual(["Hello world"]);
+    });
+
+    it("splits at paragraph boundaries", () => {
+      const text = "Paragraph one.\n\nParagraph two.\n\nParagraph three.";
+      const result = splitIntoChunks(text, 25);
+      expect(result.length).toBeGreaterThan(1);
+      // Each chunk should be ≤ 25 chars or a single paragraph
+      for (const chunk of result) {
+        expect(chunk.length).toBeLessThanOrEqual(30); // allow slight flexibility for single paragraphs
+      }
+    });
+
+    it("falls back to sentence splitting for long paragraphs", () => {
+      const longParagraph = "First sentence. Second sentence. Third sentence. Fourth sentence. Fifth sentence.";
+      const result = splitIntoChunks(longParagraph, 40);
+      expect(result.length).toBeGreaterThan(1);
+    });
+
+    it("preserves all text content", () => {
+      const text = "Para one content here.\n\nPara two content here.\n\nPara three content here.";
+      const result = splitIntoChunks(text, 30);
+      const rejoined = result.join("\n\n");
+      // All original words should be present
+      expect(rejoined).toContain("Para one");
+      expect(rejoined).toContain("Para two");
+      expect(rejoined).toContain("Para three");
     });
   });
 });

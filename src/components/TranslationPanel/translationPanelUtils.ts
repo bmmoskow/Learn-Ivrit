@@ -150,3 +150,50 @@ export const canNavigateNext = (
   const currentBook = bibleBooks.find((b) => b.name === currentBibleRef.book);
   return currentBook ? currentBibleRef.chapter < currentBook.chapters : false;
 };
+
+/**
+ * Split text into chunks for parallel translation.
+ * Splits at paragraph boundaries first; if a paragraph exceeds maxChars,
+ * falls back to sentence-level splitting within that paragraph.
+ * Returns an array of text chunks, each ≤ maxChars (best effort).
+ */
+export const splitIntoChunks = (text: string, maxChars: number): string[] => {
+  if (text.length <= maxChars) return [text];
+
+  const paragraphs = text.split(/(?:\r?\n\s*){2,}/);
+  const chunks: string[] = [];
+  let currentChunk = "";
+
+  for (const paragraph of paragraphs) {
+    const candidate = currentChunk ? currentChunk + "\n\n" + paragraph : paragraph;
+
+    if (candidate.length <= maxChars) {
+      currentChunk = candidate;
+    } else {
+      // Flush current chunk if non-empty
+      if (currentChunk) {
+        chunks.push(currentChunk);
+        currentChunk = "";
+      }
+
+      // If this single paragraph exceeds maxChars, split by sentences
+      if (paragraph.length > maxChars) {
+        const sentences = paragraph.match(/[^.!?؟]+[.!?؟]+|[^.!?؟]+$/g) || [paragraph];
+        for (const sentence of sentences) {
+          const sentenceCandidate = currentChunk ? currentChunk + " " + sentence : sentence;
+          if (sentenceCandidate.length <= maxChars) {
+            currentChunk = sentenceCandidate;
+          } else {
+            if (currentChunk) chunks.push(currentChunk);
+            currentChunk = sentence;
+          }
+        }
+      } else {
+        currentChunk = paragraph;
+      }
+    }
+  }
+
+  if (currentChunk) chunks.push(currentChunk);
+  return chunks;
+};
