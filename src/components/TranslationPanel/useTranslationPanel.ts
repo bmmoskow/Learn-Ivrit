@@ -15,7 +15,6 @@ import {
   canNavigatePrev as utilCanNavigatePrev,
   canNavigateNext as utilCanNavigateNext,
   detectLanguage,
-  splitIntoChunks,
   SyncedParagraph,
   TranslationDirection,
 } from "./translationPanelUtils";
@@ -267,7 +266,12 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       setShowUrlInput(false);
       setUrlInput("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load content from URL. Please check the URL and try again.");
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("403") || message.includes("Forbidden")) {
+        setError("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
+      } else {
+        setError(message || "Failed to load content from URL. Please check the URL and try again.");
+      }
       console.error("URL extraction error:", err);
     } finally {
       setLoadingUrl(false);
@@ -431,7 +435,75 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       }
 
       const data = await response.json();
-      return data.translation || "";
+      // Collapse any \n\n inside a single chunk's translation to \n
+      // to preserve 1:1 paragraph alignment with source text
+      const raw = data.translation || "";
+      return raw.replace(/\n\n+/g, "\n");
+    });
+  };
+
+  /**
+   * Check the per-article rate limit before translating.
+   * Returns true if allowed, false if rate-limited (sets error message).
+   */
+  const checkArticleRateLimit = async (): Promise<boolean> => {
+    if (!user || isGuest) return true; // Guests use anon key limits
+
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    // Check hourly limit
+    const { data: hourlyData, error: hourlyErr } = await supabase
+      .from("gemini_api_rate_limits")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .eq("request_type", "passage_translation")
+      .gte("created_at", oneHourAgo.toISOString())
+      .order("created_at", { ascending: true });
+
+    if (!hourlyErr && hourlyData) {
+      const hourlyLimit = APP_CONFIG.translationHourlyLimit ?? 30;
+      if (hourlyData.length >= hourlyLimit) {
+        const oldest = new Date(hourlyData[0].created_at);
+        const resetTime = new Date(oldest.getTime() + 60 * 60 * 1000);
+        const minutesLeft = Math.ceil((resetTime.getTime() - now.getTime()) / (60 * 1000));
+        setError(`You've reached the hourly translation limit (${hourlyLimit} articles/hour). Please try again in ${minutesLeft} minute${minutesLeft !== 1 ? "s" : ""}.`);
+        return false;
+      }
+    }
+
+    // Check daily limit
+    const { data: dailyData, error: dailyErr } = await supabase
+      .from("gemini_api_rate_limits")
+      .select("created_at")
+      .eq("user_id", user.id)
+      .eq("request_type", "passage_translation")
+      .gte("created_at", oneDayAgo.toISOString())
+      .order("created_at", { ascending: true });
+
+    if (!dailyErr && dailyData) {
+      const dailyLimit = APP_CONFIG.translationDailyLimit ?? 100;
+      if (dailyData.length >= dailyLimit) {
+        const oldest = new Date(dailyData[0].created_at);
+        const resetTime = new Date(oldest.getTime() + 24 * 60 * 60 * 1000);
+        const hoursLeft = Math.ceil((resetTime.getTime() - now.getTime()) / (60 * 60 * 1000));
+        setError(`You've reached the daily translation limit (${dailyLimit} articles/day). Please try again in ${hoursLeft} hour${hoursLeft !== 1 ? "s" : ""}.`);
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  /**
+   * Log one rate-limit entry per article translation.
+   */
+  const logArticleTranslation = async () => {
+    if (!user || isGuest) return;
+    await supabase.from("gemini_api_rate_limits").insert({
+      user_id: user.id,
+      request_type: "passage_translation",
     });
   };
 
@@ -447,30 +519,41 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     setTranslating(true);
     setError("");
 
+    // Per-article rate limit check (one check per translateText call)
+    const allowed = await checkArticleRateLimit();
+    if (!allowed) {
+      setTranslating(false);
+      return;
+    }
+
     try {
-      const chunks = splitIntoChunks(textToTranslate, APP_CONFIG.translationChunkSize);
-      console.log(`Translating ${sourceLanguage}->${targetLanguage}: ${chunks.length} chunk(s)`);
+      // Split by paragraph for 1:1 alignment with source text
+      const paragraphs = textToTranslate.split(/\n\n+/);
+      console.log(`Translating ${sourceLanguage}->${targetLanguage}: ${paragraphs.length} paragraph(s)`);
 
-      if (chunks.length === 1) {
-        // Single chunk — simple path, no progressive rendering needed
-        const translation = await translateChunk(chunks[0], sourceLanguage, targetLanguage);
-        setTranslatedText(translation);
+      const maxConcurrency = APP_CONFIG.translationMaxConcurrency;
+      const results: string[] = new Array(paragraphs.length).fill("");
+      let contiguousResolved = 0;
 
-        // Cache Bible translations to Sefaria cache
-        if (bibleLoaded && currentBibleRef && !isGuest && user && currentDirection === "hebrew-to-english") {
-          const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
-          supabase
-            .from("sefaria_cache")
-            .update({ translation })
-            .eq("reference", reference)
-            .then(() => {});
+      // Progressive rendering: update translatedText as contiguous paragraphs resolve
+      const updateContiguous = () => {
+        while (contiguousResolved < paragraphs.length && results[contiguousResolved] !== "") {
+          contiguousResolved++;
         }
-      } else {
-        // Multiple chunks — translate in parallel, render once all complete
-        const maxConcurrency = APP_CONFIG.translationMaxConcurrency;
-        const results: string[] = new Array(chunks.length).fill("");
+        // Join all resolved contiguous paragraphs; pad remaining with empty strings
+        // so syncParagraphs sees the right paragraph count
+        const visibleResults = results.slice(0, contiguousResolved);
+        const remaining = paragraphs.length - contiguousResolved;
+        const fullResult = [...visibleResults, ...new Array(remaining).fill("")].join("\n\n");
+        setTranslatedText(fullResult);
+      };
 
-        // Simple concurrency pool using a semaphore
+      if (paragraphs.length === 1) {
+        const translation = await translateChunk(paragraphs[0], sourceLanguage, targetLanguage);
+        results[0] = translation;
+        setTranslatedText(translation);
+      } else {
+        // Concurrency pool with progressive in-order rendering
         let active = 0;
         let nextIndex = 0;
 
@@ -478,15 +561,16 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
           let completed = 0;
 
           const launchNext = () => {
-            while (active < maxConcurrency && nextIndex < chunks.length) {
+            while (active < maxConcurrency && nextIndex < paragraphs.length) {
               const i = nextIndex++;
               active++;
-              translateChunk(chunks[i], sourceLanguage, targetLanguage)
+              translateChunk(paragraphs[i], sourceLanguage, targetLanguage)
                 .then((result) => {
                   results[i] = result;
                   active--;
                   completed++;
-                  if (completed === chunks.length) {
+                  updateContiguous();
+                  if (completed === paragraphs.length) {
                     resolve();
                   } else {
                     launchNext();
@@ -501,17 +585,21 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
         const fullTranslation = results.join("\n\n");
         setTranslatedText(fullTranslation);
-        console.log("All chunks translated, total length:", fullTranslation.length);
+        console.log("All paragraphs translated, total length:", fullTranslation.length);
+      }
 
-        // Cache Bible translations to Sefaria cache
-        if (bibleLoaded && currentBibleRef && !isGuest && user && currentDirection === "hebrew-to-english") {
-          const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
-          supabase
-            .from("sefaria_cache")
-            .update({ translation: fullTranslation })
-            .eq("reference", reference)
-            .then(() => {});
-        }
+      // Log one rate-limit entry for the entire article
+      logArticleTranslation();
+
+      // Cache Bible translations to Sefaria cache
+      if (bibleLoaded && currentBibleRef && !isGuest && user && currentDirection === "hebrew-to-english") {
+        const reference = `${currentBibleRef.book}.${currentBibleRef.chapter}`;
+        const fullTranslation = results.join("\n\n");
+        supabase
+          .from("sefaria_cache")
+          .update({ translation: fullTranslation })
+          .eq("reference", reference)
+          .then(() => {});
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to translate. Please try again.");

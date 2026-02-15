@@ -673,6 +673,92 @@ describe("useTranslationPanel", () => {
 
       vi.unstubAllEnvs();
     });
+    it("shows specific message for 403 Forbidden errors", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        json: () => Promise.resolve({ error: "403 Forbidden" }),
+      } as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://www.calcalist.co.il/article/test");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toContain("blocks automated text extraction");
+      expect(result.current.error).toContain("Paste / Type");
+      expect(result.current.loadingUrl).toBe(false);
+
+      vi.unstubAllEnvs();
+    });
+
+    it("shows specific message when error message contains Forbidden", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockRejectedValue(new Error("Request failed: Forbidden"));
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://blocked-site.com/article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toContain("blocks automated text extraction");
+      expect(result.current.loadingUrl).toBe(false);
+
+      vi.unstubAllEnvs();
+    });
+
+    it("shows generic error for non-403 failures", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: null,
+      });
+
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+
+      mockFetch.mockRejectedValue(new Error("Connection timeout"));
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("https://example.com/article");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Connection timeout");
+      expect(result.current.error).not.toContain("blocks automated");
+      expect(result.current.loadingUrl).toBe(false);
+
+      vi.unstubAllEnvs();
+    });
   });
 
   describe("loadFromBible", () => {
