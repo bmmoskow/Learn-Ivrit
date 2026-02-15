@@ -48,7 +48,7 @@ Deno.serve(async (req: Request) => {
     const rateLimitId = userId || "guest-user";
 
     if (path.includes("/translate")) {
-      return await handleTranslate(req, supabase, rateLimitId);
+      return await handleTranslate(req, supabase);
     } else if (path.includes("/define")) {
       return await handleDefine(req, supabase, rateLimitId);
     } else if (path.includes("/extract-url")) {

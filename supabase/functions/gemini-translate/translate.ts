@@ -1,8 +1,5 @@
 import { GEMINI_URL } from "./config.ts";
 import {
-  corsHeaders,
-  checkRateLimit,
-  logRequest,
   hashText,
   createJsonResponse,
   SupabaseClient,
@@ -17,20 +14,11 @@ export interface TranslateRequest {
 export async function handleTranslate(
   req: Request,
   supabase: SupabaseClient,
-  rateLimitId: string,
 ): Promise<Response> {
   const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
-  const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "passage_translation");
-  if (!rateLimitCheck.allowed) {
-    return new Response(JSON.stringify({ error: rateLimitCheck.error }), {
-      status: 429,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/json",
-      },
-    });
-  }
+  // Rate limiting is now handled per-article on the frontend side,
+  // not per-chunk here. This endpoint just translates.
 
   const cacheKey = `${sourceLanguage}->${targetLanguage}:${text}`;
   const contentHash = await hashText(cacheKey);
@@ -41,8 +29,6 @@ export async function handleTranslate(
     "length:",
     textLength,
   );
-
-  await logRequest(supabase, rateLimitId, "passage_translation");
 
   const vowelInstruction =
     targetLanguage === "Hebrew"
