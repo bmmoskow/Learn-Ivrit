@@ -15,7 +15,6 @@ import {
   canNavigatePrev as utilCanNavigatePrev,
   canNavigateNext as utilCanNavigateNext,
   detectLanguage,
-  splitIntoChunks,
   SyncedParagraph,
   TranslationDirection,
 } from "./translationPanelUtils";
