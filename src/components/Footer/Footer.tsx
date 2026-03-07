@@ -38,6 +38,13 @@ export function Footer() {
           </div>
           <div className="flex items-center gap-3 text-xs text-gray-500">
             <Link
+              to="/contact"
+              className="hover:text-blue-600 transition-colors"
+            >
+              Contact Us
+            </Link>
+            <span className="text-gray-400">•</span>
+            <Link
               to="/terms"
               className="hover:text-blue-600 transition-colors"
             >

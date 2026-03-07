@@ -15,6 +15,7 @@ const FAQ = lazy(() => import("./pages/FAQ").then(m => ({ default: m.FAQ })));
 const Settings = lazy(() => import("./pages/Settings"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
+const Contact = lazy(() => import("./pages/Contact"));
 const ResetPassword = lazy(() => import("./components/Login/ResetPassword/ResetPassword").then(m => ({ default: m.ResetPassword })));
 
 // Loading fallback for lazy-loaded routes
@@ -114,6 +115,7 @@ function AppContent() {
       <Routes>
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/"
           element={
