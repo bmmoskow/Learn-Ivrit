@@ -18,7 +18,7 @@ const excludePackage = `${packageName}@${packageVersion}`;
 
 try {
   execSync(
-    `npm audit --audit-level=low && npx audit-ci --moderate && npx license-checker --excludePackages ${excludePackage} --failOn 'UNLICENSED;UNKNOWN'`,
+    `npm audit && npx audit-ci --low && npx license-checker --excludePackages ${excludePackage} --failOn 'UNLICENSED;UNKNOWN'`,
     { stdio: 'inherit' }
   );
 } catch (error) {
