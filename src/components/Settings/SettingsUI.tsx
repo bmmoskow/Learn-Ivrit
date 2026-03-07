@@ -1,6 +1,5 @@
 import { User } from '@supabase/supabase-js';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { APP_CONFIG } from '@/config/app';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -90,19 +89,20 @@ export default function SettingsUI({
 
             <div className="pt-4 border-t">
               <p className="text-sm text-muted-foreground mb-3">
-                For additional support or account-related questions, contact us at:
+                For additional support or account-related questions:
               </p>
-              <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
-                <Mail className="h-5 w-5 text-primary" />
-                <a
-                  href={`mailto:${APP_CONFIG.supportEmail}`}
-                  className="text-primary hover:underline font-medium"
-                >
-{APP_CONFIG.supportEmail}
-                </a>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3">
-                Replace with your actual support email address
+              <Button
+                variant="outline"
+                asChild
+                className="w-full sm:w-auto"
+              >
+                <Link to="/contact">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Contact Us
+                </Link>
+              </Button>
+              <p className="text-sm text-muted-foreground mt-2">
+                Send us a message and we'll get back to you
               </p>
             </div>
           </CardContent>

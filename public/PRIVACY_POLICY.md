@@ -124,7 +124,7 @@ You have the right to:
 - Request we stop processing certain data
 
 ### How to Exercise Your Rights
-Contact us at [CONTACT_EMAIL] with your request. We will respond within 30 days.
+Visit our [Contact Page](/contact) to submit your request. We will respond within 30 days.
 
 ## 6. Security Measures
 
@@ -183,14 +183,14 @@ If you are a California resident, you have the right to:
 - Opt out of the "sale" of personal information (we do not sell data)
 - Non-discrimination for exercising your rights
 
-To exercise these rights, email us at [CONTACT_EMAIL] with "CCPA Request" in the subject line.
+To exercise these rights, visit our [Contact Page](/contact) and include "CCPA Request" in your message.
 
 ## 8. Children's Privacy (COPPA Compliance)
 
 The Service is NOT intended for children under 13 years of age. We do not knowingly collect personal information from children under 13.
 
 If you believe a child under 13 has provided us with personal information:
-- Contact us immediately at [CONTACT_EMAIL]
+- Contact us immediately through our [Contact Page](/contact)
 - We will delete the account and all associated data promptly
 
 If you are between 13 and 18, you should review these policies with a parent or guardian.
@@ -235,7 +235,7 @@ The Service may contain links to third-party websites or services (e.g., Sefaria
 ## 12. Data Processing Agreements
 
 ### For Enterprise or Educational Users
-If you use the Service on behalf of an organization, additional data processing terms may apply. Contact us at [CONTACT_EMAIL] to discuss enterprise privacy requirements.
+If you use the Service on behalf of an organization, additional data processing terms may apply. Visit our [Contact Page](/contact) to discuss enterprise privacy requirements.
 
 ## 13. No Tracking
 
@@ -250,16 +250,11 @@ By using the Service, you consent to:
 
 ## 15. Contact Us
 
-For questions, concerns, or requests regarding your privacy or this Privacy Policy:
+For questions, concerns, or requests regarding your privacy or this Privacy Policy, please visit our [Contact Page](/contact).
 
-**Privacy Contact:**
-**Email: [CONTACT_EMAIL]**
+For GDPR-related requests (EU users): Include "GDPR Request" in your message
 
-For GDPR-related requests (EU users):
-**Email: [CONTACT_EMAIL]** (subject: "GDPR Request")
-
-For CCPA-related requests (California users):
-**Email: [CONTACT_EMAIL]** (subject: "CCPA Request")
+For CCPA-related requests (California users): Include "CCPA Request" in your message
 
 We will respond to all requests within 30 days.
 
@@ -277,6 +272,6 @@ We will respond to all requests within 30 days.
 **Retention:** Until you delete your account (plus 30-90 days for backups)
 **No tracking:** We don't use analytics cookies or collect browsing data
 **Age requirement:** Must be 13 or older
-**Contact:** [CONTACT_EMAIL] for any privacy questions
+**Contact:** Visit our [Contact Page](/contact) for any privacy questions
 
 By using our Service, you acknowledge that you have read and understood this Privacy Policy.
