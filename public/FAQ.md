@@ -127,8 +127,6 @@ Getting started is easy:
 
 ## How do I get help or report an issue?
 
-If you need assistance or want to report a problem, please contact us at:
-
-**[CONTACT_EMAIL]**
+If you need assistance or want to report a problem, please [contact us](/contact).
 
 We typically respond within 24-48 hours during business days.

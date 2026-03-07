@@ -16,3 +16,17 @@ Object.defineProperty(globalThis, "localStorage", {
   value: localStorageMock,
   writable: true,
 });
+
+// Polyfill for Radix UI components that use pointer capture
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+}
+
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => {};
+}
+
+// Polyfill for scrollIntoView used by Radix UI Select
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}

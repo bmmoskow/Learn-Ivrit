@@ -130,6 +130,14 @@ describe('Footer', () => {
   });
 
   describe('legal links', () => {
+    it('renders Contact Us link', () => {
+      renderFooter();
+      const link = screen.getByRole('link', { name: /Contact Us/i });
+
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/contact');
+    });
+
     it('renders Terms of Service link', () => {
       renderFooter();
       const link = screen.getByRole('link', { name: /Terms of Service/i });
@@ -144,6 +152,13 @@ describe('Footer', () => {
 
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute('href', '/privacy');
+    });
+
+    it('has hover styles on Contact Us link', () => {
+      renderFooter();
+      const link = screen.getByRole('link', { name: /Contact Us/i });
+
+      expect(link).toHaveClass('hover:text-blue-600');
     });
 
     it('has hover styles on Terms of Service link', () => {
@@ -214,11 +229,13 @@ describe('Footer', () => {
       renderFooter();
       const geminiLink = screen.getByRole('link', { name: /Google Gemini/i });
       const sefariaLink = screen.getByRole('link', { name: /Powered by Sefaria/i });
+      const contactLink = screen.getByRole('link', { name: /Contact Us/i });
       const termsLink = screen.getByRole('link', { name: /Terms of Service/i });
       const privacyLink = screen.getByRole('link', { name: /Privacy Policy/i });
 
       expect(geminiLink).toBeVisible();
       expect(sefariaLink).toBeVisible();
+      expect(contactLink).toBeVisible();
       expect(termsLink).toBeVisible();
       expect(privacyLink).toBeVisible();
     });
