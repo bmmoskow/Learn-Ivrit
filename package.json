@@ -15,7 +15,7 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:watch": "vitest",
-    "security:audit": "npm audit --audit-level=low && npx audit-ci --moderate && npx license-checker --summary",
+    "security:audit": "npm audit --audit-level=low && npx audit-ci --moderate && npx license-checker --excludePackages \"learn-ivrit@0.0.0\" --failOn 'UNLICENSED;UNKNOWN'",
     "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"
   },
   "dependencies": {
