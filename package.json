@@ -13,7 +13,9 @@
     "generate-types": "tsx scripts/generate-types.ts",
     "test": "vitest run",
     "test:unit": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "security:audit": "npm audit --audit-level=low && npx audit-ci --moderate && npx license-checker --summary",
+    "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
