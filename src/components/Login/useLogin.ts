@@ -12,6 +12,7 @@ const getErrorMessage = (err: unknown, fallback: string): string => {
 };
 
 export type ResetStep = "email" | "verify";
+export type SignUpStep = "form" | "verify";
 
 export interface UseLoginState {
   email: string;
@@ -24,6 +25,7 @@ export interface UseLoginState {
   isSignUp: boolean;
   isResetPassword: boolean;
   resetStep: ResetStep;
+  signUpStep: SignUpStep;
   otpCode: string;
   confirmPassword: string;
 }
@@ -37,6 +39,8 @@ export interface UseLoginActions {
   setConfirmPassword: (password: string) => void;
   handleSignIn: () => Promise<void>;
   handleSignUp: () => Promise<void>;
+  handleVerifySignUp: () => Promise<void>;
+  handleResendSignUpCode: () => Promise<void>;
   handleResetPassword: () => Promise<void>;
   handleVerifyAndReset: () => Promise<void>;
   handleResendCode: () => Promise<void>;
@@ -53,6 +57,7 @@ export function useLogin(): UseLoginReturn {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetPassword, setIsResetPassword] = useState(false);
   const [resetStep, setResetStep] = useState<ResetStep>("email");
+  const [signUpStep, setSignUpStep] = useState<SignUpStep>("form");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -74,6 +79,7 @@ export function useLogin(): UseLoginReturn {
     setFullName("");
     setOtpCode("");
     setResetStep("email");
+    setSignUpStep("form");
   };
 
   const handleSignIn = async () => {
@@ -97,12 +103,74 @@ export function useLogin(): UseLoginReturn {
     try {
       const { error } = await signUp(email, password, fullName);
       if (error) throw error;
-      setMessage("Account created successfully! Please sign in.");
-      setIsSignUp(false);
-      setPassword("");
-      setFullName("");
+      setMessage("A 6-digit verification code has been sent to your email. Enter it below to complete sign up.");
+      setSignUpStep("verify");
+      setOtpCode("");
     } catch (err: unknown) {
       setError(getErrorMessage(err, "An error occurred"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifySignUp = async () => {
+    setError("");
+    setMessage("");
+
+    if (!otpCode || otpCode.length !== 6) {
+      setError("Please enter the 6-digit code from your email.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error: verifyError } = await retryWithBackoff(() =>
+        supabase.auth.verifyOtp({
+          email,
+          token: otpCode,
+          type: "signup",
+        })
+      );
+      if (verifyError) {
+        if (verifyError.message?.toLowerCase().includes("expired") || verifyError.message?.toLowerCase().includes("invalid")) {
+          setError("Invalid or expired code. Please request a new one.");
+        } else {
+          throw verifyError;
+        }
+        return;
+      }
+
+      // Success — user is now verified and logged in.
+      // The AuthContext will pick up the session change and redirect to dashboard.
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, "");
+      if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("too many")) {
+        setError("Too many attempts. Please wait a few minutes before trying again.");
+      } else {
+        setError(msg || "Failed to verify email. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendSignUpCode = async () => {
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      const { error } = await retryWithBackoff(() =>
+        supabase.auth.resend({ type: "signup", email })
+      );
+      if (error) throw error;
+      setMessage("A new verification code has been sent to your email.");
+    } catch (err: unknown) {
+      const msg = getErrorMessage(err, "");
+      if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("60 seconds") || msg.toLowerCase().includes("too many")) {
+        setError("Too many requests. Please wait a few minutes before trying again.");
+      } else {
+        setError(msg || "Unable to resend code. Please try again later.");
+      }
     } finally {
       setLoading(false);
     }
@@ -243,6 +311,7 @@ export function useLogin(): UseLoginReturn {
     isSignUp,
     isResetPassword,
     resetStep,
+    signUpStep,
     otpCode,
     confirmPassword,
     setEmail,
@@ -253,6 +322,8 @@ export function useLogin(): UseLoginReturn {
     setConfirmPassword,
     handleSignIn,
     handleSignUp,
+    handleVerifySignUp,
+    handleResendSignUpCode,
     handleResetPassword,
     handleVerifyAndReset,
     handleResendCode,
