@@ -3,7 +3,7 @@ import { renderHook, act } from "@testing-library/react";
 import { ReactNode } from "react";
 import { useLogin } from "./useLogin";
 import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
-import type { AuthError, User, Session, AuthTokenResponsePassword } from "@supabase/supabase-js";
+import type { AuthError, AuthResponse, User, Session, AuthTokenResponsePassword } from "@supabase/supabase-js";
 
 // Helper to create mock AuthError
 const createMockAuthError = (message: string, status: number): AuthError => {
@@ -55,6 +55,8 @@ vi.mock("../../../supabase/client", () => ({
       signUp: vi.fn(),
       signOut: vi.fn(),
       resetPasswordForEmail: vi.fn(),
+      verifyOtp: vi.fn(),
+      updateUser: vi.fn(),
       getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { id: "mock-id", callback: vi.fn(), unsubscribe: vi.fn() } },
@@ -372,7 +374,7 @@ describe("useLogin", () => {
       expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
     });
 
-    it("shows success message and clears email on success", async () => {
+    it("shows success message and transitions to verify step on success", async () => {
       vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({ data: {}, error: null });
 
       const { result } = renderHook(() => useLogin(), { wrapper });
@@ -385,8 +387,8 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.message).toContain("Password reset link sent");
-      expect(result.current.email).toBe("");
+      expect(result.current.message).toContain("6-digit code");
+      expect(result.current.resetStep).toBe("verify");
     });
 
     it("sets error on reset password failure (4xx - no retry)", async () => {
@@ -405,7 +407,7 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.error).toBe("User not found");
+      expect(result.current.error).toContain("account exists");
       expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledTimes(1);
     });
 
@@ -424,7 +426,7 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.message).toContain("Password reset link sent");
+      expect(result.current.message).toContain("6-digit code");
       expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledTimes(2);
     });
   });
@@ -501,6 +503,323 @@ describe("useLogin", () => {
 
       expect(result.current.isResetPassword).toBe(true);
       expect(result.current.email).toBe("");
+    });
+  });
+
+  describe("OTP password reset flow", () => {
+    describe("initial OTP state", () => {
+      it("has correct initial OTP-related values", () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        expect(result.current.resetStep).toBe("email");
+        expect(result.current.otpCode).toBe("");
+        expect(result.current.confirmPassword).toBe("");
+      });
+    });
+
+    describe("handleVerifyAndReset", () => {
+      it("validates OTP code is 6 digits", async () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setOtpCode("123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("6-digit code");
+        expect(supabase.auth.verifyOtp).not.toHaveBeenCalled();
+      });
+
+      it("validates empty OTP code", async () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("6-digit code");
+      });
+
+      it("validates password minimum length", async () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setOtpCode("123456");
+          result.current.setPassword("short");
+          result.current.setConfirmPassword("short");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("at least 6 characters");
+        expect(supabase.auth.verifyOtp).not.toHaveBeenCalled();
+      });
+
+      it("validates passwords match", async () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setOtpCode("123456");
+          result.current.setPassword("password123");
+          result.current.setConfirmPassword("different123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("do not match");
+        expect(supabase.auth.verifyOtp).not.toHaveBeenCalled();
+      });
+
+      it("calls verifyOtp then updateUser on valid input", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: createMockUser(), session: createMockSession() },
+          error: null,
+        });
+        vi.mocked(supabase.auth.updateUser).mockResolvedValue({
+          data: { user: createMockUser() },
+          error: null,
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+          result.current.setOtpCode("123456");
+          result.current.setPassword("newpassword123");
+          result.current.setConfirmPassword("newpassword123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({
+          email: "reset@example.com",
+          token: "123456",
+          type: "recovery",
+        });
+        expect(supabase.auth.updateUser).toHaveBeenCalledWith({
+          password: "newpassword123",
+        });
+        expect(result.current.error).toBe("");
+      });
+
+      it("shows error for expired OTP code", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: null, session: null },
+          error: createMockAuthError("Token has expired", 400),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+          result.current.setOtpCode("123456");
+          result.current.setPassword("newpassword123");
+          result.current.setConfirmPassword("newpassword123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("expired");
+        expect(supabase.auth.updateUser).not.toHaveBeenCalled();
+      });
+
+      it("shows error for invalid OTP code", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: null, session: null },
+          error: createMockAuthError("Token is invalid", 400),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+          result.current.setOtpCode("000000");
+          result.current.setPassword("newpassword123");
+          result.current.setConfirmPassword("newpassword123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("Invalid or expired");
+        expect(supabase.auth.updateUser).not.toHaveBeenCalled();
+      });
+
+      it("shows error when new password is same as current", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: createMockUser(), session: createMockSession() },
+          error: null,
+        });
+        vi.mocked(supabase.auth.updateUser).mockResolvedValue({
+          data: { user: null },
+          error: createMockAuthError("New password must be different", 422),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+          result.current.setOtpCode("123456");
+          result.current.setPassword("samepassword");
+          result.current.setConfirmPassword("samepassword");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("different");
+      });
+
+      it("shows rate limit error on too many attempts", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: null, session: null },
+          error: createMockAuthError("Too many requests", 429),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+          result.current.setOtpCode("123456");
+          result.current.setPassword("newpassword123");
+          result.current.setConfirmPassword("newpassword123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.error).toContain("Too many attempts");
+      });
+
+      it("sets loading state during verification", async () => {
+        let resolveVerify!: (value: AuthResponse | PromiseLike<AuthResponse>) => void;
+        vi.mocked(supabase.auth.verifyOtp).mockImplementation(
+          () => new Promise<AuthResponse>((resolve) => { resolveVerify = resolve; }),
+        );
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+          result.current.setOtpCode("123456");
+          result.current.setPassword("newpassword123");
+          result.current.setConfirmPassword("newpassword123");
+        });
+
+        let verifyPromise: Promise<void>;
+        act(() => {
+          verifyPromise = result.current.handleVerifyAndReset();
+        });
+
+        expect(result.current.loading).toBe(true);
+
+        await act(async () => {
+          resolveVerify!({
+            data: { user: createMockUser(), session: createMockSession() },
+            error: null,
+          });
+          // Also mock updateUser for the second step
+          vi.mocked(supabase.auth.updateUser).mockResolvedValue({
+            data: { user: createMockUser() },
+            error: null,
+          });
+          await verifyPromise;
+        });
+
+        expect(result.current.loading).toBe(false);
+      });
+    });
+
+    describe("handleResendCode", () => {
+      it("calls resetPasswordForEmail to resend OTP", async () => {
+        vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({ data: {}, error: null });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+        });
+
+        await act(async () => {
+          await result.current.handleResendCode();
+        });
+
+        expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
+        expect(result.current.message).toContain("new code");
+      });
+
+      it("shows rate limit error on resend", async () => {
+        vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({
+          data: null,
+          error: createMockAuthError("For security purposes, you can only request this after 60 seconds", 429),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+        });
+
+        await act(async () => {
+          await result.current.handleResendCode();
+        });
+
+        expect(result.current.error).toContain("Too many requests");
+      });
+    });
+
+    describe("handleResetPassword rate limiting", () => {
+      it("shows rate limit error when too many reset requests", async () => {
+        vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({
+          data: null,
+          error: createMockAuthError("For security purposes, you can only request this after 60 seconds", 429),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("reset@example.com");
+        });
+
+        await act(async () => {
+          await result.current.handleResetPassword();
+        });
+
+        expect(result.current.error).toContain("Too many reset requests");
+      });
+    });
+
+    describe("resetForm clears OTP state", () => {
+      it("clears OTP code, confirm password, and resets step", () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setOtpCode("123456");
+          result.current.setConfirmPassword("password");
+        });
+
+        act(() => {
+          result.current.resetForm();
+        });
+
+        expect(result.current.otpCode).toBe("");
+        expect(result.current.confirmPassword).toBe("");
+        expect(result.current.resetStep).toBe("email");
+      });
     });
   });
 });
