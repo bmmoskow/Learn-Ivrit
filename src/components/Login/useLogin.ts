@@ -101,9 +101,25 @@ export function useLogin(): UseLoginReturn {
     setMessage("");
     setLoading(true);
     try {
-      const { error } = await signUp(email, password, fullName);
+      const { error, data } = await signUp(email, password, fullName);
       if (error) throw error;
-      setMessage("A 6-digit verification code has been sent to your email. Enter it below to complete sign up.");
+
+      // Supabase returns an empty identities array for repeated signups
+      // (user already exists). No email is sent in this case.
+      const isRepeatedSignup = data?.user?.identities?.length === 0;
+
+      if (isRepeatedSignup) {
+        setError(
+          "An account with this email already exists. If you haven't verified it yet, " +
+          "please sign in instead, or use a different email."
+        );
+        return;
+      }
+
+      setMessage(
+        "A 6-digit verification code has been sent to your email. " +
+        "Check your spam/junk folder if you don't see it within a minute."
+      );
       setSignUpStep("verify");
       setOtpCode("");
     } catch (err: unknown) {
@@ -163,7 +179,7 @@ export function useLogin(): UseLoginReturn {
         supabase.auth.resend({ type: "signup", email })
       );
       if (error) throw error;
-      setMessage("A new verification code has been sent to your email.");
+      setMessage("A new verification code has been sent to your email. Check your spam/junk folder if it doesn't arrive within a minute.");
     } catch (err: unknown) {
       const msg = getErrorMessage(err, "");
       if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("60 seconds") || msg.toLowerCase().includes("too many")) {
@@ -183,7 +199,7 @@ export function useLogin(): UseLoginReturn {
     try {
       const { error } = await resetPassword(email);
       if (error) throw error;
-      setMessage("A 6-digit code has been sent to your email. Enter it below along with your new password.");
+      setMessage("A 6-digit code has been sent to your email. Enter it below along with your new password. Check your spam/junk folder if it doesn't arrive within a minute.");
       setResetStep("verify");
     } catch (err: unknown) {
       const msg = getErrorMessage(err, "");
@@ -206,7 +222,7 @@ export function useLogin(): UseLoginReturn {
     try {
       const { error } = await resetPassword(email);
       if (error) throw error;
-      setMessage("A new code has been sent to your email.");
+      setMessage("A new code has been sent to your email. Check your spam/junk folder if it doesn't arrive within a minute.");
     } catch (err: unknown) {
       const msg = getErrorMessage(err, "");
       if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("60 seconds") || msg.toLowerCase().includes("too many")) {
