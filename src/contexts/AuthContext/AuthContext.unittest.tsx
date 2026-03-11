@@ -71,7 +71,6 @@ const createMockAuthError = (message: string, overrides: Partial<AuthError> = {}
     ...overrides,
   }) as AuthError;
 
-
 const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
 
 // Helper to wait for async state updates
@@ -143,7 +142,7 @@ describe("AuthContext", () => {
       });
 
       expect(consoleWarnSpy).toHaveBeenCalledWith(
-        "Supabase not configured - authentication will not work, but guest mode is available"
+        "Supabase not configured - authentication will not work, but guest mode is available",
       );
       expect(mockGetSession).not.toHaveBeenCalled();
       expect(result.current.loading).toBe(false);
@@ -391,9 +390,7 @@ describe("AuthContext", () => {
     });
 
     it("retries on 5xx error", async () => {
-      mockSignInWithPassword
-        .mockRejectedValueOnce({ status: 500 })
-        .mockResolvedValue(createSuccessAuthResponse());
+      mockSignInWithPassword.mockRejectedValueOnce({ status: 500 }).mockResolvedValue(createSuccessAuthResponse());
 
       const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -410,7 +407,7 @@ describe("AuthContext", () => {
   });
 
   describe("signUp", () => {
-    it("calls supabase signUp and creates profile", async () => {
+    it("calls supabase signUp with email, password, and full_name metadata", async () => {
       const mockUser = { id: "user-123", email: "new@example.com" } as User;
       mockSignUp.mockResolvedValue({
         data: { user: mockUser, session: null },
@@ -430,9 +427,8 @@ describe("AuthContext", () => {
       expect(mockSignUp).toHaveBeenCalledWith({
         email: "new@example.com",
         password: "password123",
+        options: { data: { full_name: "John Doe" } },
       });
-
-      expect(mockFrom).toHaveBeenCalledWith("profiles");
     });
 
     it("returns error on failure", async () => {
