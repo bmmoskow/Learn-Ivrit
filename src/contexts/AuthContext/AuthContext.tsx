@@ -8,7 +8,7 @@ type AuthContextType = {
   user: User | null;
   isGuest: boolean;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null; data?: { user: User | null } }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInAsGuest: () => void;
   signOut: () => Promise<void>;
@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             {
               id: session.user.id,
               email: session.user.email!,
+              full_name: session.user.user_metadata?.full_name || null,
               updated_at: new Date().toISOString(),
             },
             {
@@ -82,25 +83,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string) => {
-    const { data, error } = await retryWithBackoff(() => supabase.auth.signUp({ email, password }));
+  const signUp = async (email: string, password: string, _fullName?: string) => {
+    const { data, error } = await retryWithBackoff(() =>
+      supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: _fullName || null } },
+      })
+    );
 
-    if (!error && data.user) {
-      // Profile creation also retries on 5xx
-      await retryWithBackoff(async () => {
-        const { error: profileError } = await supabase.from("profiles").insert({
-          id: data.user!.id,
-          email: data.user!.email!,
-          full_name: fullName || null,
-        });
-
-        if (profileError) {
-          console.error("Error creating profile:", profileError);
-        }
-      });
-    }
-
-    return { error };
+    return { error, data: { user: data?.user ?? null } };
   };
 
   const signIn = async (email: string, password: string) => {
