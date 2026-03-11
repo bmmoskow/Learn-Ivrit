@@ -182,32 +182,34 @@ export default function SettingsUI({
               <AlertTriangle className="h-5 w-5" />
               Are you absolutely sure?
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-4">
-              <p>
-                This action cannot be undone. This will permanently delete your account and remove
-                all your data from our servers.
-              </p>
-              <p className="text-sm">
-                Your data will be handled according to our{' '}
-                <Link
-                  to="/privacy"
-                  className="text-blue-600 hover:text-blue-700 underline"
-                >
-                  Privacy Policy
-                </Link>
-                .
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="delete-confirmation">
-                  Type <span className="font-bold text-foreground">DELETE</span> to confirm
-                </Label>
-                <Input
-                  id="delete-confirmation"
-                  value={deleteConfirmation}
-                  onChange={(e) => setDeleteConfirmation(e.target.value)}
-                  placeholder="DELETE"
-                  disabled={isDeleting}
-                />
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone. This will permanently delete your account and remove
+                  all your data from our servers.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Your data will be handled according to our{' '}
+                  <Link
+                    to="/privacy"
+                    className="text-blue-600 hover:text-blue-700 underline"
+                  >
+                    Privacy Policy
+                  </Link>
+                  .
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="delete-confirmation">
+                    Type <span className="font-bold text-foreground">DELETE</span> to confirm
+                  </Label>
+                  <Input
+                    id="delete-confirmation"
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    placeholder="DELETE"
+                    disabled={isDeleting}
+                  />
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

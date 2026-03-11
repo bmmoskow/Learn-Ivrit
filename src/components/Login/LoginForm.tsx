@@ -1,4 +1,4 @@
-import { LogIn, UserPlus, Mail, Eye, EyeOff, KeyRound } from "lucide-react";
+import { LogIn, UserPlus, Mail, Eye, EyeOff, KeyRound, ShieldCheck } from "lucide-react";
 import { UseLoginReturn } from "./useLogin";
 import { Footer } from "../Footer/Footer";
 
@@ -15,6 +15,7 @@ export function LoginForm({
   isSignUp,
   isResetPassword,
   resetStep,
+  signUpStep,
   otpCode,
   confirmPassword,
   setEmail,
@@ -25,6 +26,8 @@ export function LoginForm({
   setConfirmPassword,
   handleSignIn,
   handleSignUp,
+  handleVerifySignUp,
+  handleResendSignUpCode,
   handleResetPassword,
   handleVerifyAndReset,
   handleResendCode,
@@ -42,7 +45,11 @@ export function LoginForm({
         await handleResetPassword();
       }
     } else if (isSignUp) {
-      await handleSignUp();
+      if (signUpStep === "verify") {
+        await handleVerifySignUp();
+      } else {
+        await handleSignUp();
+      }
     } else {
       await handleSignIn();
     }
@@ -52,7 +59,10 @@ export function LoginForm({
     if (isResetPassword) {
       return resetStep === "verify" ? "Enter Reset Code" : "Reset Password";
     }
-    return isSignUp ? "Create Account" : "Welcome Back";
+    if (isSignUp) {
+      return signUpStep === "verify" ? "Verify Your Email" : "Create Account";
+    }
+    return "Welcome Back";
   };
 
   const getSubtitle = () => {
@@ -61,8 +71,17 @@ export function LoginForm({
         ? "Enter the 6-digit code from your email and choose a new password"
         : "Enter your email to receive a reset code";
     }
-    return isSignUp ? "Start your Hebrew learning journey" : "Sign in to continue learning";
+    if (isSignUp) {
+      return signUpStep === "verify"
+        ? "Enter the 6-digit code sent to your email to complete sign up"
+        : "Start your Hebrew learning journey";
+    }
+    return "Sign in to continue learning";
   };
+
+  const isOtpStep = (isResetPassword && resetStep === "verify") || (isSignUp && signUpStep === "verify");
+  const showEmailInput = !isOtpStep;
+  const showPasswordInput = !isResetPassword && !isOtpStep;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
@@ -84,7 +103,7 @@ export function LoginForm({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {isSignUp && (
+            {isSignUp && signUpStep === "form" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Full Name (Optional)</label>
                 <input
@@ -97,7 +116,7 @@ export function LoginForm({
               </div>
             )}
 
-            {isSignUp && (
+            {isSignUp && signUpStep === "form" && (
               <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
                 By signing up, you agree to our{" "}
                 <a
@@ -120,8 +139,8 @@ export function LoginForm({
               </div>
             )}
 
-            {/* Email input — shown for sign in, sign up, and reset step 'email' */}
-            {(!isResetPassword || resetStep === "email") && (
+            {/* Email input — shown for sign in, sign up form, and reset step 'email' */}
+            {showEmailInput && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <input
@@ -135,24 +154,27 @@ export function LoginForm({
               </div>
             )}
 
-            {/* OTP + New Password — shown for reset step 'verify' */}
+            {/* OTP input — shown for both signup verify and reset verify */}
+            {isOtpStep && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">6-Digit Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
+                  placeholder="000000"
+                  autoComplete="one-time-code"
+                />
+              </div>
+            )}
+
+            {/* New Password + Confirm — shown for reset verify only */}
             {isResetPassword && resetStep === "verify" && (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">6-Digit Code</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
-                    placeholder="000000"
-                    autoComplete="one-time-code"
-                  />
-                </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                   <div className="relative">
@@ -190,8 +212,8 @@ export function LoginForm({
               </>
             )}
 
-            {/* Password — shown for sign in and sign up only */}
-            {!isResetPassword && (
+            {/* Password — shown for sign in and sign up form only */}
+            {showPasswordInput && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                 <div className="relative">
@@ -227,7 +249,7 @@ export function LoginForm({
                   {isResetPassword ? (
                     resetStep === "verify" ? <KeyRound className="w-5 h-5" /> : <Mail className="w-5 h-5" />
                   ) : isSignUp ? (
-                    <UserPlus className="w-5 h-5" />
+                    signUpStep === "verify" ? <ShieldCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />
                   ) : (
                     <LogIn className="w-5 h-5" />
                   )}
@@ -236,7 +258,9 @@ export function LoginForm({
                       ? "Reset Password"
                       : "Send Reset Code"
                     : isSignUp
-                      ? "Sign Up"
+                      ? signUpStep === "verify"
+                        ? "Verify & Sign In"
+                        : "Sign Up"
                       : "Sign In"}
                 </>
               )}
@@ -260,7 +284,21 @@ export function LoginForm({
                 </button>
               </>
             )}
-            {!isResetPassword && (
+            {isSignUp && signUpStep === "verify" && (
+              <>
+                <button
+                  onClick={handleResendSignUpCode}
+                  disabled={loading}
+                  className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                >
+                  Resend code
+                </button>
+                <button onClick={switchToSignIn} className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium">
+                  Back to sign in
+                </button>
+              </>
+            )}
+            {!isResetPassword && !(isSignUp && signUpStep === "verify") && (
               <>
                 <div className="relative my-6">
                   <div className="absolute inset-0 flex items-center">
