@@ -56,6 +56,7 @@ vi.mock("../../../supabase/client", () => ({
       signOut: vi.fn(),
       resetPasswordForEmail: vi.fn(),
       verifyOtp: vi.fn(),
+      resend: vi.fn(),
       updateUser: vi.fn(),
       getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
       onAuthStateChange: vi.fn().mockReturnValue({
@@ -245,7 +246,7 @@ describe("useLogin", () => {
       });
     });
 
-    it("shows success message and switches to sign in on success", async () => {
+    it("shows verification message and transitions to verify step on success", async () => {
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
         data: { user: { id: "user-123", email: "new@example.com" } as unknown as null, session: null },
         error: null,
@@ -265,9 +266,9 @@ describe("useLogin", () => {
         await result.current.handleSignUp();
       });
 
-      expect(result.current.message).toBe("Account created successfully! Please sign in.");
-      expect(result.current.isSignUp).toBe(false);
-      expect(result.current.password).toBe("");
+      expect(result.current.message).toContain("verification code");
+      expect(result.current.signUpStep).toBe("verify");
+      expect(result.current.isSignUp).toBe(true);
     });
 
     it("sets error on sign up failure (4xx - no retry)", async () => {
@@ -310,7 +311,8 @@ describe("useLogin", () => {
         await result.current.handleSignUp();
       });
 
-      expect(result.current.message).toBe("Account created successfully! Please sign in.");
+      expect(result.current.message).toContain("verification code");
+      expect(result.current.signUpStep).toBe("verify");
       expect(supabase.auth.signUp).toHaveBeenCalledTimes(2);
     });
 
@@ -503,6 +505,181 @@ describe("useLogin", () => {
 
       expect(result.current.isResetPassword).toBe(true);
       expect(result.current.email).toBe("");
+    });
+  });
+
+  describe("OTP signup verification flow", () => {
+    describe("initial signup OTP state", () => {
+      it("has correct initial signUpStep value", () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+        expect(result.current.signUpStep).toBe("form");
+      });
+    });
+
+    describe("handleVerifySignUp", () => {
+      it("validates OTP code is 6 digits", async () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setOtpCode("123");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifySignUp();
+        });
+
+        expect(result.current.error).toContain("6-digit code");
+        expect(supabase.auth.verifyOtp).not.toHaveBeenCalled();
+      });
+
+      it("validates empty OTP code", async () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        await act(async () => {
+          await result.current.handleVerifySignUp();
+        });
+
+        expect(result.current.error).toContain("6-digit code");
+      });
+
+      it("calls verifyOtp with signup type on valid input", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: createMockUser(), session: createMockSession() },
+          error: null,
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("new@example.com");
+          result.current.setOtpCode("123456");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifySignUp();
+        });
+
+        expect(supabase.auth.verifyOtp).toHaveBeenCalledWith({
+          email: "new@example.com",
+          token: "123456",
+          type: "signup",
+        });
+        expect(result.current.error).toBe("");
+      });
+
+      it("shows error for expired signup OTP code", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: null, session: null },
+          error: createMockAuthError("Token has expired", 400),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("new@example.com");
+          result.current.setOtpCode("123456");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifySignUp();
+        });
+
+        expect(result.current.error).toContain("expired");
+      });
+
+      it("shows error for invalid signup OTP code", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockResolvedValue({
+          data: { user: null, session: null },
+          error: createMockAuthError("Token is invalid", 400),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("new@example.com");
+          result.current.setOtpCode("000000");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifySignUp();
+        });
+
+        expect(result.current.error).toContain("Invalid or expired");
+      });
+
+      it("shows rate limit error on too many attempts", async () => {
+        vi.mocked(supabase.auth.verifyOtp).mockRejectedValue(
+          new Error("Too many requests"),
+        );
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("new@example.com");
+          result.current.setOtpCode("123456");
+        });
+
+        await act(async () => {
+          await result.current.handleVerifySignUp();
+        });
+
+        expect(result.current.error).toContain("Too many attempts");
+      });
+    });
+
+    describe("handleResendSignUpCode", () => {
+      it("calls supabase.auth.resend with signup type", async () => {
+        vi.mocked(supabase.auth.resend).mockResolvedValue({ data: { messageId: "123" }, error: null } as never);
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("new@example.com");
+        });
+
+        await act(async () => {
+          await result.current.handleResendSignUpCode();
+        });
+
+        expect(supabase.auth.resend).toHaveBeenCalledWith({ type: "signup", email: "new@example.com" });
+        expect(result.current.message).toContain("new verification code");
+      });
+
+      it("shows rate limit error on resend", async () => {
+        vi.mocked(supabase.auth.resend).mockResolvedValue({
+          data: { user: null, session: null },
+          error: createMockAuthError("For security purposes, you can only request this after 60 seconds", 429),
+        });
+
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setEmail("new@example.com");
+        });
+
+        await act(async () => {
+          await result.current.handleResendSignUpCode();
+        });
+
+        expect(result.current.error).toContain("Too many requests");
+      });
+    });
+
+    describe("resetForm clears signup OTP state", () => {
+      it("clears OTP code and resets signUpStep", () => {
+        const { result } = renderHook(() => useLogin(), { wrapper });
+
+        act(() => {
+          result.current.setOtpCode("123456");
+        });
+
+        act(() => {
+          result.current.resetForm();
+        });
+
+        expect(result.current.otpCode).toBe("");
+        expect(result.current.signUpStep).toBe("form");
+      });
     });
   });
 
