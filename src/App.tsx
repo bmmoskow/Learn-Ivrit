@@ -15,8 +15,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 const Contact = lazy(() => import("./pages/Contact"));
-const ResetPassword = lazy(() => import("./components/Login/ResetPassword/ResetPassword").then(m => ({ default: m.ResetPassword })));
-
 // Loading fallback for lazy-loaded routes
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -86,16 +84,6 @@ function AppContent() {
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<Contact />} />
-        <Route
-          path="/reset-password"
-          element={
-            <ResetPassword
-              onComplete={() => {
-                navigate("/", { replace: true });
-              }}
-            />
-          }
-        />
 
         {/* Protected routes */}
         <Route path="/" element={protectedLayout(<Dashboard />)} />
