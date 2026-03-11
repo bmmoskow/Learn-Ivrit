@@ -1,4 +1,4 @@
-import { LogIn, UserPlus, Mail, Eye, EyeOff } from "lucide-react";
+import { LogIn, UserPlus, Mail, Eye, EyeOff, KeyRound } from "lucide-react";
 import { UseLoginReturn } from "./useLogin";
 import { Footer } from "../Footer/Footer";
 
@@ -14,13 +14,20 @@ export function LoginForm({
   showPassword,
   isSignUp,
   isResetPassword,
+  resetStep,
+  otpCode,
+  confirmPassword,
   setEmail,
   setPassword,
   setFullName,
   setShowPassword,
+  setOtpCode,
+  setConfirmPassword,
   handleSignIn,
   handleSignUp,
   handleResetPassword,
+  handleVerifyAndReset,
+  handleResendCode,
   handleGuestSignIn,
   switchToSignUp,
   switchToSignIn,
@@ -29,7 +36,11 @@ export function LoginForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isResetPassword) {
-      await handleResetPassword();
+      if (resetStep === "verify") {
+        await handleVerifyAndReset();
+      } else {
+        await handleResetPassword();
+      }
     } else if (isSignUp) {
       await handleSignUp();
     } else {
@@ -37,21 +48,29 @@ export function LoginForm({
     }
   };
 
+  const getTitle = () => {
+    if (isResetPassword) {
+      return resetStep === "verify" ? "Enter Reset Code" : "Reset Password";
+    }
+    return isSignUp ? "Create Account" : "Welcome Back";
+  };
+
+  const getSubtitle = () => {
+    if (isResetPassword) {
+      return resetStep === "verify"
+        ? "Enter the 6-digit code from your email and choose a new password"
+        : "Enter your email to receive a reset code";
+    }
+    return isSignUp ? "Start your Hebrew learning journey" : "Sign in to continue learning";
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {isResetPassword ? "Reset Password" : isSignUp ? "Create Account" : "Welcome Back"}
-            </h1>
-            <p className="text-gray-600">
-              {isResetPassword
-                ? "Enter your email to receive a reset link"
-                : isSignUp
-                  ? "Start your Hebrew learning journey"
-                  : "Sign in to continue learning"}
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{getTitle()}</h1>
+            <p className="text-gray-600">{getSubtitle()}</p>
           </div>
 
           {error && (
@@ -80,29 +99,98 @@ export function LoginForm({
 
             {isSignUp && (
               <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-                By signing up, you agree to our{' '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline">
+                By signing up, you agree to our{" "}
+                <a
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-700 underline"
+                >
                   Terms of Service
-                </a>
-                {' '}and{' '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-700 underline">
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-700 underline"
+                >
                   Privacy Policy
                 </a>
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                placeholder="your.email@example.com"
-              />
-            </div>
+            {/* Email input — shown for sign in, sign up, and reset step 'email' */}
+            {(!isResetPassword || resetStep === "email") && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  placeholder="your.email@example.com"
+                />
+              </div>
+            )}
 
+            {/* OTP + New Password — shown for reset step 'verify' */}
+            {isResetPassword && resetStep === "verify" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">6-Digit Code</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition text-center text-2xl tracking-[0.5em] font-mono"
+                    placeholder="000000"
+                    autoComplete="one-time-code"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={6}
+                      className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                      placeholder="Enter new password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={6}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Password — shown for sign in and sign up only */}
             {!isResetPassword && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
@@ -137,19 +225,41 @@ export function LoginForm({
               ) : (
                 <>
                   {isResetPassword ? (
-                    <Mail className="w-5 h-5" />
+                    resetStep === "verify" ? <KeyRound className="w-5 h-5" /> : <Mail className="w-5 h-5" />
                   ) : isSignUp ? (
                     <UserPlus className="w-5 h-5" />
                   ) : (
                     <LogIn className="w-5 h-5" />
                   )}
-                  {isResetPassword ? "Send Reset Link" : isSignUp ? "Sign Up" : "Sign In"}
+                  {isResetPassword
+                    ? resetStep === "verify"
+                      ? "Reset Password"
+                      : "Send Reset Code"
+                    : isSignUp
+                      ? "Sign Up"
+                      : "Sign In"}
                 </>
               )}
             </button>
           </form>
 
           <div className="mt-6 space-y-2">
+            {isResetPassword && (
+              <>
+                {resetStep === "verify" && (
+                  <button
+                    onClick={handleResendCode}
+                    disabled={loading}
+                    className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+                  >
+                    Resend code
+                  </button>
+                )}
+                <button onClick={switchToSignIn} className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium">
+                  Back to sign in
+                </button>
+              </>
+            )}
             {!isResetPassword && (
               <>
                 <div className="relative my-6">
@@ -174,21 +284,10 @@ export function LoginForm({
                 >
                   {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
                 </button>
-                <button
-                  onClick={switchToResetPassword}
-                  className="w-full text-sm text-gray-600 hover:text-gray-700"
-                >
+                <button onClick={switchToResetPassword} className="w-full text-sm text-gray-600 hover:text-gray-700">
                   Forgot password?
                 </button>
               </>
-            )}
-            {isResetPassword && (
-              <button
-                onClick={switchToSignIn}
-                className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium"
-              >
-                Back to sign in
-              </button>
             )}
           </div>
         </div>
