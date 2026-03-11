@@ -224,7 +224,7 @@ describe("useLogin", () => {
   describe("handleSignUp", () => {
     it("calls supabase signUp with email and password", async () => {
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
-        data: { user: { id: "user-123", email: "new@example.com", identities: [{ id: "id-1" }] } as any, session: null },
+        data: { user: { id: "user-123", email: "new@example.com", identities: [{ id: "id-1" }] } as unknown as User, session: null },
         error: null,
       });
 
@@ -249,7 +249,7 @@ describe("useLogin", () => {
 
     it("shows verification message and transitions to verify step on success", async () => {
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
-        data: { user: { id: "user-123", email: "new@example.com", identities: [{ id: "id-1" }] } as any, session: null },
+        data: { user: { id: "user-123", email: "new@example.com", identities: [{ id: "id-1" }] } as unknown as User, session: null },
         error: null,
       });
 
@@ -297,7 +297,7 @@ describe("useLogin", () => {
       vi.mocked(supabase.auth.signUp)
         .mockRejectedValueOnce({ status: 500, message: "Internal Server Error" })
         .mockResolvedValue({
-          data: { user: { id: "user-123", email: "new@example.com", identities: [{ id: "id-1" }] } as any, session: null },
+          data: { user: { id: "user-123", email: "new@example.com", identities: [{ id: "id-1" }] } as unknown as User, session: null },
           error: null,
         });
 
@@ -361,7 +361,7 @@ describe("useLogin", () => {
 
     it("detects repeated signup (existing account) and shows error", async () => {
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
-        data: { user: { id: "user-123", email: "existing@example.com", identities: [] } as any, session: null },
+        data: { user: { id: "user-123", email: "existing@example.com", identities: [] } as unknown as User, session: null },
         error: null,
       });
 
