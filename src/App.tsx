@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation/Navigation";
 import { Footer } from "./components/Footer/Footer";
-import { supabase } from "../supabase/client";
 
 // Lazy load route components for code-splitting
 const Dashboard = lazy(() => import("./components/Dashboard/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -16,8 +15,6 @@ const Settings = lazy(() => import("./pages/Settings"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 const Contact = lazy(() => import("./pages/Contact"));
-const ResetPassword = lazy(() => import("./components/Login/ResetPassword/ResetPassword").then(m => ({ default: m.ResetPassword })));
-
 // Loading fallback for lazy-loaded routes
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -36,7 +33,6 @@ function AppContent() {
     const saved = localStorage.getItem("currentView");
     return saved || "dashboard";
   });
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   useEffect(() => {
     if (isGuest) {
@@ -60,32 +56,6 @@ function AppContent() {
     navigate(`/${view === "dashboard" ? "" : view}`);
   };
 
-  useEffect(() => {
-    const checkHash = () => {
-      const hash = window.location.hash;
-      if (hash === "#reset-password" || hash.includes("type=recovery")) {
-        setIsResettingPassword(true);
-      }
-    };
-
-    checkHash();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setIsResettingPassword(true);
-      }
-    });
-
-    window.addEventListener("hashchange", checkHash);
-
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener("hashchange", checkHash);
-    };
-  }, []);
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -97,97 +67,31 @@ function AppContent() {
     );
   }
 
-  if (isResettingPassword) {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <ResetPassword
-          onComplete={() => {
-            setIsResettingPassword(false);
-            window.location.hash = "";
-          }}
-        />
-      </Suspense>
-    );
-  }
+  const protectedLayout = (children: React.ReactNode) => (
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <Navigation currentView={currentView} onViewChange={handleViewChange} />
+        {children}
+        <Footer />
+      </div>
+    </ProtectedRoute>
+  );
 
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
+        {/* Public routes */}
         <Route path="/terms" element={<TermsOfService />} />
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/contact" element={<Contact />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <Dashboard />
-                <Footer />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/translate"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <TranslationPanel />
-                <Footer />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/vocabulary"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <VocabularyList />
-                <Footer />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/test"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <TestPanel />
-                <Footer />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/faq"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <FAQ />
-                <Footer />
-              </div>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navigation currentView={currentView} onViewChange={handleViewChange} />
-                <Settings />
-                <Footer />
-              </div>
-            </ProtectedRoute>
-          }
-        />
+
+        {/* Protected routes */}
+        <Route path="/" element={protectedLayout(<Dashboard />)} />
+        <Route path="/translate" element={protectedLayout(<TranslationPanel />)} />
+        <Route path="/vocabulary" element={protectedLayout(<VocabularyList />)} />
+        <Route path="/test" element={protectedLayout(<TestPanel />)} />
+        <Route path="/faq" element={protectedLayout(<FAQ />)} />
+        <Route path="/settings" element={protectedLayout(<Settings />)} />
       </Routes>
     </Suspense>
   );
