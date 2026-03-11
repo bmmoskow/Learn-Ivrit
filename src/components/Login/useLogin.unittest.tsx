@@ -55,6 +55,8 @@ vi.mock("../../../supabase/client", () => ({
       signUp: vi.fn(),
       signOut: vi.fn(),
       resetPasswordForEmail: vi.fn(),
+      verifyOtp: vi.fn(),
+      updateUser: vi.fn(),
       getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
       onAuthStateChange: vi.fn().mockReturnValue({
         data: { subscription: { id: "mock-id", callback: vi.fn(), unsubscribe: vi.fn() } },
@@ -369,10 +371,10 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
+      expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com", expect.any(Object));
     });
 
-    it("shows success message and clears email on success", async () => {
+    it("shows success message and transitions to verify step on success", async () => {
       vi.mocked(supabase.auth.resetPasswordForEmail).mockResolvedValue({ data: {}, error: null });
 
       const { result } = renderHook(() => useLogin(), { wrapper });
@@ -385,8 +387,8 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.message).toContain("Password reset link sent");
-      expect(result.current.email).toBe("");
+      expect(result.current.message).toContain("6-digit code");
+      expect(result.current.resetStep).toBe("verify");
     });
 
     it("sets error on reset password failure (4xx - no retry)", async () => {
@@ -405,7 +407,7 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.error).toBe("User not found");
+      expect(result.current.error).toContain("account exists");
       expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledTimes(1);
     });
 
@@ -424,7 +426,7 @@ describe("useLogin", () => {
         await result.current.handleResetPassword();
       });
 
-      expect(result.current.message).toContain("Password reset link sent");
+      expect(result.current.message).toContain("6-digit code");
       expect(supabase.auth.resetPasswordForEmail).toHaveBeenCalledTimes(2);
     });
   });

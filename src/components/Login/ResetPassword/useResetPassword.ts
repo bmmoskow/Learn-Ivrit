@@ -14,6 +14,7 @@ export type UseResetPasswordState = {
   confirmPassword: string;
   error: string;
   loading: boolean;
+  success: boolean;
   showPassword: boolean;
   showConfirmPassword: boolean;
 };
@@ -34,6 +35,7 @@ export function useResetPassword(): UseResetPasswordReturn {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -44,6 +46,7 @@ export function useResetPassword(): UseResetPasswordReturn {
     setPassword("");
     setConfirmPassword("");
     setError("");
+    setSuccess(false);
     setShowPassword(false);
     setShowConfirmPassword(false);
   };
@@ -70,10 +73,22 @@ export function useResetPassword(): UseResetPasswordReturn {
 
       if (error) throw error;
 
+      setSuccess(true);
       window.location.hash = "";
       return true;
     } catch (err: unknown) {
-      setError(getErrorMessage(err, "Failed to update password"));
+      const msg = getErrorMessage(err, "");
+      if (msg.toLowerCase().includes("same") || msg.toLowerCase().includes("different")) {
+        setError("New password must be different from your current password.");
+      } else if (msg.toLowerCase().includes("weak") || msg.toLowerCase().includes("strength")) {
+        setError("Password is too weak. Please choose a stronger password.");
+      } else if (msg.toLowerCase().includes("session") || msg.toLowerCase().includes("expired") || msg.toLowerCase().includes("invalid")) {
+        setError("Your reset link has expired. Please request a new password reset from the login screen.");
+      } else if (msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("too many")) {
+        setError("Too many attempts. Please wait a few minutes before trying again.");
+      } else {
+        setError(msg || "Failed to update password. Please try again.");
+      }
       return false;
     } finally {
       setLoading(false);
@@ -85,6 +100,7 @@ export function useResetPassword(): UseResetPasswordReturn {
     confirmPassword,
     error,
     loading,
+    success,
     showPassword,
     showConfirmPassword,
     setPassword,
