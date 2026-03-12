@@ -5,6 +5,9 @@ export const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
 
 export const GEMINI_URL = `${GEMINI_API_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
+// Thinking budget: 0 disables internal reasoning tokens (faster, cheaper, no quality loss for translation)
+export const THINKING_BUDGET = parseInt(Deno.env.get("GEMINI_THINKING_BUDGET") || "0", 10);
+
 // Rate limiting configuration - values from Supabase secrets with sensible defaults
 export const RATE_LIMITS = {
   word_definition: {

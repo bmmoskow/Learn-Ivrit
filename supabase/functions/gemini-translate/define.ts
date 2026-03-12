@@ -1,4 +1,4 @@
-import { GEMINI_URL } from "./config.ts";
+import { GEMINI_URL, THINKING_BUDGET } from "./config.ts";
 import {
   corsHeaders,
   checkRateLimit,
@@ -30,125 +30,50 @@ export async function handleDefine(
     });
   }
 
-  await logRequest(supabase, rateLimitId, "word_definition");
+  // Fire log request in parallel with Gemini call (don't block)
+  const logPromise = logRequest(supabase, rateLimitId, "word_definition").catch(
+    (err: unknown) => console.error("Failed to log request:", err)
+  );
 
   // Check if word starts with common prefixes
   const commonPrefixes = ["ה", "ב", "כ", "ל", "מ", "ש", "ו"];
   const startsWithPrefix = commonPrefixes.some((p) => word.startsWith(p)) && word.length > 2;
   const startsWithLamed = word.startsWith("ל") && word.length > 2;
 
-  const prefixInstructions = startsWithPrefix
-    ? `
-CRITICAL PREFIX HANDLING:
-- This word appears to start with a prefix letter (ה, ב, כ, ל, מ, ש, or ו)
-- The definition MUST reflect the prefix meaning:
-  * ה (ha-) = "the" (definite article) → "the book" not "book"
-  * ב (b'-) = "in/at" → "in the house" not "house"
-  * כ (k'-) = "like/as" → "like a king" not "king"
-  * ל (l'-) = "to/for" → "to the city" not "city" (BUT if it's an infinitive verb like לכתוב, translate as "to write")
-  * מ (m'-) = "from" → "from the place" not "place"
-  * ש (sh'-) = "that/which" → include "that" in translation
-  * ו (v'-) = "and" → include "and" in translation
-${
-  startsWithLamed
-    ? `
-- IMPORTANT: First determine if this ל word is an INFINITIVE VERB (like לכתוב, לראות, לשמוע)
-- If it IS an infinitive: translate as "to [verb]" and do NOT show the word without ל as a related word
-- If it is NOT an infinitive (like לבית meaning "to the house"): show the root word without ל as the first related word`
-    : `- Show the ROOT WORD without the prefix as the FIRST related word`
-}
-`
-    : "";
+  let prefixNote = "";
+  if (startsWithPrefix) {
+    prefixNote = `This word likely has a prefix (ה=the, ב=in/at, כ=like, ל=to/for, מ=from, ש=that, ו=and). Include the prefix meaning in the definition.`;
+    if (startsWithLamed) {
+      prefixNote += ` If it's an infinitive verb (e.g. לכתוב), translate as "to [verb]". Otherwise show the root word without ל as first related word.`;
+    } else {
+      prefixNote += ` Show the root word without the prefix as the first related word.`;
+    }
+  }
 
-  // Instruction for conjugated verbs to include infinitive form
-  const conjugatedVerbInstruction = `
-CONJUGATED VERB HANDLING:
-- If this word is a CONJUGATED VERB (any tense, person, gender, number - like הגביל "he limited", כתבתי "I wrote", יראו "they will see"):
-  * The definition should describe this specific form (e.g., "he limited", "I wrote", "they will see")
-  * The FIRST related word MUST be the INFINITIVE form (e.g., להגביל "to limit", לכתוב "to write", לראות "to see")
-  * The remaining related words should be NOUNS or ADJECTIVES from the same root - NOT other verb conjugations
-  * DO NOT show other tenses or persons of the same verb (e.g., don't show כתב, כתבה, יכתוב alongside לכתוב)
-- Recognize Hebrew verb patterns (binyanim): Pa'al, Nif'al, Pi'el, Pu'al, Hif'il, Huf'al, Hitpa'el
-`;
+  const prompt = `Define the Hebrew word "${word}". Respond in EXACTLY this format:
 
-  const prompt = `For the Hebrew word "${word}":
-
-1. Add full nikud (vowel points) to the word
-2. Provide up to 3 English translations separated by semicolons (most common first), e.g., "peace; hello; goodbye"
-3. Provide transliteration
-4. List 3 related Hebrew words
-${prefixInstructions}${conjugatedVerbInstruction}
-IMPORTANT for related words:
-${
-  startsWithPrefix && !startsWithLamed
-    ? `- FIRST, show the word WITHOUT the prefix as the first related word
-- Then show 2 more words from the same Hebrew root (שורש) as different parts of speech`
-    : startsWithLamed
-      ? `- If this is an infinitive verb, show 3 related words from the same root (שורש) as different parts of speech
-- If this is NOT an infinitive (has ל prefix meaning "to/for"), FIRST show the word without ל, then 2 more root-related words`
-      : `- If this is a CONJUGATED VERB, the FIRST related word MUST be the INFINITIVE form
-- Show words from the same Hebrew root (שורש) as different parts of speech (verb, noun, adjective, adverb)
-- If the word is a noun, show the related verb infinitive
-- If the word is a verb, show related nouns or adjectives`
-}
-- DO NOT just add other prefixes (ה, ב, ל, כ, מ, ש, ו) or suffixes to the same word
-- DO NOT show plural forms or possessive forms of the same word
-
-You MUST respond in this EXACT format:
-WORD: [hebrew with vowel points]
-DEFINITION: [up to 3 english translations separated by semicolons - include prefix meaning like "the", "in", "to", "from", etc.]
-TRANSLITERATION: [how to pronounce in English]
+WORD: [word with full nikud]
+DEFINITION: [up to 3 English translations separated by semicolons, most common first]
+TRANSLITERATION: [pronunciation]
 FORMS:
-- [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
-- [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
-- [hebrew with vowel points] ([transliteration]) - [part of speech and meaning]
+- [hebrew with nikud] ([transliteration]) - [part of speech: meaning]
+- [hebrew with nikud] ([transliteration]) - [part of speech: meaning]
+- [hebrew with nikud] ([transliteration]) - [part of speech: meaning]
 
-${
-  startsWithPrefix
-    ? `Example for הספר (the book):
-WORD: הַסֵּפֶר
-DEFINITION: the book
-TRANSLITERATION: hasefer
-FORMS:
-- סֵפֶר (sefer) - noun: book (without definite article)
-- לִסְפֹּר (lispor) - verb: to count
-- סוֹפֵר (sofer) - noun: writer, scribe
+Rules for FORMS (related words):
+- Derive from the same Hebrew root (שורש), using different parts of speech (noun, verb, adjective)
+- If input is a conjugated verb: first form MUST be the infinitive; remaining forms should be nouns/adjectives, NOT other conjugations
+- Do NOT show plural/possessive forms or the same word with different prefixes
+${prefixNote}
 
-Example for בבית (in the house):
-WORD: בַּבַּיִת
-DEFINITION: in the house
-TRANSLITERATION: babayit
-FORMS:
-- בַּיִת (bayit) - noun: house (without prefix)
-- בֵּיתִי (beiti) - adjective: domestic, homely
-- לְהָבִית (l'havit) - verb: to house, to shelter
-
-Example for לכתוב (infinitive - to write):
-WORD: לִכְתֹּב
-DEFINITION: to write
-TRANSLITERATION: likhtov
-FORMS:
-- כָּתַב (katav) - verb past: he wrote
-- כְּתִיבָה (ktiva) - noun: writing
-- מִכְתָּב (mikhtav) - noun: letter`
-    : `Example for הגביל (conjugated verb - he limited):
-WORD: הִגְבִּיל
-DEFINITION: he limited; he restricted
-TRANSLITERATION: higbil
-FORMS:
-- לְהַגְבִּיל (l'hagbil) - verb infinitive: to limit
-- גְּבוּל (gvul) - noun: border, limit
-- מֻגְבָּל (mugbal) - adjective: limited
-
-Example for שלום (root: ש-ל-מ):
+Example — שלום:
 WORD: שָׁלוֹם
 DEFINITION: peace; hello; goodbye
 TRANSLITERATION: shalom
 FORMS:
 - שָׁלֵם (shalem) - adjective: complete, whole
 - לְהַשְׁלִים (l'hashlim) - verb: to complete, to make peace
-- שְׁלֵמוּת (shlemut) - noun: completeness, wholeness`
-}`;
+- שְׁלֵמוּת (shlemut) - noun: completeness, wholeness`;
 
   const geminiResponse = await fetch(GEMINI_URL, {
     method: "POST",
@@ -166,6 +91,7 @@ FORMS:
         topK: 20,
         topP: 0.9,
         maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: THINKING_BUDGET },
       },
     }),
   });
@@ -223,34 +149,8 @@ FORMS:
   // Only cache if we got a valid definition
   const hasValidDefinition = definition && definition.trim() !== "";
 
-  if (hasValidDefinition) {
-    // Keep the full semicolon-delimited translation list; the UI handles wrapping.
-    const shortEnglish = definition.trim();
-
-    await supabase.from("word_definitions").upsert(
-      {
-        word: word,
-        word_with_vowels: wordWithVowels,
-        definition: definition,
-        transliteration: transliteration || "",
-        examples: [],
-        notes: "",
-        forms: forms || [],
-        short_english: shortEnglish,
-        last_accessed: new Date().toISOString(),
-        access_count: 1,
-      },
-      {
-        onConflict: "word",
-      },
-    );
-
-    console.log("Cached word definition for:", word);
-  } else {
-    console.log("Skipping cache for word with no valid definition:", word);
-  }
-
-  return createJsonResponse({
+  // Build response immediately, fire cache upsert without blocking
+  const response = createJsonResponse({
     wordWithVowels,
     definition,
     examples: [],
@@ -258,4 +158,35 @@ FORMS:
     forms,
     transliteration,
   });
+
+  if (hasValidDefinition) {
+    const shortEnglish = definition.trim();
+
+    // Fire-and-forget: cache upsert + ensure log is written
+    Promise.all([
+      supabase.from("word_definitions").upsert(
+        {
+          word: word,
+          word_with_vowels: wordWithVowels,
+          definition: definition,
+          transliteration: transliteration || "",
+          examples: [],
+          notes: "",
+          forms: forms || [],
+          short_english: shortEnglish,
+          last_accessed: new Date().toISOString(),
+          access_count: 1,
+        },
+        { onConflict: "word" },
+      ).then(() => console.log("Cached word definition for:", word))
+       .catch((err: unknown) => console.error("Failed to cache definition:", err)),
+      logPromise,
+    ]);
+  } else {
+    console.log("Skipping cache for word with no valid definition:", word);
+    // Still ensure log completes
+    logPromise;
+  }
+
+  return response;
 }
