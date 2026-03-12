@@ -185,7 +185,7 @@ FORMS:
   } else {
     console.log("Skipping cache for word with no valid definition:", word);
     // Still ensure log completes
-    logPromise;
+    void logPromise;
   }
 
   return response;
