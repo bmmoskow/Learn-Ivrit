@@ -1,4 +1,4 @@
-import { GEMINI_URL } from "./config.ts";
+import { GEMINI_URL, THINKING_BUDGET } from "./config.ts";
 import {
   hashText,
   createJsonResponse,
@@ -59,6 +59,7 @@ export async function handleTranslate(
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: THINKING_BUDGET },
       },
     }),
   });
