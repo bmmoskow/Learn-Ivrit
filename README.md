@@ -20,7 +20,7 @@ Save and organize translated passages into bookmark folders for easy retrieval.
 
 ### Word Definitions & Vocabulary
 
-Click any Hebrew word to see its definition, transliteration, vowelized form, example sentences, and related word forms. Add words to your personal vocabulary list with a single click.
+Click any Hebrew word to see its definition, transliteration, vowelized form, and related word forms. Add words to your personal vocabulary list with a single click.
 
 ### Vocabulary Testing
 
@@ -66,6 +66,7 @@ supabase/
 ```
 
 Each feature folder follows the pattern:
+
 - `Component.tsx` — Container (connects hook to UI)
 - `ComponentUI.tsx` — Presentational component
 - `useComponent.ts` — Custom hook (state & logic)
@@ -84,15 +85,16 @@ development → integration → ui → main
 
 Each branch runs progressively more checks before auto-promoting to the next:
 
-| Workflow | File | Trigger | Checks |
-|----------|------|---------|--------|
-| **Base Checks** | `.github/workflows/base-checks.yml` | Called by others | Build |
-| **Development** | `.github/workflows/development.yml` | Push/PR to `development` | Base checks → Unit tests → Promote to `integration` |
-| **Integration** | `.github/workflows/integration.yml` | Push to `integration` | Development checks → Promote to `ui` |
-| **UI** | `.github/workflows/ui.yml` | Push to `ui` | Integration checks → Promote to `main` |
-| **Production** | `.github/workflows/main.yml` | Push to `main` | UI checks + Security audit |
-| **Security** | `.github/workflows/security.yml` | Called by Production | npm audit, Trivy scan, license check |
-| **Tests** | `.github/workflows/test.yml` | Push/PR to `main` | Vitest + Build |
+| Description     | Workflow File     | Trigger                  | Checks                                              |
+| --------------- | ----------------- | ------------------------ | --------------------------------------------------- |
+| **Base Checks** | `base-checks.yml` | Called by others         | Build                                               |
+| **Development** | `development.yml` | Push/PR to `development` | Base checks → Unit tests → Promote to `integration` |
+| **Integration** | `integration.yml` | Push to `integration`    | Development checks → Promote to `ui`                |
+| **UI**          | `ui.yml`          | Push to `ui`             | Integration checks → Promote to `main`              |
+| **Security**    | `security.yml`    | Called by Production     | npm audit, Trivy scan, license check                |
+| **Production**  | `main.yml`        | Push to `main`           | UI checks + Security audit                          |
+
+All workflow files are in `.github/workflows/`.
 
 Planned additions (currently commented out): ESLint, TypeScript type checking, integration tests, E2E tests (Playwright), and CodeQL analysis.
 
@@ -100,13 +102,18 @@ Planned additions (currently commented out): ESLint, TypeScript type checking, i
 
 ## Commands
 
-### Development
+### Build
 
 ```bash
-npm run dev              # Start dev server with hot reload
-npm run build            # TypeScript check + production build
-npm run build:dev        # Development build (no type checking)
-npm run preview          # Preview production build locally
+npm run build:prod       # TypeScript check + production build
+npm run build:dev        # Development build (no type checking, no minification)
+```
+
+### Deploy
+
+```bash
+npm run deploy:dev       # Start dev server with hot reload (HMR)
+npm run deploy:prod      # Serve production build locally
 ```
 
 ### Testing
@@ -127,8 +134,8 @@ npm run typecheck        # TypeScript type checking (no emit)
 ### Security
 
 ```bash
-npm run security:audit   # Custom deep dependency audit script
 npm run security:base    # npm audit + audit-ci (moderate level)
+npm run security:audit   # Custom deep dependency audit script
 ```
 
 ---
@@ -140,6 +147,7 @@ npm run security:base    # npm audit + audit-ci (moderate level)
 - **Backend** — Supabase (Auth, PostgreSQL, Edge Functions)
 - **AI** — Google Gemini API (translation, definitions, passage generation)
 - **External APIs** — Sefaria (Biblical texts)
+- **Email** — Resend
 - **Testing** — Vitest, React Testing Library
 - **CI/CD** — GitHub Actions
 
@@ -156,7 +164,7 @@ cd learn-ivrit
 npm install
 
 # Start the development server
-npm run dev
+npm run deploy:dev
 ```
 
 The app requires a Supabase project with the appropriate tables and Edge Functions deployed. See `supabase/` for configuration.
