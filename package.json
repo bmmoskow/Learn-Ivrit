@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "generate-types": "tsx scripts/generate-types.ts",
     "test": "vitest run",
-    "test:unit": "vitest run --include 'src/**/*.unittest.{ts,tsx}'",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:watch": "vitest",
     "security:audit": "node scripts/security-audit.js",
     "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"
