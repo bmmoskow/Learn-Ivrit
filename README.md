@@ -1,6 +1,26 @@
 # Learn Ivrit (לימוד עברית)
 
-A Hebrew language learning application that helps users translate, study, and master Hebrew vocabulary through multiple input methods, interactive definitions, and adaptive testing.
+A Hebrew language learning application that translates Hebrew text, lets users explore word meanings, and builds adaptive vocabulary tests.
+
+🔗 **Live demo:** https://learn-ivrit.lovable.app/
+
+## Why I Built This
+
+I originally built Learn-Ivrit to automate a Hebrew learning workflow I had been doing manually: 
+translating passages, looking up word definitions, maintaining vocabulary lists, 
+then testing and re-testing my knowledge. 
+The project evolved into a full application that combines translation, vocabulary tracking, 
+and adaptive testing into a single system.
+
+## 30-Second Overview
+
+1. Translate Hebrew text from pasted input, uploaded images (OCR), webpage extraction, or passages generated with AI.
+2. Click any Hebrew word to view its definition, transliteration, and related forms, and add it to your vocabulary list.
+3. Practice vocabulary using flashcards, multiple choice, or fill-in-the-blank quizzes.
+4. The system prioritizes words you struggle with to reinforce learning over time.
+
+Create an account to save vocabulary and track progress. 
+A `Guest` mode is also available, but vocabulary cannot be saved between sessions.
 
 ## Features
 
@@ -85,18 +105,18 @@ development → integration → ui → main
 
 Each branch runs progressively more checks before auto-promoting to the next:
 
-| Description     | Workflow File     | Trigger                  | Checks                                              |
-| --------------- | ----------------- | ------------------------ | --------------------------------------------------- |
-| **Base Checks** | `base-checks.yml` | Called by others         | Build                                               |
-| **Development** | `development.yml` | Push/PR to `development` | Base checks → Unit tests → Promote to `integration` |
-| **Integration** | `integration.yml` | Push to `integration`    | Development checks → Promote to `ui`                |
-| **UI**          | `ui.yml`          | Push to `ui`             | Integration checks → Promote to `main`              |
-| **Security**    | `security.yml`    | Called by Production     | npm audit, Trivy scan, license check                |
-| **Production**  | `main.yml`        | Push to `main`           | UI checks + Security audit                          |
+| Description     | Workflow File     | Trigger                  | Checks                                                  |
+| --------------- | ----------------- | ------------------------ |---------------------------------------------------------|
+| **Base Checks** | `base-checks.yml` | Called by others         | Build, ESlint, TypeScript type checking, basic security |
+| **Development** | `development.yml` | Push/PR to `development` | Base checks → Unit tests → Promote to `integration`     |
+| **Integration** | `integration.yml` | Push to `integration`    | Development checks → Promote to `ui`                    |
+| **UI**          | `ui.yml`          | Push to `ui`             | Integration checks → Promote to `main`                  |
+| **Security**    | `security.yml`    | Called by Production     | npm audit, Trivy scan, license check                    |
+| **Production**  | `main.yml`        | Push to `main`           | UI checks + Security audit                              |
 
 All workflow files are in `.github/workflows/`.
 
-Planned additions (currently commented out): ESLint, TypeScript type checking, integration tests, E2E tests (Playwright), and CodeQL analysis.
+Planned additions: integration, UI, and E2E tests.
 
 ---
 
