@@ -119,9 +119,9 @@ npm run deploy:prod      # Serve production build locally
 ### Testing
 
 ```bash
-npm run test             # Run all unit tests (single run)
-npm run test:unit        # Alias for above
-npm run test:watch       # Run tests in watch mode
+npm run test             # Run all tests (unit + integration + ui (not all implemented yet))
+npm run test:unit        # Run only unit tests
+npm run test:watch       # Run all tests in watch mode
 ```
 
 ### Code Quality

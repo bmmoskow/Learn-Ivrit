@@ -7,13 +7,14 @@
   "scripts": {
     "build:dev": "vite build --mode development",
     "build:prod": "tsc && vite build",
+    "dev": "vite",
     "deploy:dev": "vite",
     "deploy:prod": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "generate-types": "tsx scripts/generate-types.ts",
     "test": "vitest run",
-    "test:unit": "vitest run",
+    "test:unit": "vitest run --include 'src/**/*.unittest.{ts,tsx}'",
     "test:watch": "vitest",
     "security:audit": "node scripts/security-audit.js",
     "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"
