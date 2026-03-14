@@ -63,6 +63,8 @@ An adaptive algorithm prioritizes words you struggle with and tracks your progre
 ### Translation Panel
 ![Translation Panel](public/TranslationPanel.png)
 
+![Actual Translation](public/ActualTranslation.png)
+
 ![Actual Translation and Word Popup](public/ActualTranslationAndPopup.png)
 
 ### Vocabulary List
