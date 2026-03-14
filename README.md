@@ -1,4 +1,4 @@
-# Learn Ivrit (לימוד עברית)
+# Learn Ivrit (לימוד עברית) — Hebrew Language Learning App
 
 A Hebrew language learning application that translates Hebrew text, lets users explore word meanings, and builds adaptive vocabulary tests.
 
@@ -57,6 +57,20 @@ An adaptive algorithm prioritizes words you struggle with and tracks your progre
 - **Dashboard** — View learning statistics and progress charts
 - **Settings** — Manage account and preferences
 - **FAQ, Contact, Privacy Policy, Terms of Service**
+
+## Screenshots
+
+### Translation Panel
+![Translation Panel](public/TranslationPanel.png)
+
+![Actual Translation and Word Popup](public/ActualTranslationAndPopup.png)
+
+### Vocabulary List
+
+![Vocabulary List](public/VocabularyList.png)
+
+### Vocabulary Testing
+![Vocabulary Testing](public/Test.png)
 
 ---
 
@@ -177,7 +191,7 @@ npm run security:audit   # Custom deep dependency audit script
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/learn-ivrit.git
+git clone https://github.com/bmmoskow/learn-ivrit.git
 cd learn-ivrit
 
 # Install dependencies
