@@ -410,6 +410,17 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       if (cached?.translation) {
         console.log("Cache hit for chunk hash:", contentHash);
         supabase.rpc("increment_translation_access", { cache_id: cached.id }).then();
+        // Log cache hit to api_usage_logs
+         (supabase as any).from("api_usage_logs").insert({
+           user_id: user?.id || "guest-user",
+           request_type: "translate",
+           endpoint: "/translate",
+           prompt_tokens: 0,
+           candidates_tokens: 0,
+           thinking_tokens: 0,
+           cache_hit: true,
+           model: "cache",
+         }).then();
         return cached.translation;
       }
 

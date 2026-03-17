@@ -84,6 +84,83 @@ export async function logRequest(
   });
 }
 
+export interface GeminiUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  thoughtsTokenCount?: number;
+  totalTokenCount?: number;
+}
+
+export function extractUsageMetadata(geminiData: Record<string, unknown>): GeminiUsageMetadata {
+  const usage = (geminiData?.usageMetadata || {}) as GeminiUsageMetadata;
+  return {
+    promptTokenCount: usage.promptTokenCount || 0,
+    candidatesTokenCount: usage.candidatesTokenCount || 0,
+    thoughtsTokenCount: usage.thoughtsTokenCount || 0,
+    totalTokenCount: usage.totalTokenCount || 0,
+  };
+}
+
+export interface PricingRecord {
+  id: string;
+  model: string;
+  prompt_cost_per_million: number;
+  candidates_cost_per_million: number;
+  thinking_cost_per_million: number;
+}
+
+export async function getCurrentPricing(
+  supabase: SupabaseClient,
+  model: string,
+): Promise<PricingRecord | null> {
+  const { data, error } = await supabase
+    .from("api_pricing")
+    .select("id, model, prompt_cost_per_million, candidates_cost_per_million, thinking_cost_per_million")
+    .eq("model", model)
+    .lte("effective_from", new Date().toISOString())
+    .order("effective_from", { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error) {
+    console.error("Failed to fetch pricing for model", model, error);
+    return null;
+  }
+  return data as PricingRecord;
+}
+
+export async function logApiUsage(
+  supabase: SupabaseClient,
+  userId: string,
+  requestType: string,
+  endpoint: string,
+  usage: GeminiUsageMetadata,
+  model: string,
+  cacheHit: boolean = false,
+): Promise<void> {
+  const pricing = await getCurrentPricing(supabase, model);
+
+  const promptTokens = usage.promptTokenCount || 0;
+  const candidatesTokens = cacheHit ? 0 : (usage.candidatesTokenCount || 0);
+  const thinkingTokens = cacheHit ? 0 : (usage.thoughtsTokenCount || 0);
+
+  try {
+    await supabase.from("api_usage_logs").insert({
+      user_id: userId,
+      request_type: requestType,
+      endpoint: endpoint,
+      prompt_tokens: promptTokens,
+      candidates_tokens: candidatesTokens,
+      thinking_tokens: thinkingTokens,
+      cache_hit: cacheHit,
+      model: model,
+      pricing_id: pricing?.id || null,
+    });
+  } catch (err) {
+    console.error("Failed to log API usage:", err);
+  }
+}
+
 export async function hashText(text: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);

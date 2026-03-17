@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../../supabase/client";
 import { generateBasicHebrewForms } from "../../../utils/hebrewForms/hebrewFormsUtils";
@@ -41,7 +41,7 @@ export function useWordDefinitionPopup({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [forceRefresh, setForceRefresh] = useState(false);
+  const forceRefreshRef = useRef(false);
 
   const checkIfSaved = useCallback(
     async (wordToCheck?: string) => {
@@ -65,13 +65,14 @@ export function useWordDefinitionPopup({
     setError("");
 
     try {
-      const requestKey = createRequestKey("define-word", { word: currentWord, forceRefresh });
+      const isForceRefresh = forceRefreshRef.current;
+      const requestKey = createRequestKey("define-word", { word: currentWord, forceRefresh: isForceRefresh });
 
       const { data, shortEnglish } = await requestDeduplicator.dedupe(requestKey, async () => {
         let data;
         let shortEnglish = "No translation";
 
-        if (!forceRefresh) {
+        if (!isForceRefresh) {
           const { data: cachedData } = await supabase
             .from("word_definitions")
             .select(
@@ -93,6 +94,18 @@ export function useWordDefinitionPopup({
               })
               .eq("word", currentWord)
               .then(() => {});
+
+            // Log cache hit to api_usage_logs
+            (supabase as any).from("api_usage_logs").insert({
+               user_id: user?.id || "guest-user",
+               request_type: "define",
+               endpoint: "/define",
+               prompt_tokens: 0,
+               candidates_tokens: 0,
+               thinking_tokens: 0,
+               cache_hit: true,
+               model: "cache",
+             }).then();
           }
         }
 
@@ -128,9 +141,7 @@ export function useWordDefinitionPopup({
           data = mapped.data;
           shortEnglish = mapped.shortEnglish;
 
-          if (forceRefresh) {
-            setForceRefresh(false);
-          }
+          forceRefreshRef.current = false;
         }
 
         return { data, shortEnglish };
@@ -187,15 +198,16 @@ export function useWordDefinitionPopup({
     } finally {
       setLoading(false);
     }
-  }, [currentWord, forceRefresh, user, checkIfSaved]);
+  }, [currentWord, user, checkIfSaved]);
 
   useEffect(() => {
     fetchDefinition();
   }, [fetchDefinition]);
 
   const handleRefresh = useCallback(() => {
-    setForceRefresh(true);
-  }, []);
+    forceRefreshRef.current = true;
+    fetchDefinition();
+  }, [fetchDefinition]);
 
   const hasValidDefinition = !!(definition &&
     definition.definition &&

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation/Navigation";
 import { Footer } from "./components/Footer/Footer";
+import { AdminCostFooter } from "./components/AdminCostFooter";
 
 // Lazy load route components for code-splitting
 const Dashboard = lazy(() => import("./components/Dashboard/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -12,6 +13,7 @@ const VocabularyList = lazy(() => import("./components/VocabularyList/Vocabulary
 const TestPanel = lazy(() => import("./components/TestPanel/TestPanel").then(m => ({ default: m.TestPanel })));
 const FAQ = lazy(() => import("./pages/FAQ").then(m => ({ default: m.FAQ })));
 const Settings = lazy(() => import("./pages/Settings"));
+const Admin = lazy(() => import("./pages/Admin"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -73,6 +75,7 @@ function AppContent() {
         <Navigation currentView={currentView} onViewChange={handleViewChange} />
         {children}
         <Footer />
+        <AdminCostFooter />
       </div>
     </ProtectedRoute>
   );
@@ -92,6 +95,7 @@ function AppContent() {
         <Route path="/test" element={protectedLayout(<TestPanel />)} />
         <Route path="/faq" element={protectedLayout(<FAQ />)} />
         <Route path="/settings" element={protectedLayout(<Settings />)} />
+        <Route path="/admin" element={protectedLayout(<Admin />)} />
       </Routes>
     </Suspense>
   );
