@@ -1,8 +1,10 @@
-import { GEMINI_URL } from "./config.ts";
+import { GEMINI_URL, GEMINI_MODEL } from "./config.ts";
 import {
   corsHeaders,
   checkRateLimit,
   logRequest,
+  logApiUsage,
+  extractUsageMetadata,
   createErrorResponse,
   createJsonResponse,
   SupabaseClient,
@@ -79,13 +81,20 @@ export async function handleOcr(
 
   const data = await response.json();
   const extractedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const usage = extractUsageMetadata(data);
 
   console.log("Extracted text length:", extractedText.length);
   console.log("First 200 chars:", extractedText.substring(0, 200));
+  console.log(`Token usage - input: ${usage.promptTokenCount}, output: ${usage.candidatesTokenCount}, thinking: ${usage.thoughtsTokenCount}`);
 
   if (!extractedText.trim()) {
     return createErrorResponse("No Hebrew text found in the image. Please try a clearer image.", 400);
   }
+
+  // Log usage (fire-and-forget)
+  logApiUsage(supabase, rateLimitId, "ocr", "/ocr", usage, GEMINI_MODEL).catch(
+    (err: unknown) => console.error("Failed to log OCR usage:", err)
+  );
 
   return createJsonResponse({ hebrewText: extractedText.trim() });
 }

@@ -1,9 +1,19 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { ReactNode } from "react";
 import { useTranslationPanel } from "./useTranslationPanel";
 import { AuthProvider } from "../../contexts/AuthContext/AuthContext";
 import { requestDeduplicator } from "../../utils/requestDeduplicator/requestDeduplicator";
+
+const { mockNotifyNewTransaction, mockClearLastTransaction } = vi.hoisted(() => ({
+  mockNotifyNewTransaction: vi.fn(),
+  mockClearLastTransaction: vi.fn(),
+}));
+
+vi.mock("../Admin/useLastTransaction", () => ({
+  notifyNewTransaction: mockNotifyNewTransaction,
+  clearLastTransaction: mockClearLastTransaction,
+}));
 
 // Mock the Supabase client
 vi.mock("../../../supabase/client", () => ({
@@ -1970,6 +1980,233 @@ describe("useTranslationPanel", () => {
         expect(result.current.error).toBe("Please upload an image file");
         expect(mockFetch).not.toHaveBeenCalledWith(expect.stringContaining("/ocr"), expect.anything());
       });
+    });
+  });
+
+  describe("API costing and DB logging", () => {
+    beforeEach(() => {
+      vi.stubEnv("VITE_SUPABASE_URL", "https://test.supabase.co");
+      vi.stubEnv("VITE_SUPABASE_ANON_KEY", "test-anon-key");
+      mockNotifyNewTransaction.mockClear();
+      mockClearLastTransaction.mockClear();
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("calls clearLastTransaction at the start of translateText", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      await vi.waitFor(() => {
+        expect(mockClearLastTransaction).toHaveBeenCalled();
+      });
+    });
+
+    it("calls notifyNewTransaction after a successful API translation", async () => {
+      setupTranslationMocks();
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      await vi.waitFor(() => {
+        expect(mockNotifyNewTransaction).toHaveBeenCalled();
+      });
+    });
+
+    it("logs cache hit to api_usage_logs with zero tokens when translation is cached", async () => {
+      // Set up session
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      // Mock translation cache hit
+      const mockFrom = vi.mocked(supabase.from);
+      const mockInsertFn = vi.fn().mockReturnValue({ then: vi.fn((cb: () => void) => { cb(); }) });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockFrom.mockImplementation((table: string): any => {
+        if (table === "translation_cache") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: "cache-id", translation: "Hello" },
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "api_usage_logs") {
+          return { insert: mockInsertFn };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+          rpc: vi.fn().mockResolvedValue({ error: null }),
+        };
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      await vi.waitFor(() => {
+        expect(mockInsertFn).toHaveBeenCalledWith(
+          expect.objectContaining({
+            request_type: "translate",
+            endpoint: "/translate",
+            prompt_tokens: 0,
+            candidates_tokens: 0,
+            thinking_tokens: 0,
+            cache_hit: true,
+            model: "cache",
+          }),
+        );
+      });
+    });
+
+    it("calls notifyNewTransaction after logging a cache hit", async () => {
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", app_metadata: {}, user_metadata: {}, aud: "authenticated", created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      const mockFrom = vi.mocked(supabase.from);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockFrom.mockImplementation((table: string): any => {
+        if (table === "translation_cache") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: "cache-id", translation: "Hello" },
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "api_usage_logs") {
+          return {
+            insert: vi.fn().mockReturnValue({
+              then: vi.fn((cb: () => void) => { cb(); }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      await vi.waitFor(() => {
+        expect(mockNotifyNewTransaction).toHaveBeenCalled();
+      });
+    });
+
+    it("does not log cache hit when translation cache misses and API is called", async () => {
+      setupTranslationMocks();
+
+      const mockFrom = vi.mocked(supabase.from);
+      const apiUsageInserts: unknown[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockFrom.mockImplementation((table: string): any => {
+        if (table === "translation_cache") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          };
+        }
+        if (table === "api_usage_logs") {
+          return {
+            insert: vi.fn((data: unknown) => {
+              apiUsageInserts.push(data);
+              return { then: vi.fn((cb: () => void) => cb()) };
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                gte: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({ data: [], error: null }),
+                }),
+              }),
+              maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            }),
+          }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setHebrewText("שלום");
+      });
+
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+      });
+
+      // No cache hit should be logged from the frontend
+      const cacheHitLogs = apiUsageInserts.filter(
+        (entry: unknown) => (entry as Record<string, unknown>).cache_hit === true,
+      );
+      expect(cacheHitLogs.length).toBe(0);
     });
   });
 });

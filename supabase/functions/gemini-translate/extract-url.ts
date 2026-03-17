@@ -225,7 +225,14 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     return createErrorResponse("URL is required", 400);
   }
 
-  const urlToFetch = targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`;
+  // Validate that input looks like a URL before processing
+  const trimmed = targetUrl.trim();
+  const urlPattern = /^(https?:\/\/)?[\w.-]+\.[a-z]{2,}/i;
+  if (!urlPattern.test(trimmed)) {
+    return createErrorResponse("Invalid URL. Please enter a valid web address (e.g., https://www.example.com).", 400);
+  }
+
+  const urlToFetch = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
   console.log("Fetching URL:", urlToFetch);
 
   const response = await fetch(urlToFetch, {
