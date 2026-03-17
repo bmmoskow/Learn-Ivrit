@@ -4,7 +4,7 @@ import { AuthProvider, useAuth } from "./contexts/AuthContext/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation/Navigation";
 import { Footer } from "./components/Footer/Footer";
-import { AdminCostFooter } from "./components/AdminCostFooter";
+import { AdminCostFooter } from "./components/AdminCostFooter/AdminCostFooter";
 
 // Lazy load route components for code-splitting
 const Dashboard = lazy(() => import("./components/Dashboard/Dashboard").then(m => ({ default: m.Dashboard })));

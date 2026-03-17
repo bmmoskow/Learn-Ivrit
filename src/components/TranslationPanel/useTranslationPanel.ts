@@ -6,6 +6,7 @@ import { requestDeduplicator, createRequestKey } from "../../utils/requestDedupl
 import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks";
 import { getAuthHeader } from "../../utils/auth/getAuthHeader";
 import { APP_CONFIG } from "../../config/app";
+import { notifyNewTransaction, clearLastTransaction } from "../Admin/useLastTransaction";
 import {
   cleanWord,
   getSentenceContext,
@@ -421,7 +422,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
            thinking_tokens: 0,
            cache_hit: true,
            model: "cache",
-         }).then();
+          }).then(() => { notifyNewTransaction(); });
         return cached.translation;
       }
 
@@ -450,6 +451,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       // Collapse any \n\n inside a single chunk's translation to \n
       // to preserve 1:1 paragraph alignment with source text
       const raw = data.translation || "";
+      notifyNewTransaction();
       return raw.replace(/\n\n+/g, "\n");
     });
   };
@@ -530,6 +532,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
     setTranslating(true);
     setError("");
+    clearLastTransaction();
 
     // Per-article rate limit check (one check per translateText call)
     const allowed = await checkArticleRateLimit();

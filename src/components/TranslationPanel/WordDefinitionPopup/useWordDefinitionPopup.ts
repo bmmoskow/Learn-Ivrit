@@ -3,6 +3,7 @@ import { useAuth } from "../../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../../supabase/client";
 import { generateBasicHebrewForms } from "../../../utils/hebrewForms/hebrewFormsUtils";
 import { requestDeduplicator, createRequestKey } from "../../../utils/requestDeduplicator/requestDeduplicator";
+import { notifyNewTransaction, clearLastTransaction } from "../../Admin/useLastTransaction";
 import {
   Definition,
   romanizeHebrew,
@@ -63,6 +64,7 @@ export function useWordDefinitionPopup({
   const fetchDefinition = useCallback(async () => {
     setLoading(true);
     setError("");
+    clearLastTransaction();
 
     try {
       const isForceRefresh = forceRefreshRef.current;
@@ -106,7 +108,7 @@ export function useWordDefinitionPopup({
                thinking_tokens: 0,
                cache_hit: true,
                model: "cache",
-             }).then();
+             }).then(() => { notifyNewTransaction(); });
           }
         }
 
@@ -143,6 +145,7 @@ export function useWordDefinitionPopup({
           shortEnglish = mapped.shortEnglish;
 
           forceRefreshRef.current = false;
+          notifyNewTransaction();
         }
 
         return { data, shortEnglish };
