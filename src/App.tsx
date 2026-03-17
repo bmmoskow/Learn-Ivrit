@@ -13,7 +13,7 @@ const VocabularyList = lazy(() => import("./components/VocabularyList/Vocabulary
 const TestPanel = lazy(() => import("./components/TestPanel/TestPanel").then(m => ({ default: m.TestPanel })));
 const FAQ = lazy(() => import("./pages/FAQ").then(m => ({ default: m.FAQ })));
 const Settings = lazy(() => import("./pages/Settings"));
-const Admin = lazy(() => import("./pages/Admin"));
+const Admin = lazy(() => import("./components/Admin/Admin"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 const Contact = lazy(() => import("./pages/Contact"));
