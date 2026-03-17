@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useWordDefinitionPopup } from "./useWordDefinitionPopup";
+import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
+import React from "react";
+
+const { mockNotifyNewTransaction, mockClearLastTransaction } = vi.hoisted(() => ({
+  mockNotifyNewTransaction: vi.fn(),
+  mockClearLastTransaction: vi.fn(),
+}));
 
 const waitFor = async (callback: () => void | Promise<void>, options?: { timeout?: number }) => {
   const timeout = options?.timeout || 1000;
@@ -15,8 +22,6 @@ const waitFor = async (callback: () => void | Promise<void>, options?: { timeout
   }
   await callback();
 };
-import { AuthProvider } from "../../../contexts/AuthContext/AuthContext";
-import React from "react";
 
 const mockInsert = vi.fn().mockReturnValue({
   select: vi.fn().mockReturnValue({
@@ -36,6 +41,11 @@ let mockSession: { user: { id: string }; access_token: string } | null = {
   user: { id: "test-user-id" },
   access_token: "test-token",
 };
+
+vi.mock("../../Admin/useLastTransaction", () => ({
+  notifyNewTransaction: mockNotifyNewTransaction,
+  clearLastTransaction: mockClearLastTransaction,
+}));
 
 vi.mock("../../../../supabase/client", () => ({
   supabase: {
@@ -374,6 +384,25 @@ describe("useWordDefinitionPopup", () => {
           }),
         }),
       );
+    });
+
+    it("should notify the admin footer after a fresh definition lookup", async () => {
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            definition: "Peace, hello",
+            transliteration: "shalom",
+            wordWithVowels: "שָׁלוֹם",
+          }),
+      });
+
+      renderHook(() => useWordDefinitionPopup({ ...defaultProps, word: `שלום-${Date.now()}` }), { wrapper });
+
+      await waitFor(() => {
+        expect(mockNotifyNewTransaction).toHaveBeenCalledTimes(1);
+      });
     });
   });
 

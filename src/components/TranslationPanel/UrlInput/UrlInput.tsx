@@ -1,4 +1,4 @@
-import { Loader2, Link as LinkIcon } from "lucide-react";
+import { Loader2, Link as LinkIcon, Info } from "lucide-react";
 
 interface UrlInputProps {
   urlInput: string;
@@ -30,7 +30,7 @@ export function UrlInput({
           />
           <button
             onClick={loadFromUrl}
-            disabled={!urlInput.trim() || loadingUrl}
+            disabled={!urlInput.trim() || loadingUrl || !/^(https?:\/\/)?[\w.-]+\.[a-z]{2,}/i.test(urlInput.trim())}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {loadingUrl ? (
@@ -45,6 +45,10 @@ export function UrlInput({
               </>
             )}
           </button>
+        </div>
+        <div className="flex items-start gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-700">
+          <Info className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>Text extraction may not work for all websites. Sites with paywalls, heavy JavaScript, or non-standard layouts may produce incomplete or missing results.</span>
         </div>
         <button
           onClick={() => {
