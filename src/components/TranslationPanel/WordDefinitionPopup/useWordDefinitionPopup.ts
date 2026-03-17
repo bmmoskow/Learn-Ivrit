@@ -96,6 +96,7 @@ export function useWordDefinitionPopup({
               .then(() => {});
 
             // Log cache hit to api_usage_logs
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (supabase as any).from("api_usage_logs").insert({
                user_id: user?.id || "guest-user",
                request_type: "define",

@@ -139,6 +139,7 @@ export default function Admin() {
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (supabase as any)
       .from("api_usage_logs")
       .select("*, api_pricing(prompt_cost_per_million, candidates_cost_per_million, thinking_cost_per_million)")

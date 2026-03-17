@@ -14,13 +14,14 @@ export function useAdminRole() {
       return;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
       .maybeSingle()
-      .then(({ data }: { data: any }) => {
+      .then(({ data }: { data: Record<string, unknown> | null }) => {
         setIsAdmin(!!data);
         setLoading(false);
       });
