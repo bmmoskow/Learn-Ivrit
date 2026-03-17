@@ -1,10 +1,13 @@
-import { GEMINI_URL, THINKING_BUDGET } from "./config.ts";
+import { GEMINI_URL, THINKING_BUDGET, GEMINI_MODEL } from "./config.ts";
 import {
   corsHeaders,
   checkRateLimit,
   logRequest,
+  logApiUsage,
+  extractUsageMetadata,
   createJsonResponse,
   SupabaseClient,
+  GeminiUsageMetadata,
 } from "./shared.ts";
 
 export interface DefinitionRequest {
@@ -101,12 +104,16 @@ FORMS:
   let transliteration = "";
   let forms = [];
 
+  let usage: GeminiUsageMetadata = {};
+
   if (geminiResponse.ok) {
     const geminiData = await geminiResponse.json();
     console.log("Gemini full response:", JSON.stringify(geminiData).substring(0, 1000));
     const rawResponse = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    usage = extractUsageMetadata(geminiData);
 
     console.log("Gemini raw response for word definition:", rawResponse?.substring(0, 500));
+    console.log(`Token usage - input: ${usage.promptTokenCount}, output: ${usage.candidatesTokenCount}, thinking: ${usage.thoughtsTokenCount}`);
 
     if (rawResponse) {
       const wordMatch = rawResponse.match(/WORD:\s*([^\n]+)/i);
@@ -162,7 +169,7 @@ FORMS:
   if (hasValidDefinition) {
     const shortEnglish = definition.trim();
 
-    // Fire-and-forget: cache upsert + ensure log is written
+    // Fire-and-forget: cache upsert + ensure log is written + usage log
     Promise.all([
       supabase.from("word_definitions").upsert(
         {
@@ -181,11 +188,14 @@ FORMS:
       ).then(() => console.log("Cached word definition for:", word))
        .catch((err: unknown) => console.error("Failed to cache definition:", err)),
       logPromise,
+      logApiUsage(supabase, rateLimitId, "define", "/define", usage, GEMINI_MODEL),
     ]);
   } else {
     console.log("Skipping cache for word with no valid definition:", word);
-    // Still ensure log completes
     void logPromise;
+    logApiUsage(supabase, rateLimitId, "define", "/define", usage, GEMINI_MODEL).catch(
+      (err: unknown) => console.error("Failed to log define usage:", err)
+    );
   }
 
   return response;

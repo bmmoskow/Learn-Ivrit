@@ -1,7 +1,9 @@
-import { GEMINI_URL, THINKING_BUDGET } from "./config.ts";
+import { GEMINI_URL, THINKING_BUDGET, GEMINI_MODEL } from "./config.ts";
 import {
   hashText,
   createJsonResponse,
+  logApiUsage,
+  extractUsageMetadata,
   SupabaseClient,
 } from "./shared.ts";
 
@@ -14,6 +16,7 @@ export interface TranslateRequest {
 export async function handleTranslate(
   req: Request,
   supabase: SupabaseClient,
+  rateLimitId: string = "unknown",
 ): Promise<Response> {
   const { text, sourceLanguage, targetLanguage }: TranslateRequest = await req.json();
 
@@ -73,15 +76,22 @@ export async function handleTranslate(
   const candidate = data.candidates?.[0];
   const translation = candidate?.content?.parts?.[0]?.text || "";
   const finishReason = candidate?.finishReason;
+  const usage = extractUsageMetadata(data);
 
   console.log(`Translation finish reason:`, finishReason);
   console.log(`Translation length:`, translation.length);
+  console.log(`Token usage - input: ${usage.promptTokenCount}, output: ${usage.candidatesTokenCount}, thinking: ${usage.thoughtsTokenCount}`);
 
   if (finishReason === "MAX_TOKENS") {
     console.warn("Translation was truncated due to MAX_TOKENS");
   }
 
   await cacheTranslation(supabase, contentHash, text, translation, textLength);
+
+  // Log usage (fire-and-forget)
+  logApiUsage(supabase, rateLimitId, "translate", "/translate", usage, GEMINI_MODEL).catch(
+    (err: unknown) => console.error("Failed to log translate usage:", err)
+  );
 
   return createJsonResponse({ translation });
 }
