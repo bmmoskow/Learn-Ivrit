@@ -4,6 +4,7 @@ import { supabase } from "../../../../supabase/client";
 import { generateBasicHebrewForms } from "../../../utils/hebrewForms/hebrewFormsUtils";
 import { requestDeduplicator, createRequestKey } from "../../../utils/requestDeduplicator/requestDeduplicator";
 import { notifyNewTransaction, clearLastTransaction } from "../../Admin/useLastTransaction";
+import { hashUserIdCached } from "../../../utils/hashUserId";
 import {
   Definition,
   romanizeHebrew,
@@ -97,18 +98,20 @@ export function useWordDefinitionPopup({
               .eq("word", currentWord)
               .then(() => {});
 
-            // Log cache hit to api_usage_logs
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (supabase as any).from("api_usage_logs").insert({
-               user_id: user?.id || "guest-user",
-               request_type: "define",
-               endpoint: "/define",
-               prompt_tokens: 0,
-               candidates_tokens: 0,
-               thinking_tokens: 0,
-               cache_hit: true,
-               model: "cache",
-             }).then(() => { notifyNewTransaction(); });
+            // Log cache hit to api_usage_logs (hashed user_id for privacy)
+            hashUserIdCached(user?.id || "guest-user").then((hashedId) => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (supabase as any).from("api_usage_logs").insert({
+                user_id: hashedId,
+                request_type: "define",
+                endpoint: "/define",
+                prompt_tokens: 0,
+                candidates_tokens: 0,
+                thinking_tokens: 0,
+                cache_hit: true,
+                model: "cache",
+              }).then(() => { notifyNewTransaction(); });
+            });
           }
         }
 

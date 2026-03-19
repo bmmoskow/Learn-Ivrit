@@ -5,6 +5,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Navigation } from "./components/Navigation/Navigation";
 import { Footer } from "./components/Footer/Footer";
 import { AdminCostFooter } from "./components/AdminCostFooter/AdminCostFooter";
+import { usePageTracking } from "./hooks/usePageTracking";
 
 // Lazy load route components for code-splitting
 const Dashboard = lazy(() => import("./components/Dashboard/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -31,6 +32,7 @@ function AppContent() {
   const { isGuest, loading, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  usePageTracking();
   const [currentView, setCurrentView] = useState(() => {
     const saved = localStorage.getItem("currentView");
     return saved || "dashboard";
