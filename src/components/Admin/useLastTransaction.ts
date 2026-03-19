@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../../supabase/client";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { computeCost, UsageLogRaw } from "./adminUtils";
+import { hashUserIdCached } from "../../utils/hashUserId";
 
 export interface LastTransaction {
   request_type: string;
@@ -37,11 +38,13 @@ export function useLastTransaction() {
   const fetchSinceStart = useCallback(async () => {
     if (!user || !operationStartRef.current) return;
 
+    const hashedId = await hashUserIdCached(user.id);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data } = await (supabase as any)
       .from("api_usage_logs")
       .select("*, api_pricing(*)")
-      .eq("user_id", user.id)
+      .eq("user_id", hashedId)
       .gte("created_at", operationStartRef.current)
       .order("created_at", { ascending: false });
 
@@ -112,24 +115,28 @@ export function useLastTransaction() {
   useEffect(() => {
     if (!user) return;
 
-    const channel = supabase
-      .channel("admin-cost-footer")
-      .on(
-        "postgres_changes" as "system",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "api_usage_logs",
-          filter: `user_id=eq.${user.id}`,
-        } as Record<string, string>,
-        () => {
-          fetchSinceStart();
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    hashUserIdCached(user.id).then((hashedId) => {
+      channel = supabase
+        .channel("admin-cost-footer")
+        .on(
+          "postgres_changes" as "system",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "api_usage_logs",
+            filter: `user_id=eq.${hashedId}`,
+          } as Record<string, string>,
+          () => {
+            fetchSinceStart();
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [user, fetchSinceStart]);
 

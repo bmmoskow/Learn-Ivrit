@@ -31,7 +31,7 @@ export interface UseBookmarksReturn {
     name: string,
     hebrewText: string,
     source: string | null,
-    folderId?: string | null
+    folderId?: string | null,
   ) => Promise<Bookmark | null>;
   deleteBookmark: (bookmarkId: string) => Promise<boolean>;
   renameBookmark: (bookmarkId: string, newName: string) => Promise<boolean>;
@@ -50,11 +50,7 @@ export function useBookmarks(): UseBookmarksReturn {
   const fetchFolders = useCallback(async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("bookmark_folders")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("name");
+    const { data, error } = await supabase.from("bookmark_folders").select("*").eq("user_id", user.id).order("name");
 
     if (error) {
       console.error("Error fetching folders:", error);
@@ -67,11 +63,7 @@ export function useBookmarks(): UseBookmarksReturn {
   const fetchBookmarks = useCallback(async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("bookmarks")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("name");
+    const { data, error } = await supabase.from("bookmarks").select("*").eq("user_id", user.id).order("name");
 
     if (error) {
       console.error("Error fetching bookmarks:", error);
@@ -124,11 +116,7 @@ export function useBookmarks(): UseBookmarksReturn {
   const deleteFolder = async (folderId: string): Promise<boolean> => {
     if (!user) return false;
 
-    const { error } = await supabase
-      .from("bookmark_folders")
-      .delete()
-      .eq("id", folderId)
-      .eq("user_id", user.id);
+    const { error } = await supabase.from("bookmark_folders").delete().eq("id", folderId).eq("user_id", user.id);
 
     if (error) {
       console.error("Error deleting folder:", error);
@@ -164,7 +152,7 @@ export function useBookmarks(): UseBookmarksReturn {
     name: string,
     hebrewText: string,
     source: string | null,
-    folderId: string | null = null
+    folderId: string | null = null,
   ): Promise<Bookmark | null> => {
     if (!user) return null;
 
@@ -194,11 +182,7 @@ export function useBookmarks(): UseBookmarksReturn {
   const deleteBookmark = async (bookmarkId: string): Promise<boolean> => {
     if (!user) return false;
 
-    const { error } = await supabase
-      .from("bookmarks")
-      .delete()
-      .eq("id", bookmarkId)
-      .eq("user_id", user.id);
+    const { error } = await supabase.from("bookmarks").delete().eq("id", bookmarkId).eq("user_id", user.id);
 
     if (error) {
       console.error("Error deleting bookmark:", error);

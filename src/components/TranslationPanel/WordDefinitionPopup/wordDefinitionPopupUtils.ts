@@ -77,11 +77,18 @@ export const romanizeHebrew = (text: string): string => {
     .join("");
 };
 
-export const truncateShortEnglish = (text: string, maxLength: number = 40): string => {
+export const truncateShortEnglish = (text: string, maxLength: number = 120): string => {
   if (!text || text.trim() === "") {
     return "Translation unavailable";
   }
   const trimmed = text.trim();
+
+  // If the definition is a semicolon-delimited list of translations, do not truncate,
+  // otherwise we might chop in the middle of an item.
+  if (trimmed.includes(";")) {
+    return trimmed;
+  }
+
   if (trimmed.length <= maxLength) {
     return trimmed;
   }
@@ -113,6 +120,9 @@ export const mapCachedDataToDefinition = (cachedData: {
   forms: Json;
   short_english: string;
 }): { data: CachedData; shortEnglish: string } => {
+  // Older cached rows may have short_english truncated with "..."; prefer the full definition for UI.
+  const resolvedShortEnglish = cachedData.short_english.includes("...") ? cachedData.definition : cachedData.short_english;
+
   return {
     data: {
       wordWithVowels: cachedData.word_with_vowels,
@@ -121,9 +131,9 @@ export const mapCachedDataToDefinition = (cachedData: {
       examples: cachedData.examples || [],
       notes: cachedData.notes || "",
       forms: cachedData.forms || [],
-      shortEnglish: cachedData.short_english,
+      shortEnglish: resolvedShortEnglish,
     },
-    shortEnglish: cachedData.short_english,
+    shortEnglish: resolvedShortEnglish,
   };
 };
 

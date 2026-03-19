@@ -145,8 +145,9 @@ export async function logApiUsage(
   const thinkingTokens = cacheHit ? 0 : (usage.thoughtsTokenCount || 0);
 
   try {
+    const hashedUserId = await hashText(userId);
     await supabase.from("api_usage_logs").insert({
-      user_id: userId,
+      user_id: hashedUserId,
       request_type: requestType,
       endpoint: endpoint,
       prompt_tokens: promptTokens,

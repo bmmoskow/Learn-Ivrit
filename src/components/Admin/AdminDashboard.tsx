@@ -10,6 +10,7 @@ import {
 } from "../ui/table";
 import { useAdmin } from "./useAdmin";
 import { summarize, REQUEST_TYPES, TIME_PERIODS } from "./adminUtils";
+import { AdRevenueEstimator } from "./AdRevenueEstimator";
 
 export function AdminDashboard() {
   const { logs, loading, period, typeFilter, setPeriod, setTypeFilter, fetchLogs } = useAdmin();
@@ -162,6 +163,12 @@ export function AdminDashboard() {
           </div>
         </div>
 
+        {/* Ad Revenue Estimator */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Ad Revenue Estimator</h2>
+          <AdRevenueEstimator />
+        </div>
+
         {/* Recent logs table */}
         <div className="bg-white rounded-xl shadow p-5">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
@@ -215,9 +222,9 @@ export function AdminDashboard() {
                 )}
               </TableBody>
             </Table>
-          </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }

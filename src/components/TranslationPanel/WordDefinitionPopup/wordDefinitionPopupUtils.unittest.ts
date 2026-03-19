@@ -38,6 +38,11 @@ describe("truncateShortEnglish", () => {
     expect(truncateShortEnglish("short text")).toBe("short text");
   });
 
+  it("should not truncate semicolon-delimited translation lists", () => {
+    const text = "to renovate; to repair; to refurbish";
+    expect(truncateShortEnglish(text)).toBe(text);
+  });
+
   it("should truncate text over max length with ellipsis", () => {
     const longText = "This is a very long text that should be truncated";
     const result = truncateShortEnglish(longText, 20);
@@ -53,10 +58,10 @@ describe("truncateShortEnglish", () => {
     expect(truncateShortEnglish("   ")).toBe("Translation unavailable");
   });
 
-  it("should use default max length of 40", () => {
-    const text = "a".repeat(50);
+  it("should use default max length of 120", () => {
+    const text = "a".repeat(200);
     const result = truncateShortEnglish(text);
-    expect(result).toBe("a".repeat(40) + "...");
+    expect(result).toBe("a".repeat(120) + "...");
   });
 
   it("should trim whitespace before checking length", () => {
@@ -124,6 +129,23 @@ describe("mapCachedDataToDefinition", () => {
     expect(result.shortEnglish).toBe("peace");
   });
 
+  it("should prefer full definition when cached short_english is truncated", () => {
+    const cachedData = {
+      word_with_vowels: "שָׁלוֹם",
+      definition: "to renovate; to repair; to refurbish",
+      transliteration: "shalom",
+      examples: [],
+      notes: null,
+      forms: [],
+      short_english: "to renovate; to repair; to re...",
+    };
+
+    const result = mapCachedDataToDefinition(cachedData);
+
+    expect(result.shortEnglish).toBe("to renovate; to repair; to refurbish");
+    expect(result.data.shortEnglish).toBe("to renovate; to repair; to refurbish");
+  });
+
   it("should handle null/undefined optional fields", () => {
     const cachedData = {
       word_with_vowels: "מילה",
@@ -158,14 +180,15 @@ describe("mapApiResponseToDefinition", () => {
   });
 
   it("should truncate long definitions for shortEnglish", () => {
+    const longDef = "This is a very long definition that keeps going and going and going until it exceeds the maximum allowed length of one hundred and twenty characters for the short English translation field";
     const apiData = {
-      definition: "This is a very long definition that should be truncated to fit",
+      definition: longDef,
       transliteration: "test",
     };
 
     const result = mapApiResponseToDefinition(apiData);
 
-    expect(result.shortEnglish.length).toBeLessThanOrEqual(43); // 40 + "..."
+    expect(result.shortEnglish.length).toBeLessThanOrEqual(123); // 120 + "..."
     expect(result.shortEnglish).toContain("...");
   });
 
