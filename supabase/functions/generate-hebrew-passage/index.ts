@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { GEMINI_URL, RATE_LIMITS } from "./config.ts";
+import { GEMINI_URL, GEMINI_MODEL, RATE_LIMITS } from "./config.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -180,8 +180,13 @@ Deno.serve(async (req: Request) => {
     const candidate = geminiData.candidates?.[0];
     const finishReason = candidate?.finishReason;
     const passage = candidate?.content?.parts?.[0]?.text;
+    const usageMeta = geminiData.usageMetadata || {};
+    const inputTokens = usageMeta.promptTokenCount || 0;
+    const outputTokens = usageMeta.candidatesTokenCount || 0;
+    const thinkingTokens = usageMeta.thoughtsTokenCount || 0;
 
     console.log(`Gemini finish reason: ${finishReason}`);
+    console.log(`Token usage - input: ${inputTokens}, output: ${outputTokens}, thinking: ${thinkingTokens}`);
 
     if (!passage) {
       console.error("No passage generated from Gemini response:", geminiData);
@@ -193,6 +198,43 @@ Deno.serve(async (req: Request) => {
     }
 
     console.log(`Successfully generated passage with length: ${passage.length}`);
+
+    // Log usage with pricing reference (fire-and-forget)
+    const logUsage = async () => {
+      try {
+        const { data: pricing } = await supabase
+          .from("api_pricing")
+          .select("id")
+          .eq("model", GEMINI_MODEL)
+          .lte("effective_from", new Date().toISOString())
+          .order("effective_from", { ascending: false })
+          .limit(1)
+          .single();
+
+         // Hash user_id for privacy before logging
+         const encoder = new TextEncoder();
+         const hashData = encoder.encode(rateLimitId);
+         const hashBuffer = await crypto.subtle.digest("SHA-256", hashData);
+         const hashArray = Array.from(new Uint8Array(hashBuffer));
+         const hashedUserId = hashArray.map((b: number) => b.toString(16).padStart(2, "0")).join("");
+
+         await supabase.from("api_usage_logs").insert({
+           user_id: hashedUserId,
+           request_type: "passage_generation",
+           endpoint: "/generate-hebrew-passage",
+           prompt_tokens: inputTokens,
+           candidates_tokens: outputTokens,
+           thinking_tokens: thinkingTokens,
+           cache_hit: false,
+           model: GEMINI_MODEL,
+           pricing_id: pricing?.id || null,
+         });
+        console.log("Logged passage generation usage");
+      } catch (err) {
+        console.error("Failed to log usage:", err);
+      }
+    };
+    logUsage();
 
     return new Response(JSON.stringify({ passage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
