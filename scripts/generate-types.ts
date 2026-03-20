@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
-const SUPABASE_PROJECT_ID = 'ysmtibxbioftvczntckr';
+const SUPABASE_PROJECT_ID = 'btdbvqsqzodkkwuojilr';
 const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 
 async function generateTypes() {
