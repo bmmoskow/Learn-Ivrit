@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../../../supabase/client";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { computeCost, UsageLogRaw } from "./adminUtils";
-import { hashUserIdCached } from "../../utils/hashUserId";
+import { hashUserIdCached } from "../../utils/hashId";
 
 export interface LastTransaction {
   request_type: string;

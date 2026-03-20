@@ -7,7 +7,7 @@ import { Bookmark as BookmarkType } from "../../hooks/useBookmarks/useBookmarks"
 import { getAuthHeader } from "../../utils/auth/getAuthHeader";
 import { APP_CONFIG } from "../../config/app";
 import { notifyNewTransaction, clearLastTransaction } from "../Admin/useLastTransaction";
-import { hashUserIdCached } from "../../utils/hashUserId";
+import { hashUserIdCached } from "../../utils/hashId";
 import {
   cleanWord,
   getSentenceContext,
