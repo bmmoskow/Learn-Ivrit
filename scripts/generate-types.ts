@@ -27,6 +27,9 @@ async function generateTypes() {
     );
 
     if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('Response status:', response.status);
+      console.error('Response body:', errorBody);
       throw new Error(`Failed to fetch types: ${response.statusText}`);
     }
 
