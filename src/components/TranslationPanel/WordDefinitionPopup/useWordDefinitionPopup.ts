@@ -4,7 +4,7 @@ import { supabase } from "../../../../supabase/client";
 import { generateBasicHebrewForms } from "../../../utils/hebrewForms/hebrewFormsUtils";
 import { requestDeduplicator, createRequestKey } from "../../../utils/requestDeduplicator/requestDeduplicator";
 import { notifyNewTransaction, clearLastTransaction } from "../../Admin/useLastTransaction";
-import { hashUserIdCached } from "../../../utils/hashId/hashUserId";
+import { hashUserIdCached } from "../../../utils/hashId";
 import {
   Definition,
   romanizeHebrew,
