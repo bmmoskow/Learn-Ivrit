@@ -97,7 +97,7 @@ describe("AdRevenueEstimator", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     const module = await import("./useAdRevenue");
-    mockUseAdRevenue = module.useAdRevenue;
+    mockUseAdRevenue = module.useAdRevenue as ReturnType<typeof vi.fn>;
 
     mockUseAdRevenue.mockReturnValue({
       data: {

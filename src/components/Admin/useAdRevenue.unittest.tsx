@@ -78,12 +78,12 @@ vi.mock("../../../supabase/client", () => ({
 }));
 
 describe("useAdRevenue", () => {
-  let mockSupabase: ReturnType<typeof vi.fn>;
+  let mockSupabase: { from: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     vi.clearAllMocks();
     const { supabase } = await import("../../../supabase/client");
-    mockSupabase = supabase;
+    mockSupabase = supabase as unknown as { from: ReturnType<typeof vi.fn> };
 
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === "page_views_daily") {
@@ -350,7 +350,7 @@ describe("useAdRevenue", () => {
     });
 
     const pageViewsCall = mockSupabase.from.mock.calls.find(
-      (call) => call[0] === "page_views_daily"
+      (call: unknown[]) => call[0] === "page_views_daily"
     );
     expect(pageViewsCall).toBeDefined();
   });

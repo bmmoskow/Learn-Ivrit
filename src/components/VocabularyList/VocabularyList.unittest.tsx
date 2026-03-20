@@ -14,22 +14,13 @@ vi.mock("./VocabularyListUI", () => ({
 const mockWords: VocabularyWord[] = [
   {
     id: "1",
+    user_id: "user-1",
     hebrew_word: "שלום",
     english_translation: "peace",
-    part_of_speech: "noun",
-    example_sentence: "שלום לך",
-    example_translation: "peace to you",
-    notes: "",
+    definition: "peace",
+    transliteration: null,
     created_at: "2024-01-01",
     updated_at: "2024-01-01",
-    user_id: "user-1",
-    statistics: {
-      confidence_score: 80,
-      correct_count: 8,
-      total_attempts: 10,
-      consecutive_correct: 2,
-      last_tested: "2024-01-10",
-    },
   },
 ];
 
@@ -43,11 +34,11 @@ describe("VocabularyList", () => {
       words: mockWords,
       loading: false,
       searchQuery: "",
-      sortBy: "created_at" as const,
+      sortBy: "date" as const,
       editingId: null,
-      editForm: { hebrew_word: "", english_translation: "", part_of_speech: "", example_sentence: "", example_translation: "", notes: "" },
+      editForm: { hebrew_word: "", english_translation: "", definition: "" },
       showAddForm: false,
-      newWord: { hebrew_word: "", english_translation: "", part_of_speech: "", example_sentence: "", example_translation: "", notes: "" },
+      newWord: { hebrew_word: "", english_translation: "", definition: "", transliteration: "" },
       currentPage: 1,
       totalCount: 1,
       totalPages: 1,
@@ -63,6 +54,7 @@ describe("VocabularyList", () => {
       saveEdit: vi.fn(),
       cancelEdit: vi.fn(),
       deleteWord: vi.fn(),
+      loadVocabulary: vi.fn(),
     };
 
     const { useVocabularyList } = await import("./useVocabularyList");
@@ -77,11 +69,11 @@ describe("VocabularyList", () => {
       words: mockWords,
       loading: true,
       searchQuery: "test",
-      sortBy: "hebrew_word" as const,
+      sortBy: "alphabetical" as const,
       editingId: "1",
-      editForm: { hebrew_word: "שלום", english_translation: "peace", part_of_speech: "noun", example_sentence: "", example_translation: "", notes: "" },
+      editForm: { hebrew_word: "שלום", english_translation: "peace", definition: "peace" },
       showAddForm: true,
-      newWord: { hebrew_word: "חדש", english_translation: "new", part_of_speech: "adjective", example_sentence: "", example_translation: "", notes: "" },
+      newWord: { hebrew_word: "חדש", english_translation: "new", definition: "new", transliteration: "" },
       currentPage: 2,
       totalCount: 50,
       totalPages: 5,
@@ -97,6 +89,7 @@ describe("VocabularyList", () => {
       saveEdit: vi.fn(),
       cancelEdit: vi.fn(),
       deleteWord: vi.fn(),
+      loadVocabulary: vi.fn(),
     };
 
     const { useVocabularyList } = await import("./useVocabularyList");
@@ -110,7 +103,7 @@ describe("VocabularyList", () => {
         words: mockWords,
         loading: true,
         searchQuery: "test",
-        sortBy: "hebrew_word",
+        sortBy: "alphabetical",
         editingId: "1",
         showAddForm: true,
         currentPage: 2,
@@ -127,11 +120,11 @@ describe("VocabularyList", () => {
       words: [],
       loading: false,
       searchQuery: "",
-      sortBy: "created_at" as const,
+      sortBy: "date" as const,
       editingId: null,
-      editForm: { hebrew_word: "", english_translation: "", part_of_speech: "", example_sentence: "", example_translation: "", notes: "" },
+      editForm: { hebrew_word: "", english_translation: "", definition: "" },
       showAddForm: false,
-      newWord: { hebrew_word: "", english_translation: "", part_of_speech: "", example_sentence: "", example_translation: "", notes: "" },
+      newWord: { hebrew_word: "", english_translation: "", definition: "", transliteration: "" },
       currentPage: 1,
       totalCount: 0,
       totalPages: 0,
@@ -147,6 +140,7 @@ describe("VocabularyList", () => {
       saveEdit: vi.fn(),
       cancelEdit: vi.fn(),
       deleteWord: vi.fn(),
+      loadVocabulary: vi.fn(),
     };
 
     const { useVocabularyList } = await import("./useVocabularyList");

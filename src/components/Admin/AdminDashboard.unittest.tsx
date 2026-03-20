@@ -71,8 +71,8 @@ describe("AdminDashboard", () => {
     vi.clearAllMocks();
     const adminModule = await import("./useAdmin");
     const utilsModule = await import("./adminUtils");
-    mockUseAdmin = adminModule.useAdmin;
-    mockSummarize = utilsModule.summarize;
+    mockUseAdmin = adminModule.useAdmin as ReturnType<typeof vi.fn>;
+    mockSummarize = utilsModule.summarize as ReturnType<typeof vi.fn>;
 
     mockUseAdmin.mockReturnValue({
       logs: mockLogs,

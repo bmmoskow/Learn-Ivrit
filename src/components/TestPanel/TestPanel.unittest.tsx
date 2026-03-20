@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render } from "@testing-library/react";
 import { TestPanel } from "./TestPanel";
-import type { TestQuestion, TestState } from "./testPanelUtils";
+import type { TestQuestion } from "./testPanelUtils";
+import type { WordWithStats } from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
 
 vi.mock("./useTestPanel", () => ({
   useTestPanel: vi.fn(),
@@ -11,23 +12,22 @@ vi.mock("./TestPanelUI", () => ({
   TestPanelUI: vi.fn(() => <div data-testid="test-panel-ui">Test Panel UI</div>),
 }));
 
-const mockQuestion: TestQuestion = {
-  word: {
-    id: "1",
-    hebrew_word: "שלום",
-    english_translation: "peace",
-  },
-  options: ["peace", "hello", "goodbye", "thank you"],
-  correctAnswer: "peace",
+const mockWord: WordWithStats = {
+  id: "1",
+  user_id: "user-1",
+  hebrew_word: "שלום",
+  english_translation: "peace",
+  definition: "peace",
+  transliteration: null,
+  created_at: null,
+  updated_at: null,
 };
 
-const mockTest: TestState = {
-  questions: [mockQuestion],
-  currentQuestionIndex: 0,
-  answers: [],
-  startTime: Date.now(),
-  testType: "multiple_choice",
+const mockQuestion: TestQuestion = {
+  word: mockWord,
 };
+
+const mockTest: TestQuestion[] = [mockQuestion];
 
 describe("TestPanel", () => {
   beforeEach(() => {
@@ -42,12 +42,13 @@ describe("TestPanel", () => {
       loading: false,
       testType: "multiple_choice",
       questionCount: 10,
-      currentTest: null,
+      currentTest: [],
       currentQuestionIndex: 0,
       currentQuestion: null,
       showResults: false,
       maxQuestionCount: 20,
       minQuestionCount: 5,
+      testId: null,
       setQuestionCount: vi.fn(),
       startTest: vi.fn(),
       handleAnswer: vi.fn(),
@@ -63,7 +64,7 @@ describe("TestPanel", () => {
     const { TestPanelUI } = await import("./TestPanelUI");
 
     const mockHook = {
-      words: [{ id: "1", hebrew_word: "שלום", english_translation: "peace" }],
+      words: [mockWord],
       loading: true,
       testType: "flashcard" as const,
       questionCount: 15,
@@ -73,6 +74,7 @@ describe("TestPanel", () => {
       showResults: true,
       maxQuestionCount: 25,
       minQuestionCount: 10,
+      testId: "test-123",
       setQuestionCount: vi.fn(),
       startTest: vi.fn(),
       handleAnswer: vi.fn(),
@@ -106,12 +108,13 @@ describe("TestPanel", () => {
       loading: false,
       testType: "multiple_choice" as const,
       questionCount: 10,
-      currentTest: null,
+      currentTest: [],
       currentQuestionIndex: 0,
       currentQuestion: null,
       showResults: false,
       maxQuestionCount: 20,
       minQuestionCount: 5,
+      testId: null,
       setQuestionCount: vi.fn(),
       startTest: vi.fn(),
       handleAnswer: vi.fn(),
@@ -141,19 +144,20 @@ describe("TestPanel", () => {
 
     vi.mocked(useTestPanel).mockReturnValue({
       words: [
-        { id: "1", hebrew_word: "שלום", english_translation: "peace" },
-        { id: "2", hebrew_word: "תודה", english_translation: "thank you" },
-        { id: "3", hebrew_word: "כן", english_translation: "yes" },
+        { ...mockWord, id: "1", hebrew_word: "שלום", english_translation: "peace" },
+        { ...mockWord, id: "2", hebrew_word: "תודה", english_translation: "thank you" },
+        { ...mockWord, id: "3", hebrew_word: "כן", english_translation: "yes" },
       ],
       loading: false,
       testType: "multiple_choice",
       questionCount: 10,
-      currentTest: null,
+      currentTest: [],
       currentQuestionIndex: 0,
       currentQuestion: null,
       showResults: false,
       maxQuestionCount: 20,
       minQuestionCount: 5,
+      testId: null,
       setQuestionCount: vi.fn(),
       startTest: vi.fn(),
       handleAnswer: vi.fn(),

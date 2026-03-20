@@ -22,8 +22,8 @@ describe("Admin", () => {
     vi.clearAllMocks();
     const adminRoleModule = await import("../../hooks/useAdminRole");
     const authModule = await import("../../contexts/AuthContext/AuthContext");
-    mockUseAdminRole = adminRoleModule.useAdminRole;
-    mockUseAuth = authModule.useAuth;
+    mockUseAdminRole = adminRoleModule.useAdminRole as ReturnType<typeof vi.fn>;
+    mockUseAuth = authModule.useAuth as ReturnType<typeof vi.fn>;
   });
 
   it("shows loading spinner when auth is loading", () => {

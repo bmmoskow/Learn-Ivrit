@@ -17,25 +17,39 @@ const mockStats: DashboardStats = {
   weakWords: [
     {
       id: "1",
+      user_id: "user-1",
       hebrew_word: "שלום",
       english_translation: "peace, hello",
+      definition: "peace, hello",
+      transliteration: null,
+      created_at: null,
+      updated_at: null,
       statistics: {
+        id: "stat-1",
+        user_id: "user-1",
+        word_id: "1",
         confidence_score: 45,
         correct_count: 3,
+        incorrect_count: null,
         total_attempts: 10,
         consecutive_correct: 1,
+        last_tested: null,
+        created_at: null,
+        updated_at: null,
       },
     },
   ],
   recentTests: [
     {
       id: "test-1",
+      user_id: "user-1",
       test_type: "flashcard",
       score_percentage: 90,
       correct_answers: 9,
       total_questions: 10,
       duration_seconds: 120,
       completed_at: "2024-01-15",
+      created_at: null,
     },
   ],
 };
@@ -50,6 +64,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: true,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -62,6 +77,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -74,6 +90,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -86,6 +103,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -98,6 +116,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -110,6 +129,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -122,6 +142,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -135,6 +156,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: { ...mockStats, weakWords: [] },
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -146,6 +168,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -157,6 +180,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: { ...mockStats, recentTests: [] },
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -168,6 +192,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
@@ -181,6 +206,7 @@ describe("Dashboard", () => {
     vi.mocked(useDashboard).mockReturnValue({
       stats: mockStats,
       loading: false,
+      loadDashboardData: vi.fn(),
     });
 
     render(<Dashboard />);
