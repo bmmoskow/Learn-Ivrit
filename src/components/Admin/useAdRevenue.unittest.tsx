@@ -78,7 +78,7 @@ vi.mock("../../../supabase/client", () => ({
 }));
 
 describe("useAdRevenue", () => {
-  let mockSupabase: any;
+  let mockSupabase: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();

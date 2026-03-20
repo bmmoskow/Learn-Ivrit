@@ -15,8 +15,8 @@ vi.mock("./AdminDashboard", () => ({
 }));
 
 describe("Admin", () => {
-  let mockUseAdminRole: any;
-  let mockUseAuth: any;
+  let mockUseAdminRole: ReturnType<typeof vi.fn>;
+  let mockUseAuth: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();

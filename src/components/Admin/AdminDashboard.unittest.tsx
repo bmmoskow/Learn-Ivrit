@@ -64,8 +64,8 @@ vi.mock("./AdRevenueEstimator", () => ({
 }));
 
 describe("AdminDashboard", () => {
-  let mockUseAdmin: any;
-  let mockSummarize: any;
+  let mockUseAdmin: ReturnType<typeof vi.fn>;
+  let mockSummarize: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();

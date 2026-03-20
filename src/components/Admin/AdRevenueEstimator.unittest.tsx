@@ -92,7 +92,7 @@ vi.mock("./useAdRevenue", () => ({
 }));
 
 describe("AdRevenueEstimator", () => {
-  let mockUseAdRevenue: any;
+  let mockUseAdRevenue: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
