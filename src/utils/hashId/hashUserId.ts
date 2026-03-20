@@ -24,3 +24,17 @@ export async function hashUserIdCached(userId: string): Promise<string> {
   hashCache.set(userId, hashed);
   return hashed;
 }
+
+/**
+ * Clear the hash cache. Useful for testing or memory management.
+ */
+export function clearHashCache(): void {
+  hashCache.clear();
+}
+
+/**
+ * Get the current size of the hash cache.
+ */
+export function getHashCacheSize(): number {
+  return hashCache.size;
+}
