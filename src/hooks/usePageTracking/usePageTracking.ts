@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../../supabase/client";
 
 const FLUSH_INTERVAL_MS = 60_000; // flush every 60s of active time
 
