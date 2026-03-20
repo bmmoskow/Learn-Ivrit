@@ -1,7 +1,11 @@
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 
+<<<<<<< HEAD
 const SUPABASE_PROJECT_ID = 'igqupnhtbulncgokwbhe';
+=======
+const SUPABASE_PROJECT_ID = 'btdbvqsqzodkkwuojilr';
+>>>>>>> b7894df8078cd44dd9b5d2b90c24436d3b548327
 const SUPABASE_ACCESS_TOKEN = process.env.SUPABASE_ACCESS_TOKEN;
 
 async function generateTypes() {
@@ -27,6 +31,9 @@ async function generateTypes() {
     );
 
     if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('Response status:', response.status);
+      console.error('Response body:', errorBody);
       throw new Error(`Failed to fetch types: ${response.statusText}`);
     }
 
