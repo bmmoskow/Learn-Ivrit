@@ -1,11 +1,11 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { usePageTracking } from "./usePageTracking";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { supabase } from "../../supabase/client";
+import { supabase } from "../../../supabase/client";
 
 // Mock the supabase client
-vi.mock("../../supabase/client", () => ({
+vi.mock("../../../supabase/client", () => ({
   supabase: {
     rpc: vi.fn(),
   },
