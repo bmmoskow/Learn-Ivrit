@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../../../supabase/client";
 
 interface PageViewData {
   page: string;
@@ -62,36 +61,15 @@ export function useAdRevenue() {
   const fetchData = useCallback(async () => {
     setLoading(true);
 
+    // TODO: These tables don't exist yet - need to create migrations for:
+    // - page_views_daily
+    // - ad_network_policies
+
+    // Temporarily return mock data
+    const pageData: PageViewData[] = [];
+    const policies: AdNetworkPolicy[] = [];
+
     const daysBack = parseInt(period) || 30;
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysBack);
-
-    // Fetch page views and policies in parallel
-    const [viewsResult, policiesResult] = await Promise.all([
-      supabase
-        .from("page_views_daily")
-        .select("page, view_date, view_count, total_active_seconds")
-        .gte("view_date", startDate.toISOString().split("T")[0])
-        .order("view_date", { ascending: false }),
-      supabase
-        .from("ad_network_policies")
-        .select("*")
-        .order("network_name, tier_name"),
-    ]);
-
-    if (viewsResult.error) {
-      console.error("Failed to fetch page views:", viewsResult.error);
-      setLoading(false);
-      return;
-    }
-    if (policiesResult.error) {
-      console.error("Failed to fetch ad policies:", policiesResult.error);
-      setLoading(false);
-      return;
-    }
-
-    const pageData = (viewsResult.data as PageViewData[]) || [];
-    const policies = (policiesResult.data as AdNetworkPolicy[]) || [];
 
     // Aggregate engagement totals
     let totalViews = 0;
