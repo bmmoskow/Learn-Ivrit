@@ -1,39 +1,98 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5";
   };
   public: {
     Tables: {
-      bookmark_folders: {
+      ad_network_policies: {
         Row: {
-          created_at: string;
           id: string;
-          name: string;
-          parent_folder_id: string | null;
+          network_name: string;
+          tier_name: string;
+          display_cpm: number;
+          video_cpm: number;
+          display_fill_rate: number;
+          video_fill_rate: number;
+          refresh_interval_seconds: number;
+          revenue_share_percent: number;
+          min_monthly_pageviews: number;
+          min_requirements_notes: string | null;
+          source_url: string | null;
+          cpm_source_url: string | null;
+          created_at: string;
           updated_at: string;
-          user_id: string;
         };
         Insert: {
-          created_at?: string;
           id?: string;
-          name: string;
-          parent_folder_id?: string | null;
+          network_name: string;
+          tier_name: string;
+          display_cpm: number;
+          video_cpm: number;
+          display_fill_rate: number;
+          video_fill_rate: number;
+          refresh_interval_seconds: number;
+          revenue_share_percent: number;
+          min_monthly_pageviews?: number;
+          min_requirements_notes?: string | null;
+          source_url?: string | null;
+          cpm_source_url?: string | null;
+          created_at?: string;
           updated_at?: string;
-          user_id: string;
         };
         Update: {
-          created_at?: string;
           id?: string;
+          network_name?: string;
+          tier_name?: string;
+          display_cpm?: number;
+          video_cpm?: number;
+          display_fill_rate?: number;
+          video_fill_rate?: number;
+          refresh_interval_seconds?: number;
+          revenue_share_percent?: number;
+          min_monthly_pageviews?: number;
+          min_requirements_notes?: string | null;
+          source_url?: string | null;
+          cpm_source_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      bookmark_folders: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          parent_folder_id: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          parent_folder_id?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
           name?: string;
           parent_folder_id?: string | null;
-          updated_at?: string;
-          user_id?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "bookmark_folders_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "bookmark_folders_parent_folder_id_fkey";
             columns: ["parent_folder_id"];
@@ -45,39 +104,43 @@ export type Database = {
       };
       bookmarks: {
         Row: {
-          created_at: string;
-          english_translation: string | null;
-          folder_id: string | null;
-          hebrew_text: string;
           id: string;
-          name: string;
-          source: string | null;
-          updated_at: string;
           user_id: string;
+          folder_id: string | null;
+          name: string;
+          hebrew_text: string;
+          source: string | null;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          created_at?: string;
-          english_translation?: string | null;
-          folder_id?: string | null;
-          hebrew_text: string;
           id?: string;
-          name: string;
-          source?: string | null;
-          updated_at?: string;
           user_id: string;
+          folder_id?: string | null;
+          name: string;
+          hebrew_text: string;
+          source?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          created_at?: string;
-          english_translation?: string | null;
-          folder_id?: string | null;
-          hebrew_text?: string;
           id?: string;
-          name?: string;
-          source?: string | null;
-          updated_at?: string;
           user_id?: string;
+          folder_id?: string | null;
+          name?: string;
+          hebrew_text?: string;
+          source?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "bookmarks_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "bookmarks_folder_id_fkey";
             columns: ["folder_id"];
@@ -87,120 +150,222 @@ export type Database = {
           },
         ];
       };
-      gemini_api_rate_limits: {
+      contact_submissions: {
         Row: {
-          created_at: string;
           id: string;
-          request_type: string;
-          updated_at: string;
-          user_id: string;
+          user_id: string | null;
+          name: string;
+          email: string;
+          message_type: string;
+          message: string;
+          status: string;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          created_at?: string;
           id?: string;
-          request_type: string;
-          updated_at?: string;
-          user_id: string;
+          user_id?: string | null;
+          name: string;
+          email: string;
+          message_type: string;
+          message: string;
+          status?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          created_at?: string;
           id?: string;
-          request_type?: string;
+          user_id?: string | null;
+          name?: string;
+          email?: string;
+          message_type?: string;
+          message?: string;
+          status?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "contact_submissions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      gemini_api_rate_limits: {
+        Row: {
+          id: string;
+          user_id: string;
+          request_type: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          request_type: string;
+          created_at?: string;
           updated_at?: string;
+        };
+        Update: {
+          id?: string;
           user_id?: string;
+          request_type?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "gemini_api_rate_limits_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      page_views_daily: {
+        Row: {
+          id: string;
+          page: string;
+          view_date: string;
+          view_count: number;
+          total_active_seconds: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          page: string;
+          view_date: string;
+          view_count?: number;
+          total_active_seconds?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          page?: string;
+          view_date?: string;
+          view_count?: number;
+          total_active_seconds?: number;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
       profiles: {
         Row: {
-          created_at: string | null;
+          id: string;
           email: string;
           full_name: string | null;
-          id: string;
+          created_at: string | null;
           updated_at: string | null;
         };
         Insert: {
-          created_at?: string | null;
+          id: string;
           email: string;
           full_name?: string | null;
-          id: string;
+          created_at?: string | null;
           updated_at?: string | null;
         };
         Update: {
-          created_at?: string | null;
+          id?: string;
           email?: string;
           full_name?: string | null;
-          id?: string;
+          created_at?: string | null;
           updated_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "profiles_id_fkey";
+            columns: ["id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       sefaria_cache: {
         Row: {
-          access_count: number | null;
-          cached_at: string | null;
-          content: Json;
-          created_at: string | null;
           id: string;
-          last_accessed: string | null;
           reference: string;
+          content: Json;
+          cached_at: string | null;
+          last_accessed: string | null;
+          access_count: number | null;
+          created_at: string | null;
           translation: string | null;
+          version_title: string | null;
+          version_source: string | null;
+          license: string | null;
+          short_version_title: string | null;
         };
         Insert: {
-          access_count?: number | null;
-          cached_at?: string | null;
-          content: Json;
-          created_at?: string | null;
           id?: string;
-          last_accessed?: string | null;
           reference: string;
+          content: Json;
+          cached_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
+          created_at?: string | null;
           translation?: string | null;
+          version_title?: string | null;
+          version_source?: string | null;
+          license?: string | null;
+          short_version_title?: string | null;
         };
         Update: {
-          access_count?: number | null;
-          cached_at?: string | null;
-          content?: Json;
-          created_at?: string | null;
           id?: string;
-          last_accessed?: string | null;
           reference?: string;
+          content?: Json;
+          cached_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
+          created_at?: string | null;
           translation?: string | null;
+          version_title?: string | null;
+          version_source?: string | null;
+          license?: string | null;
+          short_version_title?: string | null;
         };
         Relationships: [];
       };
       test_responses: {
         Row: {
-          correct_answer: string;
-          created_at: string | null;
           id: string;
+          test_id: string;
+          user_id: string;
+          word_id: string;
+          user_answer: string;
+          correct_answer: string;
           is_correct: boolean | null;
           response_time_seconds: number | null;
-          test_id: string;
-          user_answer: string;
-          user_id: string;
-          word_id: string;
+          created_at: string | null;
         };
         Insert: {
-          correct_answer: string;
-          created_at?: string | null;
           id?: string;
-          is_correct?: boolean | null;
-          response_time_seconds?: number | null;
           test_id: string;
-          user_answer: string;
           user_id: string;
           word_id: string;
-        };
-        Update: {
-          correct_answer?: string;
-          created_at?: string | null;
-          id?: string;
+          user_answer: string;
+          correct_answer: string;
           is_correct?: boolean | null;
           response_time_seconds?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
           test_id?: string;
-          user_answer?: string;
           user_id?: string;
           word_id?: string;
+          user_answer?: string;
+          correct_answer?: string;
+          is_correct?: boolean | null;
+          response_time_seconds?: number | null;
+          created_at?: string | null;
         };
         Relationships: [
           {
@@ -208,6 +373,13 @@ export type Database = {
             columns: ["test_id"];
             isOneToOne: false;
             referencedRelation: "user_tests";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "test_responses_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
           {
@@ -228,195 +400,283 @@ export type Database = {
       };
       translation_cache: {
         Row: {
-          access_count: number | null;
-          cached_at: string | null;
+          id: string;
           content_hash: string;
           hebrew_text: string;
-          id: string;
-          last_accessed: string | null;
-          text_length: number;
           translation: string;
+          text_length: number;
+          cached_at: string | null;
+          last_accessed: string | null;
+          access_count: number | null;
         };
         Insert: {
-          access_count?: number | null;
-          cached_at?: string | null;
+          id?: string;
           content_hash: string;
           hebrew_text: string;
-          id?: string;
-          last_accessed?: string | null;
-          text_length: number;
           translation: string;
+          text_length: number;
+          cached_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
         };
         Update: {
-          access_count?: number | null;
-          cached_at?: string | null;
+          id?: string;
           content_hash?: string;
           hebrew_text?: string;
-          id?: string;
-          last_accessed?: string | null;
-          text_length?: number;
           translation?: string;
+          text_length?: number;
+          cached_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
+        };
+        Relationships: [];
+      };
+      url_extraction_cache: {
+        Row: {
+          id: string;
+          url: string;
+          extracted_text: string;
+          cached_at: string | null;
+          last_accessed: string | null;
+          access_count: number | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          url: string;
+          extracted_text: string;
+          cached_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          url?: string;
+          extracted_text?: string;
+          cached_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
+          created_at?: string | null;
         };
         Relationships: [];
       };
       user_tests: {
         Row: {
-          completed_at: string | null;
-          correct_answers: number | null;
-          created_at: string | null;
-          duration_seconds: number | null;
           id: string;
-          score_percentage: number | null;
+          user_id: string;
           test_type: string;
           total_questions: number | null;
-          user_id: string;
+          correct_answers: number | null;
+          score_percentage: number | null;
+          duration_seconds: number | null;
+          completed_at: string | null;
+          created_at: string | null;
         };
         Insert: {
-          completed_at?: string | null;
-          correct_answers?: number | null;
-          created_at?: string | null;
-          duration_seconds?: number | null;
           id?: string;
-          score_percentage?: number | null;
+          user_id: string;
           test_type: string;
           total_questions?: number | null;
-          user_id: string;
+          correct_answers?: number | null;
+          score_percentage?: number | null;
+          duration_seconds?: number | null;
+          completed_at?: string | null;
+          created_at?: string | null;
         };
         Update: {
-          completed_at?: string | null;
-          correct_answers?: number | null;
-          created_at?: string | null;
-          duration_seconds?: number | null;
           id?: string;
-          score_percentage?: number | null;
+          user_id?: string;
           test_type?: string;
           total_questions?: number | null;
-          user_id?: string;
+          correct_answers?: number | null;
+          score_percentage?: number | null;
+          duration_seconds?: number | null;
+          completed_at?: string | null;
+          created_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "user_tests_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      user_word_definitions: {
+        Row: {
+          id: string;
+          user_id: string;
+          word: string;
+          definition: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          word: string;
+          definition: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          word?: string;
+          definition?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "user_word_definitions_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       vocabulary_words: {
         Row: {
-          created_at: string | null;
-          definition: string;
-          english_translation: string;
-          hebrew_word: string;
           id: string;
-          transliteration: string | null;
-          updated_at: string | null;
           user_id: string;
+          hebrew_word: string;
+          english_translation: string;
+          definition: string;
+          transliteration: string | null;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          created_at?: string | null;
-          definition: string;
-          english_translation: string;
-          hebrew_word: string;
           id?: string;
-          transliteration?: string | null;
-          updated_at?: string | null;
           user_id: string;
+          hebrew_word: string;
+          english_translation: string;
+          definition: string;
+          transliteration?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          created_at?: string | null;
-          definition?: string;
-          english_translation?: string;
-          hebrew_word?: string;
           id?: string;
-          transliteration?: string | null;
-          updated_at?: string | null;
           user_id?: string;
+          hebrew_word?: string;
+          english_translation?: string;
+          definition?: string;
+          transliteration?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "vocabulary_words_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       word_definitions: {
         Row: {
-          access_count: number | null;
-          created_at: string | null;
-          definition: string;
-          examples: Json | null;
-          forms: Json | null;
           id: string;
-          last_accessed: string | null;
-          notes: string | null;
-          short_english: string;
-          transliteration: string;
-          updated_at: string | null;
           word: string;
           word_with_vowels: string;
+          definition: string;
+          transliteration: string;
+          examples: Json | null;
+          notes: string | null;
+          forms: Json | null;
+          short_english: string;
+          created_at: string | null;
+          updated_at: string | null;
+          last_accessed: string | null;
+          access_count: number | null;
         };
         Insert: {
-          access_count?: number | null;
-          created_at?: string | null;
-          definition: string;
-          examples?: Json | null;
-          forms?: Json | null;
           id?: string;
-          last_accessed?: string | null;
-          notes?: string | null;
-          short_english: string;
-          transliteration?: string;
-          updated_at?: string | null;
           word: string;
           word_with_vowels: string;
+          definition: string;
+          transliteration?: string;
+          examples?: Json | null;
+          notes?: string | null;
+          forms?: Json | null;
+          short_english: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
         };
         Update: {
-          access_count?: number | null;
-          created_at?: string | null;
-          definition?: string;
-          examples?: Json | null;
-          forms?: Json | null;
           id?: string;
-          last_accessed?: string | null;
-          notes?: string | null;
-          short_english?: string;
-          transliteration?: string;
-          updated_at?: string | null;
           word?: string;
           word_with_vowels?: string;
+          definition?: string;
+          transliteration?: string;
+          examples?: Json | null;
+          notes?: string | null;
+          forms?: Json | null;
+          short_english?: string;
+          created_at?: string | null;
+          updated_at?: string | null;
+          last_accessed?: string | null;
+          access_count?: number | null;
         };
         Relationships: [];
       };
       word_statistics: {
         Row: {
-          confidence_score: number | null;
-          consecutive_correct: number | null;
-          correct_count: number | null;
-          created_at: string | null;
           id: string;
-          incorrect_count: number | null;
-          last_tested: string | null;
-          total_attempts: number | null;
-          updated_at: string | null;
           user_id: string;
           word_id: string;
+          correct_count: number | null;
+          incorrect_count: number | null;
+          total_attempts: number | null;
+          consecutive_correct: number | null;
+          last_tested: string | null;
+          confidence_score: number | null;
+          created_at: string | null;
+          updated_at: string | null;
         };
         Insert: {
-          confidence_score?: number | null;
-          consecutive_correct?: number | null;
-          correct_count?: number | null;
-          created_at?: string | null;
           id?: string;
-          incorrect_count?: number | null;
-          last_tested?: string | null;
-          total_attempts?: number | null;
-          updated_at?: string | null;
           user_id: string;
           word_id: string;
+          correct_count?: number | null;
+          incorrect_count?: number | null;
+          total_attempts?: number | null;
+          consecutive_correct?: number | null;
+          last_tested?: string | null;
+          confidence_score?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Update: {
-          confidence_score?: number | null;
-          consecutive_correct?: number | null;
-          correct_count?: number | null;
-          created_at?: string | null;
           id?: string;
-          incorrect_count?: number | null;
-          last_tested?: string | null;
-          total_attempts?: number | null;
-          updated_at?: string | null;
           user_id?: string;
           word_id?: string;
+          correct_count?: number | null;
+          incorrect_count?: number | null;
+          total_attempts?: number | null;
+          consecutive_correct?: number | null;
+          last_tested?: string | null;
+          confidence_score?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: "word_statistics_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "word_statistics_word_id_fkey";
             columns: ["word_id"];
@@ -437,23 +697,23 @@ export type Database = {
     Views: {
       vocabulary_with_stats: {
         Row: {
-          confidence_score: number | null;
-          consecutive_correct: number | null;
-          correct_count: number | null;
-          created_at: string | null;
-          definition: string | null;
-          english_translation: string | null;
-          hebrew_word: string | null;
           id: string | null;
-          incorrect_count: number | null;
-          last_tested: string | null;
-          stats_created_at: string | null;
-          stats_id: string | null;
-          stats_updated_at: string | null;
-          total_attempts: number | null;
-          transliteration: string | null;
-          updated_at: string | null;
           user_id: string | null;
+          hebrew_word: string | null;
+          english_translation: string | null;
+          definition: string | null;
+          transliteration: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+          stats_id: string | null;
+          correct_count: number | null;
+          incorrect_count: number | null;
+          total_attempts: number | null;
+          consecutive_correct: number | null;
+          last_tested: string | null;
+          confidence_score: number | null;
+          stats_created_at: string | null;
+          stats_updated_at: string | null;
         };
         Relationships: [];
       };
@@ -487,32 +747,32 @@ export type Database = {
       };
       save_complete_test_results: {
         Args: {
-          p_correct_answers: number;
-          p_duration_seconds: number;
-          p_responses: Json;
-          p_score_percentage: number;
-          p_statistics: Json;
+          p_user_id: string;
           p_test_type: string;
           p_total_questions: number;
-          p_user_id: string;
+          p_correct_answers: number;
+          p_score_percentage: number;
+          p_duration_seconds: number;
+          p_responses: Json;
+          p_statistics: Json;
         };
         Returns: string;
       };
       select_test_words: {
         Args: {
-          p_limit: number;
           p_user_id: string;
+          p_limit: number;
         };
         Returns: {
-          created_at: string;
-          definition: string;
-          english_translation: string;
-          hebrew_word: string;
           id: string;
-          stats: Json;
-          transliteration: string;
-          updated_at: string;
           user_id: string;
+          hebrew_word: string;
+          english_translation: string;
+          definition: string;
+          transliteration: string;
+          created_at: string;
+          updated_at: string;
+          stats: Json;
         }[];
       };
     };

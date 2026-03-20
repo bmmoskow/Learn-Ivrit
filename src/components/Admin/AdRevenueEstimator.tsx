@@ -1,4 +1,4 @@
-import { Eye, Clock, Timer, DollarSign, TrendingUp, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
+import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
 import {
   Table,
   TableBody,
