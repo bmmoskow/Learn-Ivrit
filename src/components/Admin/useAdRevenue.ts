@@ -67,14 +67,13 @@ export function useAdRevenue() {
     startDate.setDate(startDate.getDate() - daysBack);
 
     // Fetch page views and policies in parallel
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [viewsResult, policiesResult] = await Promise.all([
-      (supabase as any)
+      supabase
         .from("page_views_daily")
         .select("page, view_date, view_count, total_active_seconds")
         .gte("view_date", startDate.toISOString().split("T")[0])
         .order("view_date", { ascending: false }),
-      (supabase as any)
+      supabase
         .from("ad_network_policies")
         .select("*")
         .order("network_name, tier_name"),
