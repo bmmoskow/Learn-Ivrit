@@ -1,1 +1,0 @@
-ALTER TABLE api_usage_logs ADD COLUMN IF NOT EXISTS thinking_tokens integer DEFAULT 0;
