@@ -8,6 +8,8 @@ const mockNetworkEstimates = [
       id: "1",
       network_name: "Google AdSense",
       tier_name: "Basic",
+      strategy_name: "Balanced Multi-Slot",
+      strategy_description: "Use moderate in-content and sidebar units",
       display_cpm: 2.5,
       video_cpm: 5.0,
       display_fill_rate: 0.85,
@@ -18,6 +20,10 @@ const mockNetworkEstimates = [
       min_requirements_notes: "No minimum requirements",
       source_url: "https://support.google.com/adsense/answer/180195",
       cpm_source_url: "https://www.ezoic.com/publisher-resources/adsense-cpm-rates/",
+      ad_slots_per_page: 3,
+      viewability_rate: 0.7,
+      engagement_factor: 1.0,
+      policy_compliance_factor: 1.0,
     },
     displayImpressions: 1000,
     videoImpressions: 500,
@@ -26,6 +32,7 @@ const mockNetworkEstimates = [
     netDisplayRevenue: 1.7,
     netVideoRevenue: 1.7,
     netTotalRevenue: 3.4,
+    estimatedRPM: 0.68,
     meetsMinimum: true,
   },
   {
@@ -33,6 +40,8 @@ const mockNetworkEstimates = [
       id: "2",
       network_name: "Ezoic",
       tier_name: "Access Now",
+      strategy_name: "AI Density",
+      strategy_description: "AI determines optimal placement",
       display_cpm: 4.0,
       video_cpm: 8.0,
       display_fill_rate: 0.85,
@@ -43,6 +52,10 @@ const mockNetworkEstimates = [
       min_requirements_notes: "Must have 10,000 monthly pageviews",
       source_url: "https://www.ezoic.com/monetization/",
       cpm_source_url: null,
+      ad_slots_per_page: 4,
+      viewability_rate: 0.8,
+      engagement_factor: 1.15,
+      policy_compliance_factor: 1.0,
     },
     displayImpressions: 1200,
     videoImpressions: 600,
@@ -51,6 +64,7 @@ const mockNetworkEstimates = [
     netDisplayRevenue: 4.32,
     netVideoRevenue: 4.32,
     netTotalRevenue: 8.64,
+    estimatedRPM: 1.73,
     meetsMinimum: false,
   },
   {
@@ -58,6 +72,8 @@ const mockNetworkEstimates = [
       id: "3",
       network_name: "Mediavine",
       tier_name: "Pro",
+      strategy_name: "Premium Layout",
+      strategy_description: "High-value placements for premium content",
       display_cpm: 12.0,
       video_cpm: 20.0,
       display_fill_rate: 0.85,
@@ -68,6 +84,10 @@ const mockNetworkEstimates = [
       min_requirements_notes: null,
       source_url: null,
       cpm_source_url: null,
+      ad_slots_per_page: 3.5,
+      viewability_rate: 0.85,
+      engagement_factor: 1.2,
+      policy_compliance_factor: 1.0,
     },
     displayImpressions: 1500,
     videoImpressions: 700,
@@ -76,6 +96,7 @@ const mockNetworkEstimates = [
     netDisplayRevenue: 13.5,
     netVideoRevenue: 10.5,
     netTotalRevenue: 24.0,
+    estimatedRPM: 4.80,
     meetsMinimum: false,
   },
 ];
@@ -265,8 +286,10 @@ describe("AdRevenueEstimator", () => {
       render(<AdRevenueEstimator />);
 
       expect(screen.getByText("Network")).toBeInTheDocument();
-      expect(screen.getByText("Display CPM")).toBeInTheDocument();
-      expect(screen.getByText("Rev Share")).toBeInTheDocument();
+      expect(screen.getByText("Plan / Strategy")).toBeInTheDocument();
+      expect(screen.getByText("CPM")).toBeInTheDocument();
+      expect(screen.getByText("Est Impr")).toBeInTheDocument();
+      expect(screen.getByText("Est RPM")).toBeInTheDocument();
       expect(screen.getByText("Revenue")).toBeInTheDocument();
       expect(screen.getByText("Eligible")).toBeInTheDocument();
     });
@@ -293,14 +316,6 @@ describe("AdRevenueEstimator", () => {
       expect(screen.getByText("$2.5")).toBeInTheDocument();
       expect(screen.getByText("$4")).toBeInTheDocument();
       expect(screen.getByText("$12")).toBeInTheDocument();
-    });
-
-    it("displays revenue share percentages correctly", () => {
-      render(<AdRevenueEstimator />);
-
-      expect(screen.getByText("68%")).toBeInTheDocument();
-      expect(screen.getByText("90%")).toBeInTheDocument();
-      expect(screen.getByText("75%")).toBeInTheDocument();
     });
 
     it("displays net revenue correctly", () => {
@@ -338,6 +353,7 @@ describe("AdRevenueEstimator", () => {
           policy: {
             ...mockNetworkEstimates[0].policy,
             network_name: "Unknown Network",
+            strategy_name: "Test Strategy",
           },
         },
       ];
@@ -375,6 +391,14 @@ describe("AdRevenueEstimator", () => {
       render(<AdRevenueEstimator />);
 
       expect(screen.getByText("No ad network policies configured.")).toBeInTheDocument();
+    });
+
+    it("displays strategy names for each network", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("Balanced Multi-Slot")).toBeInTheDocument();
+      expect(screen.getByText("AI Density")).toBeInTheDocument();
+      expect(screen.getByText("Premium Layout")).toBeInTheDocument();
     });
   });
 
@@ -479,13 +503,6 @@ describe("AdRevenueEstimator", () => {
       expect(cpmLink).toHaveAttribute("rel", "noopener noreferrer");
     });
 
-    it("renders revenue share source links when available", () => {
-      render(<AdRevenueEstimator />);
-
-      const revShareLink = screen.getByText("68%").closest("a");
-      expect(revShareLink).toHaveAttribute("href", "https://support.google.com/adsense/answer/180195");
-    });
-
     it("renders values without links when source URL is null", () => {
       render(<AdRevenueEstimator />);
 
@@ -573,7 +590,7 @@ describe("AdRevenueEstimator", () => {
       render(<AdRevenueEstimator />);
 
       expect(
-        screen.getByText(/Net revenue = .*impressions.*CPM.*fill rate.*revenue share/i)
+        screen.getByText(/Net revenue = .*pageviews.*slots.*fill.*viewability.*CPM.*engagement.*revenue share/i)
       ).toBeInTheDocument();
     });
 

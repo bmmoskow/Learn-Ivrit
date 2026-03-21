@@ -1,4 +1,4 @@
-import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
+import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink, Info } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -7,6 +7,12 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import { useAdRevenue, NetworkRevenueEstimate } from "./useAdRevenue";
 
 
@@ -15,6 +21,7 @@ const NETWORK_LINKS: Record<string, { url: string; label: string }> = {
   "Ezoic": { url: "https://www.ezoic.com/monetization/", label: "Ezoic" },
   "Mediavine": { url: "https://www.mediavine.com/ad-management/", label: "Mediavine" },
   "Raptive": { url: "https://raptive.com/creators/", label: "Raptive" },
+  "Google Ad Manager": { url: "https://admanager.google.com/", label: "Ad Manager" },
 };
 
 function formatMoney(n: number): string {
@@ -30,21 +37,85 @@ function SourceLink({ url, children }: { url: string | null; children: React.Rea
   );
 }
 
-function NetworkRow({ est }: { est: NetworkRevenueEstimate }) {
+interface StrategyRowProps {
+  est: NetworkRevenueEstimate;
+  showNetworkInfo: boolean;
+  totalPageViews: number;
+}
+
+function StrategyRow({ est, showNetworkInfo, totalPageViews }: StrategyRowProps) {
   const p = est.policy;
   const link = NETWORK_LINKS[p.network_name];
+
   return (
     <TableRow>
+      {showNetworkInfo ? (
+        <TableCell rowSpan={1}>
+          {link ? (
+            <a href={link.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline inline-flex items-center gap-1">
+              {p.network_name}
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : (
+            <div className="font-medium">{p.network_name}</div>
+          )}
+          <div className="text-xs text-muted-foreground">{p.tier_name}</div>
+        </TableCell>
+      ) : (
+        <TableCell className="pl-8 text-muted-foreground">
+          <div className="text-xs">└─</div>
+        </TableCell>
+      )}
       <TableCell>
-        {link ? (
-          <a href={link.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline inline-flex items-center gap-1">
-            {p.network_name}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        ) : (
-          <div className="font-medium">{p.network_name}</div>
-        )}
-        <div className="text-xs text-muted-foreground">{p.tier_name}</div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="inline-flex items-center gap-1.5 cursor-help">
+                <span className="text-sm">{p.strategy_name}</span>
+                <Info className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm p-4" side="right">
+              <div className="space-y-2">
+                <div className="font-semibold text-sm">{p.strategy_name}</div>
+                {p.strategy_description && (
+                  <p className="text-xs text-muted-foreground">{p.strategy_description}</p>
+                )}
+                <div className="pt-2 border-t border-border">
+                  <div className="text-xs font-medium mb-1">Formula:</div>
+                  <div className="text-xs text-muted-foreground font-mono bg-muted p-1.5 rounded">
+                    (pageviews × slots × fill × view × cpm / 1000) × engagement
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <div className="text-xs font-medium mb-1.5">Parameters:</div>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Ad slots per page:</span>
+                      <span className="font-medium">{p.ad_slots_per_page}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Fill rate:</span>
+                      <span className="font-medium">{(p.display_fill_rate * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Viewability rate:</span>
+                      <span className="font-medium">{(p.viewability_rate * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Engagement factor:</span>
+                      <span className="font-medium">{p.engagement_factor.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Policy compliance:</span>
+                      <span className="font-medium">{(p.policy_compliance_factor * 100).toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </TableCell>
       <TableCell className="text-right text-xs">
         <SourceLink url={p.cpm_source_url}>
@@ -52,9 +123,10 @@ function NetworkRow({ est }: { est: NetworkRevenueEstimate }) {
         </SourceLink>
       </TableCell>
       <TableCell className="text-right text-xs">
-        <SourceLink url={p.source_url}>
-          {p.revenue_share_percent}%
-        </SourceLink>
+        {est.displayImpressions.toLocaleString()}
+      </TableCell>
+      <TableCell className="text-right text-xs">
+        ${est.estimatedRPM.toFixed(2)}
       </TableCell>
       <TableCell className="text-right font-bold">{formatMoney(est.netTotalRevenue)}</TableCell>
       <TableCell className="text-center text-xs">
@@ -148,29 +220,48 @@ export function AdRevenueEstimator() {
           <div className="bg-card rounded-xl shadow p-5">
             <h3 className="text-lg font-semibold text-card-foreground mb-1">Revenue by Ad Network</h3>
             <p className="text-xs text-muted-foreground mb-3">
-              Net revenue = (impressions × CPM / 1000) × fill rate × revenue share. Fill rate is estimated at 85%, a conservative industry standard. Video ads are possible but not included in this calculation.
+              Net revenue = (pageviews × slots × fill × viewability × CPM / 1000) × engagement × revenue share. Fill rate is estimated at 85%, a conservative industry standard. Video ads are possible but not included in this calculation.
             </p>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Network</TableHead>
-                    <TableHead className="text-right">Display CPM</TableHead>
-                    <TableHead className="text-right">Rev Share</TableHead>
+                    <TableHead>Plan / Strategy</TableHead>
+                    <TableHead className="text-right">CPM</TableHead>
+                    <TableHead className="text-right">Est Impr</TableHead>
+                    <TableHead className="text-right">Est RPM</TableHead>
                     <TableHead className="text-right">Revenue</TableHead>
                     <TableHead className="text-center">Eligible</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.networkEstimates.map((est) => (
-                    <NetworkRow key={est.policy.id} est={est} />
-                  ))}
-                  {data.networkEstimates.length === 0 && (
+                  {data.networkEstimates.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         No ad network policies configured.
                       </TableCell>
                     </TableRow>
+                  ) : (
+                    (() => {
+                      const groups: { [key: string]: NetworkRevenueEstimate[] } = {};
+                      data.networkEstimates.forEach((est) => {
+                        const key = `${est.policy.network_name}|${est.policy.tier_name}`;
+                        if (!groups[key]) groups[key] = [];
+                        groups[key].push(est);
+                      });
+
+                      return Object.values(groups).flatMap((groupEstimates) =>
+                        groupEstimates.map((est, idx) => (
+                          <StrategyRow
+                            key={est.policy.id}
+                            est={est}
+                            showNetworkInfo={idx === 0}
+                            totalPageViews={data.engagement.totalViews}
+                          />
+                        ))
+                      );
+                    })()
                   )}
                 </TableBody>
               </Table>
@@ -181,21 +272,29 @@ export function AdRevenueEstimator() {
               <div className="mt-4 pt-3 border-t border-border">
                 <p className="text-xs font-medium text-muted-foreground mb-2">Minimum Requirements by Plan</p>
                 <div className="grid gap-1">
-                  {data.networkEstimates
-                    .filter((est) => est.policy.min_requirements_notes)
-                    .map((est) => (
-                      <p key={est.policy.id} className="text-xs text-muted-foreground">
-                        <span className="font-medium">
-                          {est.policy.network_name} {est.policy.tier_name}
-                        </span>
-                        {est.policy.min_monthly_pageviews > 0 && (
-                          <span className="text-amber-600 dark:text-amber-400">
-                            {" "}({est.policy.min_monthly_pageviews.toLocaleString()} pv/mo)
+                  {(() => {
+                    const seen = new Set<string>();
+                    return data.networkEstimates
+                      .filter((est) => {
+                        const key = `${est.policy.network_name}|${est.policy.tier_name}`;
+                        if (seen.has(key) || !est.policy.min_requirements_notes) return false;
+                        seen.add(key);
+                        return true;
+                      })
+                      .map((est) => (
+                        <p key={`${est.policy.network_name}-${est.policy.tier_name}`} className="text-xs text-muted-foreground">
+                          <span className="font-medium">
+                            {est.policy.network_name} {est.policy.tier_name}
                           </span>
-                        )}
-                        : {est.policy.min_requirements_notes}
-                      </p>
-                    ))}
+                          {est.policy.min_monthly_pageviews > 0 && (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              {" "}({est.policy.min_monthly_pageviews.toLocaleString()} pv/mo)
+                            </span>
+                          )}
+                          : {est.policy.min_requirements_notes}
+                        </p>
+                      ));
+                  })()}
                 </div>
               </div>
             )}

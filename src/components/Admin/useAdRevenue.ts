@@ -12,6 +12,8 @@ interface AdNetworkPolicy {
   id: string;
   network_name: string;
   tier_name: string;
+  strategy_name: string;
+  strategy_description: string | null;
   display_cpm: number;
   video_cpm: number;
   display_fill_rate: number;
@@ -22,6 +24,10 @@ interface AdNetworkPolicy {
   min_requirements_notes: string | null;
   source_url: string | null;
   cpm_source_url: string | null;
+  ad_slots_per_page: number;
+  viewability_rate: number;
+  engagement_factor: number;
+  policy_compliance_factor: number;
 }
 
 export interface NetworkRevenueEstimate {
@@ -33,6 +39,7 @@ export interface NetworkRevenueEstimate {
   netDisplayRevenue: number;
   netVideoRevenue: number;
   netTotalRevenue: number;
+  estimatedRPM: number;
   meetsMinimum: boolean;
 }
 
@@ -49,9 +56,17 @@ export interface AdRevenueData {
   period: string;
 }
 
-function estimateImpressions(activeSeconds: number, refreshInterval: number, fillRate: number): number {
-  const rawImpressions = Math.floor(activeSeconds / refreshInterval);
-  return Math.floor(rawImpressions * fillRate);
+function estimateImpressions(
+  pageViews: number,
+  adSlotsPerPage: number,
+  fillRate: number,
+  viewabilityRate: number,
+  engagementFactor: number,
+  policyComplianceFactor: number
+): number {
+  const baseImpressions = pageViews * adSlotsPerPage;
+  const viewableImpressions = baseImpressions * fillRate * viewabilityRate;
+  return Math.floor(viewableImpressions * engagementFactor * policyComplianceFactor);
 }
 
 export function useAdRevenue() {
@@ -114,19 +129,27 @@ export function useAdRevenue() {
     // Calculate revenue per network policy
     const networkEstimates: NetworkRevenueEstimate[] = policies.map((policy) => {
       const displayImpressions = estimateImpressions(
-        totalActiveSeconds,
-        policy.refresh_interval_seconds,
-        policy.display_fill_rate
+        totalViews,
+        policy.ad_slots_per_page,
+        policy.display_fill_rate,
+        policy.viewability_rate,
+        policy.engagement_factor,
+        policy.policy_compliance_factor
       );
       const videoImpressions = estimateImpressions(
-        totalActiveSeconds,
-        policy.refresh_interval_seconds,
-        policy.video_fill_rate
+        totalViews,
+        policy.ad_slots_per_page,
+        policy.video_fill_rate,
+        policy.viewability_rate,
+        policy.engagement_factor,
+        policy.policy_compliance_factor
       );
 
       const grossDisplayRevenue = (displayImpressions / 1000) * policy.display_cpm;
       const grossVideoRevenue = (videoImpressions / 1000) * policy.video_cpm;
       const shareMultiplier = policy.revenue_share_percent / 100;
+      const netTotalRevenue = (grossDisplayRevenue + grossVideoRevenue) * shareMultiplier;
+      const estimatedRPM = totalViews > 0 ? (netTotalRevenue / totalViews) * 1000 : 0;
 
       return {
         policy,
@@ -136,13 +159,22 @@ export function useAdRevenue() {
         grossVideoRevenue,
         netDisplayRevenue: grossDisplayRevenue * shareMultiplier,
         netVideoRevenue: grossVideoRevenue * shareMultiplier,
-        netTotalRevenue: (grossDisplayRevenue + grossVideoRevenue) * shareMultiplier,
+        netTotalRevenue,
+        estimatedRPM,
         meetsMinimum: monthlyPageviews >= policy.min_monthly_pageviews,
       };
     });
 
-    // Sort by minimum pageviews ascending (least to greatest)
-    networkEstimates.sort((a, b) => a.policy.min_monthly_pageviews - b.policy.min_monthly_pageviews);
+    // Sort by network name, then tier, then by revenue descending
+    networkEstimates.sort((a, b) => {
+      if (a.policy.network_name !== b.policy.network_name) {
+        return a.policy.network_name.localeCompare(b.policy.network_name);
+      }
+      if (a.policy.tier_name !== b.policy.tier_name) {
+        return a.policy.tier_name.localeCompare(b.policy.tier_name);
+      }
+      return b.netTotalRevenue - a.netTotalRevenue;
+    });
 
     setData({ engagement, networkEstimates, period });
     setLoading(false);

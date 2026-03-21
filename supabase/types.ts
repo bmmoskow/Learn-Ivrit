@@ -11,6 +11,8 @@ export type Database = {
           id: string;
           network_name: string;
           tier_name: string;
+          strategy_name: string;
+          strategy_description: string | null;
           display_cpm: number;
           video_cpm: number;
           display_fill_rate: number;
@@ -21,6 +23,10 @@ export type Database = {
           min_requirements_notes: string | null;
           source_url: string | null;
           cpm_source_url: string | null;
+          ad_slots_per_page: number;
+          viewability_rate: number;
+          engagement_factor: number;
+          policy_compliance_factor: number;
           created_at: string;
           updated_at: string;
         };
@@ -28,6 +34,8 @@ export type Database = {
           id?: string;
           network_name: string;
           tier_name: string;
+          strategy_name: string;
+          strategy_description?: string | null;
           display_cpm: number;
           video_cpm: number;
           display_fill_rate: number;
@@ -38,6 +46,10 @@ export type Database = {
           min_requirements_notes?: string | null;
           source_url?: string | null;
           cpm_source_url?: string | null;
+          ad_slots_per_page?: number;
+          viewability_rate?: number;
+          engagement_factor?: number;
+          policy_compliance_factor?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -45,6 +57,8 @@ export type Database = {
           id?: string;
           network_name?: string;
           tier_name?: string;
+          strategy_name?: string;
+          strategy_description?: string | null;
           display_cpm?: number;
           video_cpm?: number;
           display_fill_rate?: number;
@@ -55,6 +69,10 @@ export type Database = {
           min_requirements_notes?: string | null;
           source_url?: string | null;
           cpm_source_url?: string | null;
+          ad_slots_per_page?: number;
+          viewability_rate?: number;
+          engagement_factor?: number;
+          policy_compliance_factor?: number;
           created_at?: string;
           updated_at?: string;
         };
