@@ -9,7 +9,6 @@ interface PageViewData {
 }
 
 interface AdNetworkPolicy {
-  id: string;
   network_name: string;
   tier_name: string;
   strategy_name: string;
@@ -28,6 +27,17 @@ interface AdNetworkPolicy {
   viewability_rate: number;
   engagement_factor: number;
   policy_compliance_factor: number;
+}
+
+interface AdNetworkPolicyConfig {
+  id: string;
+  config: {
+    policies: AdNetworkPolicy[];
+  };
+  version: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface NetworkRevenueEstimate {
@@ -81,7 +91,7 @@ export function useAdRevenue() {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
 
-    // Fetch page views and policies in parallel
+    // Fetch page views and active policy config in parallel
     const [viewsResult, policiesResult] = await Promise.all([
       supabase
         .from("page_views_daily")
@@ -91,7 +101,8 @@ export function useAdRevenue() {
       supabase
         .from("ad_network_policies")
         .select("*")
-        .order("network_name, tier_name"),
+        .eq("is_active", true)
+        .maybeSingle(),
     ]);
 
     if (viewsResult.error) {
@@ -106,7 +117,8 @@ export function useAdRevenue() {
     }
 
     const pageData = (viewsResult.data as PageViewData[]) || [];
-    const policies = (policiesResult.data as AdNetworkPolicy[]) || [];
+    const policyConfig = policiesResult.data as AdNetworkPolicyConfig | null;
+    const policies = policyConfig?.config?.policies || [];
 
     // Aggregate engagement totals
     let totalViews = 0;
