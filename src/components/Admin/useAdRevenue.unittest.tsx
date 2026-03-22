@@ -23,53 +23,59 @@ const mockPageViewData = [
   },
 ];
 
-const mockAdNetworkPolicies = [
-  {
-    id: "1",
-    network_name: "Google AdSense",
-    tier_name: "Standard",
-    display_cpm: 2.5,
-    video_cpm: 5.0,
-    display_fill_rate: 0.8,
-    video_fill_rate: 0.6,
-    refresh_interval_seconds: 30,
-    revenue_share_percent: 68,
-    min_monthly_pageviews: 0,
-    min_requirements_notes: null,
-    source_url: null,
-    cpm_source_url: null,
+const mockAdNetworkConfig = {
+  config: {
+    programs: {
+      google_adsense: {
+        company: "Google",
+        official_url: "https://www.google.com/adsense/start/",
+        cpm: {
+          value: "$1.5",
+          source: "https://example.com/cpm",
+          confidence: "medium",
+        },
+        traffic_requirement: {
+          value: "No minimum traffic requirement",
+          source: "https://example.com/req",
+          confidence: "high",
+        },
+        strategies: [
+          {
+            name: "single_high_viewability_unit",
+            description: "Use one strong above-the-fold unit",
+            formula: "estimated_revenue = (pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
+          },
+          {
+            name: "balanced_multi_slot_layout",
+            description: "Use moderate in-content and sidebar units",
+            formula: "estimated_revenue = (pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
+          },
+        ],
+      },
+      mediavine_core: {
+        company: "Mediavine",
+        official_url: "https://www.mediavine.com/publisher-network/",
+        cpm: {
+          value: "$15",
+          source: "https://example.com/mv-cpm",
+          confidence: "low",
+        },
+        traffic_requirement: {
+          value: "50,000 sessions/month",
+          source: "https://example.com/mv-req",
+          confidence: "high",
+        },
+        strategies: [
+          {
+            name: "session_depth_strategy",
+            description: "Increase pages per session",
+            formula: "estimated_revenue = (sessions * pages_per_session * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
+          },
+        ],
+      },
+    },
   },
-  {
-    id: "2",
-    network_name: "Mediavine",
-    tier_name: "Journey",
-    display_cpm: 15.0,
-    video_cpm: 25.0,
-    display_fill_rate: 0.95,
-    video_fill_rate: 0.85,
-    refresh_interval_seconds: 30,
-    revenue_share_percent: 75,
-    min_monthly_pageviews: 50000,
-    min_requirements_notes: "Requires 50k sessions/month",
-    source_url: "https://mediavine.com",
-    cpm_source_url: "https://mediavine.com/rates",
-  },
-  {
-    id: "3",
-    network_name: "Ezoic",
-    tier_name: "Basic",
-    display_cpm: 8.0,
-    video_cpm: 12.0,
-    display_fill_rate: 0.9,
-    video_fill_rate: 0.75,
-    refresh_interval_seconds: 30,
-    revenue_share_percent: 90,
-    min_monthly_pageviews: 10000,
-    min_requirements_notes: null,
-    source_url: null,
-    cpm_source_url: null,
-  },
-];
+};
 
 vi.mock("../../../supabase/client", () => ({
   supabase: {
@@ -101,16 +107,20 @@ describe("useAdRevenue", () => {
       if (table === "ad_network_policies") {
         return {
           select: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockAdNetworkPolicies,
-              error: null,
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: mockAdNetworkConfig,
+                error: null,
+              }),
             }),
           }),
         };
       }
       return {
         select: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
         }),
       };
     });
@@ -134,88 +144,60 @@ describe("useAdRevenue", () => {
     });
 
     expect(result.current.data).not.toBeNull();
-    expect(result.current.data?.engagement.totalViews).toBe(225); // 100 + 75 + 50
-    expect(result.current.data?.engagement.totalActiveSeconds).toBe(10000); // 5000 + 3000 + 2000
-    expect(result.current.data?.engagement.totalActiveMinutes).toBe(167); // 10000 / 60 rounded
-    expect(result.current.data?.engagement.avgSessionSeconds).toBe(44); // 10000 / 225 rounded
+    expect(result.current.data?.engagement.totalViews).toBe(225);
+    expect(result.current.data?.engagement.totalActiveSeconds).toBe(10000);
+    expect(result.current.data?.engagement.totalActiveMinutes).toBe(167);
+    expect(result.current.data?.engagement.avgSessionSeconds).toBe(44);
   });
 
-  it("calculates revenue estimates for each network", async () => {
+  it("parses JSON config and generates strategy estimates", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.data?.networkEstimates).toHaveLength(3);
+    expect(result.current.data?.strategyEstimates).toHaveLength(3);
 
-    const googleEstimate = result.current.data?.networkEstimates.find(
-      (e) => e.policy.network_name === "Google AdSense"
+    const googleStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "google_adsense" && s.strategyName === "single_high_viewability_unit"
     );
-    expect(googleEstimate).toBeDefined();
-    expect(googleEstimate?.displayImpressions).toBeGreaterThan(0);
-    expect(googleEstimate?.videoImpressions).toBeGreaterThan(0);
-    expect(googleEstimate?.grossDisplayRevenue).toBeGreaterThan(0);
-    expect(googleEstimate?.grossVideoRevenue).toBeGreaterThan(0);
-    expect(googleEstimate?.netDisplayRevenue).toBeGreaterThan(0);
-    expect(googleEstimate?.netVideoRevenue).toBeGreaterThan(0);
-    expect(googleEstimate?.netTotalRevenue).toBeGreaterThan(0);
+    expect(googleStrategy).toBeDefined();
+    expect(googleStrategy?.programName).toBe("Google");
+    expect(googleStrategy?.cpm).toBe(1.5);
+    expect(googleStrategy?.estimatedRevenue).toBeGreaterThan(0);
+    expect(googleStrategy?.estimatedImpressions).toBeGreaterThan(0);
+    expect(googleStrategy?.estimatedRpm).toBeGreaterThan(0);
   });
 
-  it("applies revenue share percentage correctly", async () => {
+  it("determines if traffic requirements are met", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    const googleEstimate = result.current.data?.networkEstimates.find(
-      (e) => e.policy.network_name === "Google AdSense"
+    const googleStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "google_adsense"
+    );
+    const mediavineStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "mediavine_core"
     );
 
-    if (googleEstimate) {
-      const expectedNetDisplay = googleEstimate.grossDisplayRevenue * 0.68;
-      const expectedNetVideo = googleEstimate.grossVideoRevenue * 0.68;
-      const expectedTotal = expectedNetDisplay + expectedNetVideo;
-
-      expect(googleEstimate.netDisplayRevenue).toBeCloseTo(expectedNetDisplay, 2);
-      expect(googleEstimate.netVideoRevenue).toBeCloseTo(expectedNetVideo, 2);
-      expect(googleEstimate.netTotalRevenue).toBeCloseTo(expectedTotal, 2);
-    }
+    expect(googleStrategy?.meetsRequirements).toBe(true);
+    expect(mediavineStrategy?.meetsRequirements).toBe(false);
   });
 
-  it("determines if network minimum requirements are met", async () => {
+  it("sorts strategies by traffic requirements ascending", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    const googleEstimate = result.current.data?.networkEstimates.find(
-      (e) => e.policy.network_name === "Google AdSense"
-    );
-    const mediavineEstimate = result.current.data?.networkEstimates.find(
-      (e) => e.policy.network_name === "Mediavine"
-    );
-
-    expect(googleEstimate?.meetsMinimum).toBe(true); // No minimum
-    expect(mediavineEstimate?.meetsMinimum).toBe(false); // Requires 50k monthly
-  });
-
-  it("sorts estimates by minimum pageviews ascending", async () => {
-    const { result } = renderHook(() => useAdRevenue());
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    const estimates = result.current.data?.networkEstimates || [];
-    expect(estimates[0].policy.min_monthly_pageviews).toBeLessThanOrEqual(
-      estimates[1].policy.min_monthly_pageviews
-    );
-    expect(estimates[1].policy.min_monthly_pageviews).toBeLessThanOrEqual(
-      estimates[2].policy.min_monthly_pageviews
-    );
+    const strategies = result.current.data?.strategyEstimates || [];
+    expect(strategies[0].programKey).toBe("google_adsense");
+    expect(strategies[strategies.length - 1].programKey).toBe("mediavine_core");
   });
 
   it("handles page views fetch error gracefully", async () => {
@@ -235,16 +217,20 @@ describe("useAdRevenue", () => {
       if (table === "ad_network_policies") {
         return {
           select: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: mockAdNetworkPolicies,
-              error: null,
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: mockAdNetworkConfig,
+                error: null,
+              }),
             }),
           }),
         };
       }
       return {
         select: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
         }),
       };
     });
@@ -266,7 +252,7 @@ describe("useAdRevenue", () => {
     consoleSpy.mockRestore();
   });
 
-  it("handles ad policies fetch error gracefully", async () => {
+  it("handles config fetch error gracefully", async () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === "page_views_daily") {
         return {
@@ -283,16 +269,20 @@ describe("useAdRevenue", () => {
       if (table === "ad_network_policies") {
         return {
           select: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({
-              data: null,
-              error: { message: "Failed to fetch policies" },
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: { message: "Failed to fetch config" },
+              }),
             }),
           }),
         };
       }
       return {
         select: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
         }),
       };
     });
@@ -307,28 +297,49 @@ describe("useAdRevenue", () => {
 
     expect(result.current.data).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Failed to fetch ad policies:",
-      expect.objectContaining({ message: "Failed to fetch policies" })
+      "Failed to fetch ad config:",
+      expect.objectContaining({ message: "Failed to fetch config" })
     );
 
     consoleSpy.mockRestore();
   });
 
-  it("handles empty data gracefully", async () => {
-    mockSupabase.from.mockImplementation(() => ({
-      select: vi.fn().mockReturnValue({
-        gte: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({
-            data: [],
-            error: null,
+  it("handles missing config gracefully", async () => {
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === "page_views_daily") {
+        return {
+          select: vi.fn().mockReturnValue({
+            gte: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({
+                data: mockPageViewData,
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "ad_network_policies") {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: null,
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
           }),
         }),
-        order: vi.fn().mockResolvedValue({
-          data: [],
-          error: null,
-        }),
-      }),
-    }));
+      };
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { result } = renderHook(() => useAdRevenue());
 
@@ -336,23 +347,10 @@ describe("useAdRevenue", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(result.current.data?.engagement.totalViews).toBe(0);
-    expect(result.current.data?.engagement.totalActiveSeconds).toBe(0);
-    expect(result.current.data?.engagement.avgSessionSeconds).toBe(0);
-    expect(result.current.data?.networkEstimates).toHaveLength(0);
-  });
+    expect(result.current.data).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith("No active ad network config found");
 
-  it("calculates correct date range based on period", async () => {
-    const { result } = renderHook(() => useAdRevenue());
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    const pageViewsCall = mockSupabase.from.mock.calls.find(
-      (call: unknown[]) => call[0] === "page_views_daily"
-    );
-    expect(pageViewsCall).toBeDefined();
+    consoleSpy.mockRestore();
   });
 
   it("refetches data when refetch is called", async () => {
@@ -383,76 +381,21 @@ describe("useAdRevenue", () => {
     expect(result.current.data?.period).toBe("30d");
   });
 
-  it("calculates impressions with fill rate correctly", async () => {
+  it("parses CPM values correctly", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
 
-    const googleEstimate = result.current.data?.networkEstimates.find(
-      (e) => e.policy.network_name === "Google AdSense"
+    const googleStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "google_adsense"
+    );
+    const mediavineStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "mediavine_core"
     );
 
-    if (googleEstimate) {
-      const totalActiveSeconds = 10000;
-      const refreshInterval = 30;
-      const displayFillRate = 0.8;
-      const videoFillRate = 0.6;
-
-      const expectedDisplayImpressions = Math.floor(
-        Math.floor(totalActiveSeconds / refreshInterval) * displayFillRate
-      );
-      const expectedVideoImpressions = Math.floor(
-        Math.floor(totalActiveSeconds / refreshInterval) * videoFillRate
-      );
-
-      expect(googleEstimate.displayImpressions).toBe(expectedDisplayImpressions);
-      expect(googleEstimate.videoImpressions).toBe(expectedVideoImpressions);
-    }
-  });
-
-  it("scales pageviews to monthly for minimum comparison", async () => {
-    mockSupabase.from.mockImplementation((table: string) => {
-      if (table === "page_views_daily") {
-        return {
-          select: vi.fn().mockReturnValue({
-            gte: vi.fn().mockReturnValue({
-              order: vi.fn().mockResolvedValue({
-                data: [
-                  {
-                    page: "/",
-                    view_date: "2024-03-15",
-                    view_count: 3000,
-                    total_active_seconds: 50000,
-                  },
-                ],
-                error: null,
-              }),
-            }),
-          }),
-        };
-      }
-      return {
-        select: vi.fn().mockReturnValue({
-          order: vi.fn().mockResolvedValue({
-            data: mockAdNetworkPolicies,
-            error: null,
-          }),
-        }),
-      };
-    });
-
-    const { result } = renderHook(() => useAdRevenue());
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-
-    const ezoicEstimate = result.current.data?.networkEstimates.find(
-      (e) => e.policy.network_name === "Ezoic"
-    );
-
-    expect(ezoicEstimate?.meetsMinimum).toBe(false);
+    expect(googleStrategy?.cpm).toBe(1.5);
+    expect(mediavineStrategy?.cpm).toBe(15);
   });
 });

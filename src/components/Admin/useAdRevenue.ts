@@ -8,32 +8,52 @@ interface PageViewData {
   total_active_seconds: number;
 }
 
-interface AdNetworkPolicy {
-  id: string;
-  network_name: string;
-  tier_name: string;
-  display_cpm: number;
-  video_cpm: number;
-  display_fill_rate: number;
-  video_fill_rate: number;
-  refresh_interval_seconds: number;
-  revenue_share_percent: number;
-  min_monthly_pageviews: number;
-  min_requirements_notes: string | null;
-  source_url: string | null;
-  cpm_source_url: string | null;
+interface StrategyConfig {
+  name: string;
+  description: string;
+  formula: string;
 }
 
-export interface NetworkRevenueEstimate {
-  policy: AdNetworkPolicy;
-  displayImpressions: number;
-  videoImpressions: number;
-  grossDisplayRevenue: number;
-  grossVideoRevenue: number;
-  netDisplayRevenue: number;
-  netVideoRevenue: number;
-  netTotalRevenue: number;
-  meetsMinimum: boolean;
+interface ProgramConfig {
+  company: string;
+  official_url: string;
+  cpm: {
+    value: string;
+    source: string;
+    confidence: string;
+  };
+  revenue_share?: {
+    value: string;
+    source: string;
+    confidence: string;
+  };
+  traffic_requirement: {
+    value: string;
+    source: string;
+    confidence: string;
+  };
+  strategies: StrategyConfig[];
+}
+
+interface AdServingConfig {
+  programs: Record<string, ProgramConfig>;
+}
+
+export interface StrategyEstimate {
+  programKey: string;
+  programName: string;
+  strategyName: string;
+  strategyDescription: string;
+  officialUrl: string;
+  cpm: number;
+  estimatedRevenue: number;
+  estimatedImpressions: number;
+  estimatedRpm: number;
+  meetsRequirements: boolean;
+  formula: string;
+  cpmSource: string;
+  trafficRequirement: string;
+  trafficRequirementSource: string;
 }
 
 export interface EngagementTotals {
@@ -45,13 +65,60 @@ export interface EngagementTotals {
 
 export interface AdRevenueData {
   engagement: EngagementTotals;
-  networkEstimates: NetworkRevenueEstimate[];
+  strategyEstimates: StrategyEstimate[];
   period: string;
 }
 
-function estimateImpressions(activeSeconds: number, refreshInterval: number, fillRate: number): number {
-  const rawImpressions = Math.floor(activeSeconds / refreshInterval);
-  return Math.floor(rawImpressions * fillRate);
+function parseCpm(cpmValue: string): number {
+  const match = cpmValue.match(/\$?([\d.]+)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+function parseMinTraffic(trafficValue: string): number {
+  const lowerValue = trafficValue.toLowerCase();
+  if (lowerValue.includes("no minimum")) return 0;
+
+  const match = lowerValue.match(/([\d,]+)\s*k?\s*(monthly|sessions|pageviews|users)?/i);
+  if (!match) return 0;
+
+  const num = parseFloat(match[1].replace(/,/g, ''));
+  if (lowerValue.includes('k')) return num * 1000;
+  return num;
+}
+
+function calculateRevenue(
+  strategy: StrategyConfig,
+  pageviews: number,
+  activeSeconds: number,
+  cpm: number
+): { revenue: number; impressions: number; rpm: number } {
+  const adSlotsPerPage = 3;
+  const fillRate = 0.85;
+  const viewabilityRate = 0.70;
+  const engagementFactor = 1.0;
+  const policyComplianceFactor = 1.0;
+  const refreshIntervalSeconds = 60;
+  const avgViewableSecondsPerPage = pageviews > 0 ? activeSeconds / pageviews : 0;
+
+  let impressions = 0;
+  let revenue = 0;
+
+  if (strategy.formula.includes("refresh")) {
+    const eligibleRefreshes = Math.floor(avgViewableSecondsPerPage / refreshIntervalSeconds);
+    impressions = Math.floor(
+      pageviews * fillRate * (1 + eligibleRefreshes)
+    );
+    revenue = (impressions * cpm / 1000) * policyComplianceFactor;
+  } else {
+    impressions = Math.floor(
+      pageviews * adSlotsPerPage * fillRate * viewabilityRate
+    );
+    revenue = (impressions * cpm / 1000) * engagementFactor * policyComplianceFactor;
+  }
+
+  const rpm = pageviews > 0 ? (revenue / pageviews) * 1000 : 0;
+
+  return { revenue, impressions, rpm };
 }
 
 export function useAdRevenue() {
@@ -66,8 +133,7 @@ export function useAdRevenue() {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysBack);
 
-    // Fetch page views and policies in parallel
-    const [viewsResult, policiesResult] = await Promise.all([
+    const [viewsResult, configResult] = await Promise.all([
       supabase
         .from("page_views_daily")
         .select("page, view_date, view_count, total_active_seconds")
@@ -75,8 +141,9 @@ export function useAdRevenue() {
         .order("view_date", { ascending: false }),
       supabase
         .from("ad_network_policies")
-        .select("*")
-        .order("network_name, tier_name"),
+        .select("config")
+        .eq("is_active", true)
+        .maybeSingle(),
     ]);
 
     if (viewsResult.error) {
@@ -84,16 +151,21 @@ export function useAdRevenue() {
       setLoading(false);
       return;
     }
-    if (policiesResult.error) {
-      console.error("Failed to fetch ad policies:", policiesResult.error);
+    if (configResult.error) {
+      console.error("Failed to fetch ad config:", configResult.error);
       setLoading(false);
       return;
     }
 
     const pageData = (viewsResult.data as PageViewData[]) || [];
-    const policies = (policiesResult.data as AdNetworkPolicy[]) || [];
+    const config = configResult.data?.config as AdServingConfig | null;
 
-    // Aggregate engagement totals
+    if (!config?.programs) {
+      console.error("No active ad network config found");
+      setLoading(false);
+      return;
+    }
+
     let totalViews = 0;
     let totalActiveSeconds = 0;
     for (const row of pageData) {
@@ -108,43 +180,48 @@ export function useAdRevenue() {
       avgSessionSeconds: totalViews > 0 ? Math.round(totalActiveSeconds / totalViews) : 0,
     };
 
-    // Scale pageviews to monthly estimate for minimum comparison
     const monthlyPageviews = daysBack > 0 ? Math.round((totalViews / daysBack) * 30) : totalViews;
 
-    // Calculate revenue per network policy
-    const networkEstimates: NetworkRevenueEstimate[] = policies.map((policy) => {
-      const displayImpressions = estimateImpressions(
-        totalActiveSeconds,
-        policy.refresh_interval_seconds,
-        policy.display_fill_rate
-      );
-      const videoImpressions = estimateImpressions(
-        totalActiveSeconds,
-        policy.refresh_interval_seconds,
-        policy.video_fill_rate
-      );
+    const strategyEstimates: StrategyEstimate[] = [];
 
-      const grossDisplayRevenue = (displayImpressions / 1000) * policy.display_cpm;
-      const grossVideoRevenue = (videoImpressions / 1000) * policy.video_cpm;
-      const shareMultiplier = policy.revenue_share_percent / 100;
+    for (const [programKey, program] of Object.entries(config.programs)) {
+      const cpm = parseCpm(program.cpm.value);
+      const minTraffic = parseMinTraffic(program.traffic_requirement.value);
 
-      return {
-        policy,
-        displayImpressions,
-        videoImpressions,
-        grossDisplayRevenue,
-        grossVideoRevenue,
-        netDisplayRevenue: grossDisplayRevenue * shareMultiplier,
-        netVideoRevenue: grossVideoRevenue * shareMultiplier,
-        netTotalRevenue: (grossDisplayRevenue + grossVideoRevenue) * shareMultiplier,
-        meetsMinimum: monthlyPageviews >= policy.min_monthly_pageviews,
-      };
+      for (const strategy of program.strategies) {
+        const { revenue, impressions, rpm } = calculateRevenue(
+          strategy,
+          totalViews,
+          totalActiveSeconds,
+          cpm
+        );
+
+        strategyEstimates.push({
+          programKey,
+          programName: program.company,
+          strategyName: strategy.name,
+          strategyDescription: strategy.description,
+          officialUrl: program.official_url,
+          cpm,
+          estimatedRevenue: revenue,
+          estimatedImpressions: impressions,
+          estimatedRpm: rpm,
+          meetsRequirements: monthlyPageviews >= minTraffic,
+          formula: strategy.formula,
+          cpmSource: program.cpm.source,
+          trafficRequirement: program.traffic_requirement.value,
+          trafficRequirementSource: program.traffic_requirement.source,
+        });
+      }
+    }
+
+    strategyEstimates.sort((a, b) => {
+      const aTraffic = parseMinTraffic(a.trafficRequirement);
+      const bTraffic = parseMinTraffic(b.trafficRequirement);
+      return aTraffic - bTraffic;
     });
 
-    // Sort by minimum pageviews ascending (least to greatest)
-    networkEstimates.sort((a, b) => a.policy.min_monthly_pageviews - b.policy.min_monthly_pageviews);
-
-    setData({ engagement, networkEstimates, period });
+    setData({ engagement, strategyEstimates, period });
     setLoading(false);
   }, [period]);
 
