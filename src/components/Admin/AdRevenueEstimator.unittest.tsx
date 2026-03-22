@@ -701,7 +701,7 @@ describe("AdRevenueEstimator", () => {
     });
 
     it("highlights best strategy card with green border", () => {
-      const { container } = render(<AdRevenueEstimator />);
+      render(<AdRevenueEstimator />);
 
       const bestStrategyCard = screen.getByText("Best Strategy").closest("div")?.parentElement;
       expect(bestStrategyCard?.className).toContain("border-l-4");
