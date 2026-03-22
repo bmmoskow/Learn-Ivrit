@@ -52,8 +52,13 @@ export interface StrategyEstimate {
   meetsRequirements: boolean;
   formula: string;
   cpmSource: string;
+  cpmConfidence: string;
+  revenueShare?: string;
+  revenueShareSource?: string;
+  revenueShareConfidence?: string;
   trafficRequirement: string;
   trafficRequirementSource: string;
+  trafficRequirementConfidence: string;
 }
 
 export interface EngagementTotals {
@@ -209,8 +214,13 @@ export function useAdRevenue() {
           meetsRequirements: monthlyPageviews >= minTraffic,
           formula: strategy.formula,
           cpmSource: program.cpm.source,
+          cpmConfidence: program.cpm.confidence,
+          revenueShare: program.revenue_share?.value,
+          revenueShareSource: program.revenue_share?.source,
+          revenueShareConfidence: program.revenue_share?.confidence,
           trafficRequirement: program.traffic_requirement.value,
           trafficRequirementSource: program.traffic_requirement.source,
+          trafficRequirementConfidence: program.traffic_requirement.confidence,
         });
       }
     }

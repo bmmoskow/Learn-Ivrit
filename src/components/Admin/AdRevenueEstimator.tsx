@@ -62,6 +62,49 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
                     [source]
                   </a>
                 )}
+                {strategy.cpmConfidence && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({strategy.cpmConfidence} confidence)
+                  </span>
+                )}
+              </li>
+              {strategy.revenueShare && (
+                <li>
+                  • Revenue share: {strategy.revenueShare}
+                  {strategy.revenueShareSource && (
+                    <a
+                      href={strategy.revenueShareSource}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-1 text-primary hover:underline"
+                    >
+                      [source]
+                    </a>
+                  )}
+                  {strategy.revenueShareConfidence && (
+                    <span className="ml-1 text-muted-foreground">
+                      ({strategy.revenueShareConfidence} confidence)
+                    </span>
+                  )}
+                </li>
+              )}
+              <li>
+                • Traffic req: {strategy.trafficRequirement}
+                {strategy.trafficRequirementSource && (
+                  <a
+                    href={strategy.trafficRequirementSource}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-1 text-primary hover:underline"
+                  >
+                    [source]
+                  </a>
+                )}
+                {strategy.trafficRequirementConfidence && (
+                  <span className="ml-1 text-muted-foreground">
+                    ({strategy.trafficRequirementConfidence} confidence)
+                  </span>
+                )}
               </li>
               <li>• Engagement factor: 1.0</li>
               <li>• Policy compliance: 1.0</li>
