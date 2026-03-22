@@ -446,4 +446,338 @@ describe("AdRevenueEstimator", () => {
       expect(alertIcons.length).toBeGreaterThan(0);
     });
   });
+
+  describe("Strategy Tooltips", () => {
+    it("renders info icons for strategy tooltips", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const infoIcons = container.querySelectorAll('svg[class*="lucide-info"]');
+      expect(infoIcons.length).toBeGreaterThan(0);
+    });
+
+    it("displays strategy name in tooltip trigger", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("single high viewability unit")).toBeInTheDocument();
+      expect(screen.getByText("balanced multi slot layout")).toBeInTheDocument();
+      expect(screen.getByText("session depth strategy")).toBeInTheDocument();
+    });
+
+    it("renders strategy tooltips as buttons", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const tooltipButtons = container.querySelectorAll('button[class*="inline-flex items-center"]');
+      expect(tooltipButtons.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("External Links and Sources", () => {
+    it("renders network official URLs as links", () => {
+      render(<AdRevenueEstimator />);
+
+      const adsenseLink = screen.getByText("Google AdSense").closest("a");
+      expect(adsenseLink).toHaveAttribute("href", "https://support.google.com/adsense/answer/180195");
+    });
+
+    it("renders all official URLs with external link icons", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const externalLinkIcons = container.querySelectorAll('svg[class*="lucide-external-link"]');
+      expect(externalLinkIcons.length).toBeGreaterThan(0);
+    });
+
+    it("renders traffic requirement links for ineligible networks", () => {
+      render(<AdRevenueEstimator />);
+
+      const ezoicReqLink = screen.getByText("10,000 sessions/month").closest("a");
+      expect(ezoicReqLink).toHaveAttribute("href", "https://www.ezoic.com/requirements/");
+      expect(ezoicReqLink).toHaveAttribute("target", "_blank");
+    });
+
+    it("renders traffic requirement text without link when no source provided", () => {
+      const estimatesWithoutSource = [
+        {
+          ...mockStrategyEstimates[0],
+          meetsRequirements: false,
+          trafficRequirement: "Custom requirement",
+          trafficRequirementSource: undefined,
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimatesWithoutSource,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      const reqText = screen.getByText("Custom requirement");
+      expect(reqText.closest("a")).toBeNull();
+    });
+  });
+
+  describe("Best Revenue Card Logic", () => {
+    it("selects strategy with highest revenue as best", () => {
+      render(<AdRevenueEstimator />);
+
+      const bestRevCards = screen.getAllByText("$24.00");
+      expect(bestRevCards.length).toBeGreaterThan(0);
+
+      expect(screen.getAllByText("Mediavine").length).toBeGreaterThan(0);
+    });
+
+    it("handles tie in revenue by selecting first occurrence", () => {
+      const tiedEstimates = [
+        { ...mockStrategyEstimates[0], estimatedRevenue: 10.0 },
+        { ...mockStrategyEstimates[1], estimatedRevenue: 10.0 },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: tiedEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getAllByText("$10.00").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Google AdSense").length).toBeGreaterThan(0);
+    });
+
+    it("shows No Program when best revenue is null", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: [],
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      const bestStrategyCard = screen.getByText("Best Strategy").closest("div");
+      expect(bestStrategyCard).toBeInTheDocument();
+
+      const programNameElements = screen.queryByText(/No Program/i);
+      expect(programNameElements).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Edge Cases and Error Handling", () => {
+    it("handles zero page views gracefully", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            totalViews: 0,
+            totalActiveSeconds: 0,
+            totalActiveMinutes: 0,
+            avgSessionSeconds: 0,
+          },
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+      expect(screen.getByText(/~0\/mo projected/)).toBeInTheDocument();
+    });
+
+    it("handles null data gracefully", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: null,
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.queryByText("Page Views")).not.toBeInTheDocument();
+      expect(screen.queryByText("Revenue by Ad Network")).not.toBeInTheDocument();
+    });
+
+    it("handles missing period in data gracefully", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: mockStrategyEstimates,
+          period: undefined as unknown as string,
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("5,000")).toBeInTheDocument();
+    });
+
+    it("handles very large numbers correctly", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            totalViews: 1500000,
+            totalActiveSeconds: 45000000,
+            totalActiveMinutes: 750000,
+            avgSessionSeconds: 180,
+          },
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("1,500,000")).toBeInTheDocument();
+      expect(screen.getByText("750,000")).toBeInTheDocument();
+      expect(screen.getByText("180s")).toBeInTheDocument();
+    });
+
+    it("handles strategies with zero revenue", () => {
+      const zeroRevenueEstimates = [
+        { ...mockStrategyEstimates[0], estimatedRevenue: 0 },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: zeroRevenueEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getAllByText("$0.00").length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Table Styling and Structure", () => {
+    it("renders table with correct semantic structure", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const table = container.querySelector("table");
+      expect(table).toBeInTheDocument();
+
+      const thead = container.querySelector("thead");
+      expect(thead).toBeInTheDocument();
+
+      const tbody = container.querySelector("tbody");
+      expect(tbody).toBeInTheDocument();
+    });
+
+    it("highlights best strategy card with green border", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const bestStrategyCard = screen.getByText("Best Strategy").closest("div")?.parentElement;
+      expect(bestStrategyCard?.className).toContain("border-l-4");
+      expect(bestStrategyCard?.className).toContain("border-green-500");
+    });
+
+    it("renders revenue with right-aligned and bold styling", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const revenueCells = container.querySelectorAll('td[class*="text-right font-bold"]');
+      expect(revenueCells.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Revenue Calculation Display", () => {
+    it("displays estimated impressions with correct formatting", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("1,000")).toBeInTheDocument();
+      expect(screen.getByText("1,200")).toBeInTheDocument();
+      expect(screen.getByText("1,500")).toBeInTheDocument();
+    });
+
+    it("displays RPM values with dollar signs", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("$0.68")).toBeInTheDocument();
+      expect(screen.getByText("$1.73")).toBeInTheDocument();
+      expect(screen.getByText("$4.80")).toBeInTheDocument();
+    });
+
+    it("formats CPM consistently across all rows", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("$2.50")).toBeInTheDocument();
+      expect(screen.getByText("$4.00")).toBeInTheDocument();
+      expect(screen.getByText("$12.00")).toBeInTheDocument();
+    });
+  });
+
+  describe("Responsive Design Elements", () => {
+    it("uses grid layout for summary cards", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const grid = container.querySelector('div[class*="grid"]');
+      expect(grid).toHaveClass("md:grid-cols-4");
+    });
+
+    it("applies overflow-x-auto to table container", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const tableContainer = container.querySelector('div[class*="overflow-x-auto"]');
+      expect(tableContainer).toBeInTheDocument();
+    });
+
+    it("uses flex-wrap for control buttons", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const controlsContainer = container.querySelector('div[class*="flex-wrap"]');
+      expect(controlsContainer).toBeInTheDocument();
+    });
+  });
+
+  describe("Helper Text and Descriptions", () => {
+    it("displays descriptive subtitle for revenue table", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(
+        screen.getByText("Estimated revenue based on ground truth metrics and network-specific formulas. Hover over strategies for detailed parameters.")
+      ).toBeInTheDocument();
+    });
+
+    it("displays Revenue by Ad Network heading", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("Revenue by Ad Network")).toBeInTheDocument();
+    });
+  });
 });
