@@ -1,4 +1,4 @@
-import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react";
+import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink, Info } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -7,65 +7,131 @@ import {
   TableHeader,
   TableRow,
 } from "../ui/table";
-import { useAdRevenue, NetworkRevenueEstimate } from "./useAdRevenue";
-
-
-const NETWORK_LINKS: Record<string, { url: string; label: string }> = {
-  "Google AdSense": { url: "https://adsense.google.com/start/", label: "AdSense" },
-  "Ezoic": { url: "https://www.ezoic.com/monetization/", label: "Ezoic" },
-  "Mediavine": { url: "https://www.mediavine.com/ad-management/", label: "Mediavine" },
-  "Raptive": { url: "https://raptive.com/creators/", label: "Raptive" },
-};
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
+import { useAdRevenue, StrategyEstimate } from "./useAdRevenue";
 
 function formatMoney(n: number): string {
   return n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
 }
 
-function SourceLink({ url, children }: { url: string | null; children: React.ReactNode }) {
-  if (!url) return <>{children}</>;
+function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary block">
-      {children}
-    </a>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button className="inline-flex items-center gap-1 hover:text-primary">
+            <span className="text-sm">{strategy.strategyName.replace(/_/g, ' ')}</span>
+            <Info className="w-3 h-3" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent className="max-w-md p-4 space-y-3">
+          <div>
+            <h4 className="font-semibold text-sm mb-1">
+              Strategy: {strategy.strategyName.replace(/_/g, ' ')}
+            </h4>
+            <p className="text-xs text-muted-foreground">{strategy.strategyDescription}</p>
+          </div>
+
+          <div>
+            <h5 className="font-medium text-xs mb-1">Formula:</h5>
+            <code className="text-xs bg-muted p-1 rounded block break-all">
+              {strategy.formula}
+            </code>
+          </div>
+
+          <div>
+            <h5 className="font-medium text-xs mb-1">Parameters:</h5>
+            <ul className="text-xs space-y-1">
+              <li>• Ad slots per page: 3</li>
+              <li>• Fill rate: 85%</li>
+              <li>• Viewability rate: 70%</li>
+              <li>
+                • CPM: ${strategy.cpm.toFixed(2)}
+                {strategy.cpmSource && (
+                  <a
+                    href={strategy.cpmSource}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ml-1 text-primary hover:underline"
+                  >
+                    [source]
+                  </a>
+                )}
+              </li>
+              <li>• Engagement factor: 1.0</li>
+              <li>• Policy compliance: 1.0</li>
+              {strategy.formula.includes("refresh") && (
+                <li>• Refresh interval: 60s</li>
+              )}
+            </ul>
+          </div>
+
+          <div className="pt-2 border-t border-border">
+            <p className="text-xs font-medium">Implementation:</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {strategy.strategyDescription}
+            </p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
 
-function NetworkRow({ est }: { est: NetworkRevenueEstimate }) {
-  const p = est.policy;
-  const link = NETWORK_LINKS[p.network_name];
+function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
   return (
     <TableRow>
       <TableCell>
-        {link ? (
-          <a href={link.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline inline-flex items-center gap-1">
-            {p.network_name}
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        ) : (
-          <div className="font-medium">{p.network_name}</div>
-        )}
-        <div className="text-xs text-muted-foreground">{p.tier_name}</div>
+        <a
+          href={strategy.officialUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+        >
+          {strategy.programName}
+          <ExternalLink className="w-3 h-3" />
+        </a>
       </TableCell>
-      <TableCell className="text-right text-xs">
-        <SourceLink url={p.cpm_source_url}>
-          ${p.display_cpm}
-        </SourceLink>
+      <TableCell>
+        <StrategyTooltip strategy={strategy} />
       </TableCell>
-      <TableCell className="text-right text-xs">
-        <SourceLink url={p.source_url}>
-          {p.revenue_share_percent}%
-        </SourceLink>
+      <TableCell className="text-right text-sm">
+        ${strategy.cpm.toFixed(2)}
       </TableCell>
-      <TableCell className="text-right font-bold">{formatMoney(est.netTotalRevenue)}</TableCell>
+      <TableCell className="text-right text-sm">
+        {strategy.estimatedImpressions.toLocaleString()}
+      </TableCell>
+      <TableCell className="text-right text-sm">
+        ${strategy.estimatedRpm.toFixed(2)}
+      </TableCell>
+      <TableCell className="text-right font-bold">
+        {formatMoney(strategy.estimatedRevenue)}
+      </TableCell>
       <TableCell className="text-center text-xs">
-        {est.meetsMinimum ? (
+        {strategy.meetsRequirements ? (
           <span className="text-green-600 inline-flex items-center gap-1">
             <CheckCircle className="w-4 h-4" /> Yes
           </span>
         ) : (
           <span className="text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
             <AlertTriangle className="w-4 h-4" />
-            Need {p.min_monthly_pageviews.toLocaleString()} pv/mo
+            {strategy.trafficRequirementSource ? (
+              <a
+                href={strategy.trafficRequirementSource}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:underline"
+              >
+                {strategy.trafficRequirement}
+              </a>
+            ) : (
+              strategy.trafficRequirement
+            )}
           </span>
         )}
       </TableCell>
@@ -75,6 +141,12 @@ function NetworkRow({ est }: { est: NetworkRevenueEstimate }) {
 
 export function AdRevenueEstimator() {
   const { data, loading, period, setPeriod, refetch } = useAdRevenue();
+
+  const bestRevenue = data?.strategyEstimates && data.strategyEstimates.length > 0
+    ? data.strategyEstimates.reduce((max, curr) =>
+        curr.estimatedRevenue > max.estimatedRevenue ? curr : max
+      , data.strategyEstimates[0])
+    : null;
 
   return (
     <div className="space-y-4">
@@ -100,7 +172,6 @@ export function AdRevenueEstimator() {
 
       {data && (
         <>
-          {/* Engagement summary cards */}
           <div className="grid md:grid-cols-4 gap-4">
             <div className="bg-card rounded-xl shadow p-5">
               <div className="flex items-center gap-3 mb-2">
@@ -114,7 +185,7 @@ export function AdRevenueEstimator() {
             </div>
             <div className="bg-card rounded-xl shadow p-5">
               <div className="flex items-center gap-3 mb-2">
-                <Clock className="w-5 h-5 text-purple-600" />
+                <Clock className="w-5 h-5 text-green-600" />
                 <span className="text-sm text-muted-foreground">Active Minutes</span>
               </div>
               <p className="text-2xl font-bold text-card-foreground">{data.engagement.totalActiveMinutes.toLocaleString()}</p>
@@ -129,76 +200,51 @@ export function AdRevenueEstimator() {
             <div className="bg-card rounded-xl shadow p-5 border-l-4 border-green-500">
               <div className="flex items-center gap-3 mb-2">
                 <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-sm text-muted-foreground">Best Net Revenue</span>
+                <span className="text-sm text-muted-foreground">Best Strategy</span>
               </div>
               <p className="text-2xl font-bold text-card-foreground">
-                {data.networkEstimates.length > 0
-                  ? formatMoney(data.networkEstimates[0].netTotalRevenue)
-                  : "$0.00"}
+                {bestRevenue ? formatMoney(bestRevenue.estimatedRevenue) : "$0.00"}
               </p>
-              {data.networkEstimates.length > 0 && (
+              {bestRevenue && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {data.networkEstimates[0].policy.network_name} ({data.networkEstimates[0].policy.tier_name})
+                  {bestRevenue.programName}
                 </p>
               )}
             </div>
           </div>
 
-          {/* Revenue by network */}
           <div className="bg-card rounded-xl shadow p-5">
             <h3 className="text-lg font-semibold text-card-foreground mb-1">Revenue by Ad Network</h3>
             <p className="text-xs text-muted-foreground mb-3">
-              Net revenue = (impressions × CPM / 1000) × fill rate × revenue share. Fill rate is estimated at 85%, a conservative industry standard. Video ads are possible but not included in this calculation.
+              Estimated revenue based on ground truth metrics and network-specific formulas. Hover over strategies for detailed parameters.
             </p>
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Network</TableHead>
-                    <TableHead className="text-right">Display CPM</TableHead>
-                    <TableHead className="text-right">Rev Share</TableHead>
+                    <TableHead>Plan/Strategy</TableHead>
+                    <TableHead className="text-right">CPM</TableHead>
+                    <TableHead className="text-right">Est. Impressions</TableHead>
+                    <TableHead className="text-right">Est. RPM</TableHead>
                     <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-center">Eligible</TableHead>
+                    <TableHead className="text-center">Meets Req.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.networkEstimates.map((est) => (
-                    <NetworkRow key={est.policy.id} est={est} />
+                  {data.strategyEstimates.map((strategy, idx) => (
+                    <StrategyRow key={`${strategy.programKey}-${strategy.strategyName}-${idx}`} strategy={strategy} />
                   ))}
-                  {data.networkEstimates.length === 0 && (
+                  {data.strategyEstimates.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                        No ad network policies configured.
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                        No ad network configuration found. Upload a configuration to see revenue estimates.
                       </TableCell>
                     </TableRow>
                   )}
                 </TableBody>
               </Table>
             </div>
-
-            {/* Fine print: minimum requirements */}
-            {data.networkEstimates.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-border">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Minimum Requirements by Plan</p>
-                <div className="grid gap-1">
-                  {data.networkEstimates
-                    .filter((est) => est.policy.min_requirements_notes)
-                    .map((est) => (
-                      <p key={est.policy.id} className="text-xs text-muted-foreground">
-                        <span className="font-medium">
-                          {est.policy.network_name} {est.policy.tier_name}
-                        </span>
-                        {est.policy.min_monthly_pageviews > 0 && (
-                          <span className="text-amber-600 dark:text-amber-400">
-                            {" "}({est.policy.min_monthly_pageviews.toLocaleString()} pv/mo)
-                          </span>
-                        )}
-                        : {est.policy.min_requirements_notes}
-                      </p>
-                    ))}
-                </div>
-              </div>
-            )}
           </div>
         </>
       )}
