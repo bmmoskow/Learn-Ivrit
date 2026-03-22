@@ -266,7 +266,7 @@ describe("useAdRevenue", () => {
           }),
         };
       }
-      if (table === "ad_network_policies") {
+      if (table === "ad_config") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -298,7 +298,7 @@ describe("useAdRevenue", () => {
     expect(result.current.data).toBeNull();
     expect(consoleSpy).toHaveBeenCalledWith(
       "Failed to fetch ad config:",
-      expect.objectContaining({ message: "Failed to fetch config" })
+      { message: "Failed to fetch config" }
     );
 
     consoleSpy.mockRestore();

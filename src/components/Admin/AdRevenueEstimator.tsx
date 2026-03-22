@@ -142,9 +142,11 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
 export function AdRevenueEstimator() {
   const { data, loading, period, setPeriod, refetch } = useAdRevenue();
 
-  const bestRevenue = data?.strategyEstimates.reduce((max, curr) =>
-    curr.estimatedRevenue > max.estimatedRevenue ? curr : max
-  , data.strategyEstimates[0]);
+  const bestRevenue = data?.strategyEstimates && data.strategyEstimates.length > 0
+    ? data.strategyEstimates.reduce((max, curr) =>
+        curr.estimatedRevenue > max.estimatedRevenue ? curr : max
+      , data.strategyEstimates[0])
+    : null;
 
   return (
     <div className="space-y-4">
