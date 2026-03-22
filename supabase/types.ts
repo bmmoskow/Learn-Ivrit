@@ -60,6 +60,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      ad_config: {
+        Row: {
+          id: string;
+          created_at: string;
+          updated_at: string;
+          config: Json;
+          version: number;
+          is_active: boolean;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          config?: Json;
+          version?: number;
+          is_active?: boolean;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          config?: Json;
+          version?: number;
+          is_active?: boolean;
+        };
+        Relationships: [];
+      };
       bookmark_folders: {
         Row: {
           id: string;
