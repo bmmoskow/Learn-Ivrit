@@ -104,7 +104,7 @@ describe("useAdRevenue", () => {
           }),
         };
       }
-      if (table === "ad_network_policies") {
+      if (table === "ad_config") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
@@ -214,7 +214,7 @@ describe("useAdRevenue", () => {
           }),
         };
       }
-      if (table === "ad_network_policies") {
+      if (table === "ad_config") {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({

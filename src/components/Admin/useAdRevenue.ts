@@ -140,7 +140,7 @@ export function useAdRevenue() {
         .gte("view_date", startDate.toISOString().split("T")[0])
         .order("view_date", { ascending: false }),
       supabase
-        .from("ad_network_policies")
+        .from("ad_config")
         .select("config")
         .eq("is_active", true)
         .maybeSingle(),
