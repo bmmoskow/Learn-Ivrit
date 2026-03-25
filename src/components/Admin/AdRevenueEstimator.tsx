@@ -1,4 +1,4 @@
-import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink, Info, Upload, FileText } from "lucide-react";
+import { Eye, Clock, Timer, TrendingUp, Info, Upload, FileText } from "lucide-react";
 import { useState } from "react";
 import {
   Table,
@@ -50,33 +50,12 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           <div>
             <h5 className="font-medium text-xs mb-1">Parameters:</h5>
             <ul className="text-xs space-y-1">
-              <li>• Ad slots per page: 3</li>
-              <li>• Fill rate: 85%</li>
-              <li>• Viewability rate: 70%</li>
-              <li>
-                • CPM: ${strategy.cpm.toFixed(2)}
-                {strategy.cpmSource && (
-                  <a
-                    href={strategy.cpmSource}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-1 text-primary hover:underline"
-                  >
-                    [source]
-                  </a>
-                )}
-                {strategy.cpmConfidence && (
-                  <span className="ml-1 text-muted-foreground">
-                    ({strategy.cpmConfidence} confidence)
-                  </span>
-                )}
-              </li>
-              {strategy.revenueShare && (
-                <li>
-                  • Revenue share: {strategy.revenueShare}
-                  {strategy.revenueShareSource && (
+              {Object.entries(strategy.parameters).map(([key, param]) => (
+                <li key={key}>
+                  • {key.replace(/_/g, ' ')}: {typeof param.value === 'number' ? param.value : param.value}
+                  {param.source && param.source !== 'None' && (
                     <a
-                      href={strategy.revenueShareSource}
+                      href={param.source}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-1 text-primary hover:underline"
@@ -84,36 +63,13 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
                       [source]
                     </a>
                   )}
-                  {strategy.revenueShareConfidence && (
+                  {param.confidence && (
                     <span className="ml-1 text-muted-foreground">
-                      ({strategy.revenueShareConfidence} confidence)
+                      ({param.confidence} confidence)
                     </span>
                   )}
                 </li>
-              )}
-              <li>
-                • Traffic req: {strategy.trafficRequirement}
-                {strategy.trafficRequirementSource && (
-                  <a
-                    href={strategy.trafficRequirementSource}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-1 text-primary hover:underline"
-                  >
-                    [source]
-                  </a>
-                )}
-                {strategy.trafficRequirementConfidence && (
-                  <span className="ml-1 text-muted-foreground">
-                    ({strategy.trafficRequirementConfidence} confidence)
-                  </span>
-                )}
-              </li>
-              <li>• Engagement factor: 1.0</li>
-              <li>• Policy compliance: 1.0</li>
-              {strategy.formula.includes("refresh") && (
-                <li>• Refresh interval: 60s</li>
-              )}
+              ))}
             </ul>
           </div>
 
@@ -133,15 +89,9 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
   return (
     <TableRow>
       <TableCell>
-        <a
-          href={strategy.officialUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-medium text-primary hover:underline inline-flex items-center gap-1"
-        >
+        <span className="font-medium">
           {strategy.programName}
-          <ExternalLink className="w-3 h-3" />
-        </a>
+        </span>
       </TableCell>
       <TableCell>
         <StrategyTooltip strategy={strategy} />
@@ -157,29 +107,6 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
       </TableCell>
       <TableCell className="text-right font-bold">
         {formatMoney(strategy.estimatedRevenue)}
-      </TableCell>
-      <TableCell className="text-center text-xs">
-        {strategy.meetsRequirements ? (
-          <span className="text-green-600 inline-flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" /> Yes
-          </span>
-        ) : (
-          <span className="text-amber-600 dark:text-amber-400 inline-flex items-center gap-1">
-            <AlertTriangle className="w-4 h-4" />
-            {strategy.trafficRequirementSource ? (
-              <a
-                href={strategy.trafficRequirementSource}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:underline"
-              >
-                {strategy.trafficRequirement}
-              </a>
-            ) : (
-              strategy.trafficRequirement
-            )}
-          </span>
-        )}
       </TableCell>
     </TableRow>
   );
@@ -215,11 +142,52 @@ export function AdRevenueEstimator() {
       const text = await file.text();
       const config = JSON.parse(text);
 
-      const { data: result, error } = await supabase.rpc('insert_active_ad_config', {
-        config_data: config
-      });
+      // Validate config structure
+      if (!config.programs || typeof config.programs !== 'object') {
+        throw new Error('Invalid config: missing "programs" object');
+      }
 
-      if (error) throw error;
+      // Validate each program
+      for (const [key, program] of Object.entries(config.programs)) {
+        const p = program as any;
+        if (!Array.isArray(p.strategies)) {
+          throw new Error(`Invalid config: program "${key}" missing strategies array`);
+        }
+        for (const strategy of p.strategies) {
+          if (!strategy.parameters || typeof strategy.parameters !== 'object') {
+            throw new Error(`Invalid config: strategy "${strategy.name}" in "${key}" missing parameters object`);
+          }
+        }
+      }
+
+      // Get the next version number
+      const { data: versionData } = await supabase
+        .from('ad_config')
+        .select('version')
+        .order('version', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const newVersion = (versionData?.version || 0) + 1;
+
+      // Deactivate all existing configs
+      const { error: deactivateError } = await supabase
+        .from('ad_config')
+        .update({ is_active: false })
+        .eq('is_active', true);
+
+      if (deactivateError) throw deactivateError;
+
+      // Insert new config as active
+      const { error: insertError } = await supabase
+        .from('ad_config')
+        .insert({
+          config,
+          version: newVersion,
+          is_active: true
+        });
+
+      if (insertError) throw insertError;
 
       toast({
         title: "Success",
@@ -254,11 +222,21 @@ export function AdRevenueEstimator() {
 
   const activateConfig = async (configId: string) => {
     try {
-      const { error } = await supabase.rpc('activate_ad_config', {
-        config_id: configId
-      });
+      // Deactivate all configs
+      const { error: deactivateError } = await supabase
+        .from('ad_config')
+        .update({ is_active: false })
+        .eq('is_active', true);
 
-      if (error) throw error;
+      if (deactivateError) throw deactivateError;
+
+      // Activate the selected config
+      const { error: activateError } = await supabase
+        .from('ad_config')
+        .update({ is_active: true })
+        .eq('id', configId);
+
+      if (activateError) throw activateError;
 
       toast({
         title: "Success",
@@ -438,7 +416,6 @@ export function AdRevenueEstimator() {
                     <TableHead className="text-right">Est. Impressions</TableHead>
                     <TableHead className="text-right">Est. RPM</TableHead>
                     <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-center">Meets Req.</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -447,7 +424,7 @@ export function AdRevenueEstimator() {
                   ))}
                   {data.strategyEstimates.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                         No ad network configuration found. Upload a configuration to see revenue estimates.
                       </TableCell>
                     </TableRow>

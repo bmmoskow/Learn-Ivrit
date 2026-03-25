@@ -1,0 +1,231 @@
+{
+  "programs": {
+    "google_adsense": {
+      "strategies": [
+        {
+          "name": "single_high_viewability_unit",
+          "description": "One conservative, high-visibility ad unit per page with no refresh.",
+          "inputs": {
+            "pageviews": "Number of pageviews."
+          },
+          "parameters": {
+            "ad_slots_per_page": {
+              "value": 1,
+              "source": "None",
+              "confidence": "high"
+            },
+            "fill_rate": {
+              "value": 0.75,
+              "source": "None",
+              "confidence": "low"
+            },
+            "viewability_rate": {
+              "value": 0.5,
+              "source": "https://www.iab.com/guidelines/viewability/",
+              "confidence": "medium"
+            },
+            "cpm": {
+              "value": 0.5,
+              "source": "https://www.monetizemore.com/blog/adsense-cpm-rates/",
+              "confidence": "medium"
+            },
+            "policy_compliance_factor": {
+              "value": 1.0,
+              "source": "None",
+              "confidence": "low"
+            }
+          },
+          "formula": "estimated_revenue = pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000 * policy_compliance_factor"
+        }
+      ]
+    },
+
+    "google_ad_manager_adx": {
+      "strategies": [
+        {
+          "name": "viewable_refresh_strategy",
+          "description": "One high-viewability unit using conservative compliant refresh assumptions.",
+          "inputs": {
+            "pageviews": "Number of pageviews.",
+            "avg_viewable_seconds_per_page": "Average viewable seconds."
+          },
+          "parameters": {
+            "ad_slots_per_page": {
+              "value": 1,
+              "source": "None",
+              "confidence": "high"
+            },
+            "fill_rate": {
+              "value": 0.8,
+              "source": "None",
+              "confidence": "low"
+            },
+            "refresh_interval_seconds": {
+              "value": 60,
+              "source": "https://support.google.com/admanager/answer/6022114",
+              "confidence": "high"
+            },
+            "cpm": {
+              "value": 2.0,
+              "source": "https://www.monetizemore.com/blog/google-adx-vs-adsense/",
+              "confidence": "medium"
+            },
+            "policy_compliance_factor": {
+              "value": 1.0,
+              "source": "None",
+              "confidence": "low"
+            }
+          },
+          "formula": "estimated_revenue = pageviews * ad_slots_per_page * fill_rate * (1 + floor(avg_viewable_seconds_per_page / refresh_interval_seconds)) * cpm / 1000 * policy_compliance_factor"
+        }
+      ]
+    },
+
+    "ezoic_platform": {
+      "strategies": [
+        {
+          "name": "ai_optimized_layout",
+          "description": "AI-managed layout with conservative performance assumptions.",
+          "inputs": {
+            "pageviews": "Number of pageviews."
+          },
+          "parameters": {
+            "ad_slots_per_page": {
+              "value": 5,
+              "source": "https://www.ezoic.com/services",
+              "confidence": "low"
+            },
+            "fill_rate": {
+              "value": 0.7,
+              "source": "None",
+              "confidence": "low"
+            },
+            "viewability_rate": {
+              "value": 0.4,
+              "source": "https://www.iab.com/guidelines/viewability/",
+              "confidence": "medium"
+            },
+            "cpm": {
+              "value": 3.0,
+              "source": "https://elitewealthplan.com/mediavine-vs-adthrive-vs-ezoic/",
+              "confidence": "low"
+            },
+            "engagement_factor": {
+              "value": 0.85,
+              "source": "None",
+              "confidence": "low"
+            }
+          },
+          "formula": "estimated_revenue = pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000 * engagement_factor"
+        }
+      ]
+    },
+
+    "mediavine_core": {
+      "strategies": [
+        {
+          "name": "session_depth_strategy",
+          "description": "Session-driven model using conservative premium assumptions.",
+          "inputs": {
+            "sessions": "Number of sessions.",
+            "pages_per_session": "Pages per session."
+          },
+          "parameters": {
+            "ad_slots_per_page": {
+              "value": 6,
+              "source": "https://www.mediavine.com/publisher-network/",
+              "confidence": "low"
+            },
+            "fill_rate": {
+              "value": 0.8,
+              "source": "None",
+              "confidence": "low"
+            },
+            "viewability_rate": {
+              "value": 0.5,
+              "source": "https://www.iab.com/guidelines/viewability/",
+              "confidence": "medium"
+            },
+            "cpm": {
+              "value": 10.0,
+              "source": "https://elitewealthplan.com/mediavine-vs-adthrive-vs-ezoic/",
+              "confidence": "low"
+            },
+            "engagement_factor": {
+              "value": 0.85,
+              "source": "None",
+              "confidence": "low"
+            }
+          },
+          "formula": "estimated_revenue = sessions * pages_per_session * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000 * engagement_factor"
+        }
+      ]
+    },
+
+    "raptive": {
+      "strategies": [
+        {
+          "name": "premium_session_strategy",
+          "description": "Premium network conservative modeling.",
+          "inputs": {
+            "sessions": "Number of sessions.",
+            "pages_per_session": "Pages per session."
+          },
+          "parameters": {
+            "ad_slots_per_page": {
+              "value": 6,
+              "source": "https://raptive.com/",
+              "confidence": "low"
+            },
+            "fill_rate": {
+              "value": 0.85,
+              "source": "None",
+              "confidence": "low"
+            },
+            "viewability_rate": {
+              "value": 0.5,
+              "source": "https://www.iab.com/guidelines/viewability/",
+              "confidence": "medium"
+            },
+            "cpm": {
+              "value": 15.0,
+              "source": "https://elitewealthplan.com/mediavine-vs-adthrive-vs-ezoic/",
+              "confidence": "low"
+            },
+            "engagement_factor": {
+              "value": 0.85,
+              "source": "None",
+              "confidence": "low"
+            }
+          },
+          "formula": "estimated_revenue = sessions * pages_per_session * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000 * engagement_factor"
+        }
+      ]
+    },
+
+    "propellerads": {
+      "strategies": [
+        {
+          "name": "event_based_interstitial",
+          "description": "Event-driven monetization.",
+          "inputs": {
+            "event_count": "Number of monetized events."
+          },
+          "parameters": {
+            "event_cpm": {
+              "value": 1.0,
+              "source": "https://www.monetizemore.com/blog/propellerads-review/",
+              "confidence": "low"
+            },
+            "policy_compliance_factor": {
+              "value": 0.8,
+              "source": "None",
+              "confidence": "low"
+            }
+          },
+          "formula": "estimated_revenue = event_count * event_cpm / 1000 * policy_compliance_factor"
+        }
+      ]
+    }
+  }
+}
