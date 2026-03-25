@@ -1,4 +1,5 @@
-import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink, Info } from "lucide-react";
+import { Eye, Clock, Timer, TrendingUp, AlertTriangle, CheckCircle, ExternalLink, Info, Upload, FileText } from "lucide-react";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -14,6 +15,8 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import { useAdRevenue, StrategyEstimate } from "./useAdRevenue";
+import { supabase } from "../../../supabase/client";
+import { useToast } from "../../hooks/use-toast";
 
 function formatMoney(n: number): string {
   return n < 0.01 && n > 0 ? `$${n.toFixed(4)}` : `$${n.toFixed(2)}`;
@@ -182,14 +185,97 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
   );
 }
 
+interface ConfigHistory {
+  id: string;
+  created_at: string;
+  version: number;
+  is_active: boolean;
+  config: unknown;
+}
+
 export function AdRevenueEstimator() {
   const { data, loading, period, setPeriod, refetch } = useAdRevenue();
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [configs, setConfigs] = useState<ConfigHistory[]>([]);
+  const [showConfigs, setShowConfigs] = useState(false);
 
   const bestRevenue = data?.strategyEstimates && data.strategyEstimates.length > 0
     ? data.strategyEstimates.reduce((max, curr) =>
         curr.estimatedRevenue > max.estimatedRevenue ? curr : max
       , data.strategyEstimates[0])
     : null;
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const text = await file.text();
+      const config = JSON.parse(text);
+
+      const { data: result, error } = await supabase.rpc('insert_active_ad_config', {
+        config_data: config
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Ad configuration uploaded and activated successfully",
+      });
+
+      await fetchConfigs();
+      refetch();
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to upload configuration",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const fetchConfigs = async () => {
+    const { data: configData, error } = await supabase
+      .from('ad_config')
+      .select('id, created_at, version, is_active, config')
+      .order('version', { ascending: false });
+
+    if (!error && configData) {
+      setConfigs(configData);
+    }
+  };
+
+  const activateConfig = async (configId: string) => {
+    try {
+      const { error } = await supabase.rpc('activate_ad_config', {
+        config_id: configId
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Configuration activated successfully",
+      });
+
+      await fetchConfigs();
+      refetch();
+    } catch (error) {
+      console.error("Activate error:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to activate configuration",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -209,7 +295,88 @@ export function AdRevenueEstimator() {
         >
           Refresh
         </button>
+        <label className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition cursor-pointer inline-flex items-center gap-2">
+          <Upload className="w-4 h-4" />
+          {uploading ? "Uploading..." : "Upload Config"}
+          <input
+            type="file"
+            accept=".json"
+            onChange={handleFileUpload}
+            disabled={uploading}
+            className="hidden"
+          />
+        </label>
+        <button
+          onClick={async () => {
+            await fetchConfigs();
+            setShowConfigs(!showConfigs);
+          }}
+          className="px-3 py-2 bg-gray-600 text-white rounded-lg text-sm hover:bg-gray-700 transition inline-flex items-center gap-2"
+        >
+          <FileText className="w-4 h-4" />
+          {showConfigs ? "Hide" : "Show"} Config History
+        </button>
       </div>
+
+      {showConfigs && (
+        <div className="bg-card rounded-xl shadow p-5">
+          <h3 className="text-lg font-semibold text-card-foreground mb-3">Configuration History</h3>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Programs</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {configs.map((config) => {
+                  const programCount = config.config && typeof config.config === 'object' && 'programs' in config.config
+                    ? Object.keys(config.config.programs as object).length
+                    : 0;
+
+                  return (
+                    <TableRow key={config.id}>
+                      <TableCell className="font-medium">v{config.version}</TableCell>
+                      <TableCell className="text-sm">
+                        {new Date(config.created_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        {config.is_active ? (
+                          <span className="text-green-600 font-medium">Active</span>
+                        ) : (
+                          <span className="text-gray-400">Inactive</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{programCount} programs</TableCell>
+                      <TableCell>
+                        {!config.is_active && (
+                          <button
+                            onClick={() => activateConfig(config.id)}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            Activate
+                          </button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {configs.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      No configurations found. Upload a JSON config to get started.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
       {loading && <p className="text-muted-foreground text-sm">Loading analytics...</p>}
 
