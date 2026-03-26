@@ -27,7 +27,11 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
 
   return (
     <TooltipProvider>
-      <Tooltip open={open} onOpenChange={setOpen}>
+      <Tooltip open={open} onOpenChange={(newOpen) => {
+        // Prevent automatic closing on blur/hover - only allow manual control
+        if (!newOpen && open) return;
+        setOpen(newOpen);
+      }}>
         <TooltipTrigger asChild>
           <button
             className="inline-flex items-center gap-1 hover:text-primary"
@@ -42,7 +46,11 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
         </TooltipTrigger>
         <TooltipContent
           className="max-w-md p-4 space-y-3"
-          onPointerDownOutside={() => setOpen(false)}
+          onPointerDownOutside={(e) => {
+            // Only close when clicking outside, not on focus changes
+            setOpen(false);
+          }}
+          onEscapeKeyDown={() => setOpen(false)}
         >
           <div>
             <h4 className="font-semibold text-sm mb-1">
