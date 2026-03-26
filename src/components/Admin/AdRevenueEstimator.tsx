@@ -116,13 +116,15 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           <div>
             <h5 className="font-medium text-xs mb-1">Inputs:</h5>
             <ul className="text-xs space-y-1">
-              {strategy.inputs && Object.entries(strategy.inputs).map(([key, description]) => (
+              {strategy.inputs && Object.entries(strategy.inputs).map(([key, value]) => (
                 <li key={key}>
-                  • {key.replace(/_/g, ' ')}: {description}
+                  • {key.replace(/_/g, ' ')}: {typeof value === 'number'
+                    ? value.toLocaleString()
+                    : value}
                 </li>
               ))}
               {(!strategy.inputs || Object.keys(strategy.inputs).length === 0) && (
-                <li className="text-muted-foreground italic">No specific inputs defined</li>
+                <li className="text-muted-foreground italic">No inputs available</li>
               )}
             </ul>
           </div>

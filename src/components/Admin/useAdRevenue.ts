@@ -47,7 +47,7 @@ export interface StrategyEstimate {
   trafficRequirement?: { value: string; source: string; confidence: string };
   strategyName: string;
   strategyDescription: string;
-  inputs?: Record<string, string>;
+  inputs?: Record<string, number | string>;
   cpm: number;
   estimatedRevenue: number;
   estimatedImpressions: number;
@@ -208,6 +208,16 @@ export function useAdRevenue() {
 
         const cpm = getNumericValue(strategy.parameters.cpm) || getNumericValue(strategy.parameters.event_cpm);
 
+        // Compute actual input values
+        const avgViewableSecondsPerPage = totalViews > 0 ? totalActiveSeconds / totalViews : 0;
+        const actualInputs: Record<string, number | string> = {
+          pageviews: totalViews,
+          activeSeconds: totalActiveSeconds,
+          sessions: totalViews,
+          pagesPerSession: 1,
+          avgViewableSecondsPerPage: Math.round(avgViewableSecondsPerPage * 10) / 10,
+        };
+
         strategyEstimates.push({
           programKey,
           programName: programKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
@@ -218,7 +228,7 @@ export function useAdRevenue() {
           trafficRequirement: program.traffic_requirement,
           strategyName: strategy.name,
           strategyDescription: strategy.description,
-          inputs: strategy.inputs,
+          inputs: actualInputs,
           cpm,
           estimatedRevenue: revenue,
           estimatedImpressions: impressions,
