@@ -208,15 +208,34 @@ export function useAdRevenue() {
 
         const cpm = getNumericValue(strategy.parameters.cpm) || getNumericValue(strategy.parameters.event_cpm);
 
-        // Compute actual input values
-        const avgViewableSecondsPerPage = totalViews > 0 ? totalActiveSeconds / totalViews : 0;
-        const actualInputs: Record<string, number | string> = {
-          pageviews: totalViews,
-          activeSeconds: totalActiveSeconds,
-          sessions: totalViews,
-          pagesPerSession: 1,
-          avgViewableSecondsPerPage: Math.round(avgViewableSecondsPerPage * 10) / 10,
-        };
+        // Compute actual input values based on what's defined in strategy.inputs
+        const actualInputs: Record<string, number | string> = {};
+
+        if (strategy.inputs) {
+          const avgViewableSecondsPerPage = totalViews > 0 ? totalActiveSeconds / totalViews : 0;
+
+          for (const key of Object.keys(strategy.inputs)) {
+            switch (key) {
+              case 'pageviews':
+                actualInputs[key] = totalViews;
+                break;
+              case 'activeSeconds':
+                actualInputs[key] = totalActiveSeconds;
+                break;
+              case 'sessions':
+                actualInputs[key] = totalViews;
+                break;
+              case 'pagesPerSession':
+                actualInputs[key] = 1;
+                break;
+              case 'avgViewableSecondsPerPage':
+                actualInputs[key] = Math.round(avgViewableSecondsPerPage * 10) / 10;
+                break;
+              default:
+                actualInputs[key] = strategy.inputs[key];
+            }
+          }
+        }
 
         strategyEstimates.push({
           programKey,
