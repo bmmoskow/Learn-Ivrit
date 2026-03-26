@@ -1,4 +1,4 @@
-import { Eye, Clock, Timer, TrendingUp, Info, Upload, FileText } from "lucide-react";
+import { Eye, Clock, Timer, TrendingUp, Info, Upload, FileText, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import {
   Table,
@@ -40,7 +40,73 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
             <p className="text-xs text-muted-foreground">{strategy.strategyDescription}</p>
           </div>
 
-          <div>
+          {strategy.programCpm && (
+            <div className="pt-2 border-t border-border">
+              <h5 className="font-medium text-xs mb-1">Program CPM Range:</h5>
+              <p className="text-xs">{strategy.programCpm.value}</p>
+              {strategy.programCpm.source && strategy.programCpm.source !== 'None' && (
+                <a
+                  href={strategy.programCpm.source}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Source <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+              {strategy.programCpm.confidence && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({strategy.programCpm.confidence} confidence)
+                </span>
+              )}
+            </div>
+          )}
+
+          {strategy.revenueShare && (
+            <div className="pt-2 border-t border-border">
+              <h5 className="font-medium text-xs mb-1">Revenue Share:</h5>
+              <p className="text-xs">{strategy.revenueShare.value}</p>
+              {strategy.revenueShare.source && strategy.revenueShare.source !== 'None' && (
+                <a
+                  href={strategy.revenueShare.source}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Source <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+              {strategy.revenueShare.confidence && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({strategy.revenueShare.confidence} confidence)
+                </span>
+              )}
+            </div>
+          )}
+
+          {strategy.trafficRequirement && (
+            <div className="pt-2 border-t border-border">
+              <h5 className="font-medium text-xs mb-1">Traffic Requirement:</h5>
+              <p className="text-xs">{strategy.trafficRequirement.value}</p>
+              {strategy.trafficRequirement.source && strategy.trafficRequirement.source !== 'None' && (
+                <a
+                  href={strategy.trafficRequirement.source}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  Source <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+              {strategy.trafficRequirement.confidence && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  ({strategy.trafficRequirement.confidence} confidence)
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="pt-2 border-t border-border">
             <h5 className="font-medium text-xs mb-1">Formula:</h5>
             <code className="text-xs bg-muted p-1 rounded block break-all">
               {strategy.formula}
@@ -72,13 +138,6 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
               ))}
             </ul>
           </div>
-
-          <div className="pt-2 border-t border-border">
-            <p className="text-xs font-medium">Implementation:</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {strategy.strategyDescription}
-            </p>
-          </div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -89,9 +148,24 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
   return (
     <TableRow>
       <TableCell>
-        <span className="font-medium">
-          {strategy.programName}
-        </span>
+        <div className="flex flex-col gap-1">
+          {strategy.company && (
+            <span className="text-xs text-muted-foreground">{strategy.company}</span>
+          )}
+          <span className="font-medium">
+            {strategy.programName}
+          </span>
+          {strategy.officialUrl && (
+            <a
+              href={strategy.officialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+            >
+              Learn more <ExternalLink className="w-3 h-3" />
+            </a>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <StrategyTooltip strategy={strategy} />

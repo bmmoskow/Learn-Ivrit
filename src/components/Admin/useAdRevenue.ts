@@ -23,16 +23,28 @@ interface StrategyConfig {
 }
 
 interface ProgramConfig {
+  company?: string;
+  official_url?: string;
+  cpm?: { value: string; source: string; confidence: string };
+  revenue_share?: { value: string; source: string; confidence: string };
+  traffic_requirement?: { value: string; source: string; confidence: string };
+  policies?: Record<string, { value: string; source: string; confidence: string }>;
   strategies: StrategyConfig[];
 }
 
 interface AdServingConfig {
+  definitions?: Record<string, unknown>;
   programs: Record<string, ProgramConfig>;
 }
 
 export interface StrategyEstimate {
   programKey: string;
   programName: string;
+  company?: string;
+  officialUrl?: string;
+  programCpm?: { value: string; source: string; confidence: string };
+  revenueShare?: { value: string; source: string; confidence: string };
+  trafficRequirement?: { value: string; source: string; confidence: string };
   strategyName: string;
   strategyDescription: string;
   cpm: number;
@@ -198,6 +210,11 @@ export function useAdRevenue() {
         strategyEstimates.push({
           programKey,
           programName: programKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          company: program.company,
+          officialUrl: program.official_url,
+          programCpm: program.cpm,
+          revenueShare: program.revenue_share,
+          trafficRequirement: program.traffic_requirement,
           strategyName: strategy.name,
           strategyDescription: strategy.description,
           cpm,
