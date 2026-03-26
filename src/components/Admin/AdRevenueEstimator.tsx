@@ -345,6 +345,12 @@ export function AdRevenueEstimator() {
     }
   };
 
+  const bestRevenue = data?.strategyEstimates && data.strategyEstimates.length > 0
+    ? data.strategyEstimates.reduce((max, curr) =>
+        curr.estimatedRevenue > max.estimatedRevenue ? curr : max
+      , data.strategyEstimates[0])
+    : null;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3 items-center">
