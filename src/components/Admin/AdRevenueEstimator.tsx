@@ -239,7 +239,7 @@ export function AdRevenueEstimator() {
 
       // Validate each program
       for (const [key, program] of Object.entries(config.programs)) {
-        const p = program as any;
+        const p = program as Record<string, unknown>;
         if (!Array.isArray(p.strategies)) {
           throw new Error(`Invalid config: program "${key}" missing strategies array`);
         }

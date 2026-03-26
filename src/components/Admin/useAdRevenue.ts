@@ -184,8 +184,6 @@ export function useAdRevenue() {
       avgSessionSeconds: totalViews > 0 ? Math.round(totalActiveSeconds / totalViews) : 0,
     };
 
-    const monthlyPageviews = daysBack > 0 ? Math.round((totalViews / daysBack) * 30) : totalViews;
-
     const strategyEstimates: StrategyEstimate[] = [];
 
     for (const [programKey, program] of Object.entries(config.programs)) {
