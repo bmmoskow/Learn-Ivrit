@@ -114,6 +114,20 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           </div>
 
           <div>
+            <h5 className="font-medium text-xs mb-1">Inputs:</h5>
+            <ul className="text-xs space-y-1">
+              {strategy.inputs && Object.entries(strategy.inputs).map(([key, description]) => (
+                <li key={key}>
+                  • {key.replace(/_/g, ' ')}: {description}
+                </li>
+              ))}
+              {(!strategy.inputs || Object.keys(strategy.inputs).length === 0) && (
+                <li className="text-muted-foreground italic">No specific inputs defined</li>
+              )}
+            </ul>
+          </div>
+
+          <div>
             <h5 className="font-medium text-xs mb-1">Parameters:</h5>
             <ul className="text-xs space-y-1">
               {Object.entries(strategy.parameters).map(([key, param]) => (

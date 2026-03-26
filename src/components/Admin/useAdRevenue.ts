@@ -47,6 +47,7 @@ export interface StrategyEstimate {
   trafficRequirement?: { value: string; source: string; confidence: string };
   strategyName: string;
   strategyDescription: string;
+  inputs?: Record<string, string>;
   cpm: number;
   estimatedRevenue: number;
   estimatedImpressions: number;
@@ -217,6 +218,7 @@ export function useAdRevenue() {
           trafficRequirement: program.traffic_requirement,
           strategyName: strategy.name,
           strategyDescription: strategy.description,
+          inputs: strategy.inputs,
           cpm,
           estimatedRevenue: revenue,
           estimatedImpressions: impressions,
