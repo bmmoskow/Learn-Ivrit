@@ -5,7 +5,8 @@ import { AdRevenueEstimator } from "./AdRevenueEstimator";
 const mockStrategyEstimates = [
   {
     programKey: "google_adsense",
-    programName: "Google AdSense",
+    programName: "Google Adsense",
+    company: "Google",
     strategyName: "single_high_viewability_unit",
     strategyDescription: "Use one strong above-the-fold unit",
     officialUrl: "https://support.google.com/adsense/answer/180195",
@@ -13,15 +14,31 @@ const mockStrategyEstimates = [
     estimatedRevenue: 3.4,
     estimatedImpressions: 1000,
     estimatedRpm: 0.68,
-    meetsRequirements: true,
     formula: "estimated_revenue = (pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
-    cpmSource: "https://www.ezoic.com/publisher-resources/adsense-cpm-rates/",
-    trafficRequirement: "No minimum traffic requirement",
-    trafficRequirementSource: "https://support.google.com/adsense",
+    programCpm: {
+      value: "$2.5",
+      source: "https://www.ezoic.com/publisher-resources/adsense-cpm-rates/",
+      confidence: "medium",
+    },
+    trafficRequirement: {
+      value: "No minimum traffic requirement",
+      source: "https://support.google.com/adsense",
+      confidence: "high",
+    },
+    inputs: {
+      pageviews: 5000,
+    },
+    parameters: {
+      ad_slots_per_page: { value: 2, source: "None", confidence: "medium" },
+      fill_rate: { value: 0.9, source: "None", confidence: "medium" },
+      viewability_rate: { value: 0.7, source: "None", confidence: "medium" },
+      cpm: { value: 2.5, source: "None", confidence: "medium" },
+    },
   },
   {
     programKey: "ezoic_access_now",
-    programName: "Ezoic",
+    programName: "Ezoic Access Now",
+    company: "Ezoic",
     strategyName: "balanced_multi_slot_layout",
     strategyDescription: "Use moderate in-content and sidebar units",
     officialUrl: "https://www.ezoic.com/monetization/",
@@ -29,15 +46,31 @@ const mockStrategyEstimates = [
     estimatedRevenue: 8.64,
     estimatedImpressions: 1200,
     estimatedRpm: 1.73,
-    meetsRequirements: false,
     formula: "estimated_revenue = (pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
-    cpmSource: "https://www.ezoic.com/cpm-rates/",
-    trafficRequirement: "10,000 sessions/month",
-    trafficRequirementSource: "https://www.ezoic.com/requirements/",
+    programCpm: {
+      value: "$4.0",
+      source: "https://www.ezoic.com/cpm-rates/",
+      confidence: "medium",
+    },
+    trafficRequirement: {
+      value: "10,000 sessions/month",
+      source: "https://www.ezoic.com/requirements/",
+      confidence: "high",
+    },
+    inputs: {
+      pageviews: 5000,
+    },
+    parameters: {
+      ad_slots_per_page: { value: 3, source: "None", confidence: "medium" },
+      fill_rate: { value: 0.85, source: "None", confidence: "medium" },
+      viewability_rate: { value: 0.65, source: "None", confidence: "medium" },
+      cpm: { value: 4.0, source: "None", confidence: "medium" },
+    },
   },
   {
     programKey: "mediavine_pro",
-    programName: "Mediavine",
+    programName: "Mediavine Pro",
+    company: "Mediavine",
     strategyName: "session_depth_strategy",
     strategyDescription: "Increase pages per session",
     officialUrl: "https://www.mediavine.com/",
@@ -45,11 +78,27 @@ const mockStrategyEstimates = [
     estimatedRevenue: 24.0,
     estimatedImpressions: 1500,
     estimatedRpm: 4.8,
-    meetsRequirements: false,
     formula: "estimated_revenue = (sessions * pages_per_session * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
-    cpmSource: "https://www.mediavine.com/cpm/",
-    trafficRequirement: "50,000 sessions/month",
-    trafficRequirementSource: "https://www.mediavine.com/apply/",
+    programCpm: {
+      value: "$12.0",
+      source: "https://www.mediavine.com/cpm/",
+      confidence: "low",
+    },
+    trafficRequirement: {
+      value: "50,000 sessions/month",
+      source: "https://www.mediavine.com/apply/",
+      confidence: "high",
+    },
+    inputs: {
+      sessions: 5000,
+      pagesPerSession: 1,
+    },
+    parameters: {
+      ad_slots_per_page: { value: 4, source: "None", confidence: "high" },
+      fill_rate: { value: 0.95, source: "None", confidence: "high" },
+      viewability_rate: { value: 0.75, source: "None", confidence: "high" },
+      cpm: { value: 12.0, source: "None", confidence: "low" },
+    },
   },
 ];
 
@@ -214,7 +263,7 @@ describe("AdRevenueEstimator", () => {
       expect(revenueElements.length).toBeGreaterThan(0);
     });
 
-    it("displays program name for best revenue", () => {
+    it("displays company name for best revenue", () => {
       render(<AdRevenueEstimator />);
 
       const bestStrategyCards = screen.getAllByText("Mediavine");
@@ -251,17 +300,16 @@ describe("AdRevenueEstimator", () => {
       expect(screen.getByText("Est. Impressions")).toBeInTheDocument();
       expect(screen.getByText("Est. RPM")).toBeInTheDocument();
       expect(screen.getByText("Revenue")).toBeInTheDocument();
-      expect(screen.getByText("Meets Req.")).toBeInTheDocument();
     });
 
     it("displays all network names", () => {
       render(<AdRevenueEstimator />);
 
-      const adsenseElements = screen.getAllByText("Google AdSense");
+      const googleElements = screen.getAllByText("Google");
       const ezoicElements = screen.getAllByText("Ezoic");
       const mediavineElements = screen.getAllByText("Mediavine");
 
-      expect(adsenseElements.length).toBeGreaterThan(0);
+      expect(googleElements.length).toBeGreaterThan(0);
       expect(ezoicElements.length).toBeGreaterThan(0);
       expect(mediavineElements.length).toBeGreaterThan(0);
     });
@@ -306,18 +354,12 @@ describe("AdRevenueEstimator", () => {
       expect(screen.getAllByText("$24.00").length).toBeGreaterThan(0);
     });
 
-    it("shows Yes for networks that meet minimum requirements", () => {
+    it("displays program names in the table", () => {
       render(<AdRevenueEstimator />);
 
-      const yesElements = screen.getAllByText("Yes");
-      expect(yesElements.length).toBeGreaterThan(0);
-    });
-
-    it("shows traffic requirement for networks that don't meet it", () => {
-      render(<AdRevenueEstimator />);
-
-      expect(screen.getByText("10,000 sessions/month")).toBeInTheDocument();
-      expect(screen.getByText("50,000 sessions/month")).toBeInTheDocument();
+      expect(screen.getAllByText("Google Adsense").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Ezoic Access Now").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Mediavine Pro").length).toBeGreaterThan(0);
     });
 
     it("renders external links for networks with URLs", () => {
@@ -325,17 +367,17 @@ describe("AdRevenueEstimator", () => {
 
       const links = screen.getAllByRole("link");
       const adsenseLinks = links.filter((link) =>
-        link.getAttribute("href")?.includes("google.com/adsense")
+        link.getAttribute("href")?.includes("support.google.com/adsense")
       );
       expect(adsenseLinks.length).toBeGreaterThan(0);
     });
 
-    it("renders network links that open in new tab", () => {
+    it("renders learn more links that open in new tab", () => {
       render(<AdRevenueEstimator />);
 
-      const adsenseLink = screen.getByText("Google AdSense").closest("a");
-      expect(adsenseLink).toHaveAttribute("target", "_blank");
-      expect(adsenseLink).toHaveAttribute("rel", "noopener noreferrer");
+      const learnMoreLinks = screen.getAllByText("Learn more");
+      expect(learnMoreLinks[0].closest("a")).toHaveAttribute("target", "_blank");
+      expect(learnMoreLinks[0].closest("a")).toHaveAttribute("rel", "noopener noreferrer");
     });
 
     it("shows empty state when no strategy estimates available", () => {
@@ -430,20 +472,20 @@ describe("AdRevenueEstimator", () => {
     });
   });
 
-  describe("Eligibility Indicators", () => {
-    it("shows green checkmark for eligible networks", () => {
+  describe("Company and Program Display", () => {
+    it("displays company names as muted text", () => {
       render(<AdRevenueEstimator />);
 
-      const yesElements = screen.getAllByText("Yes");
-      expect(yesElements.length).toBeGreaterThan(0);
+      const googleElements = screen.getAllByText("Google");
+      expect(googleElements.length).toBeGreaterThan(0);
     });
 
-    it("shows warning icon for ineligible networks", () => {
+    it("displays program names prominently", () => {
       render(<AdRevenueEstimator />);
 
-      const { container } = render(<AdRevenueEstimator />);
-      const alertIcons = container.querySelectorAll('svg[class*="lucide-alert-triangle"]');
-      expect(alertIcons.length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Google Adsense").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Ezoic Access Now").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Mediavine Pro").length).toBeGreaterThan(0);
     });
   });
 
@@ -472,11 +514,12 @@ describe("AdRevenueEstimator", () => {
   });
 
   describe("External Links and Sources", () => {
-    it("renders network official URLs as links", () => {
+    it("renders network official URLs in learn more links", () => {
       render(<AdRevenueEstimator />);
 
-      const adsenseLink = screen.getByText("Google AdSense").closest("a");
-      expect(adsenseLink).toHaveAttribute("href", "https://support.google.com/adsense/answer/180195");
+      const learnMoreLinks = screen.getAllByText("Learn more");
+      const googleLearnMore = learnMoreLinks[0].closest("a");
+      expect(googleLearnMore).toHaveAttribute("href", "https://support.google.com/adsense/answer/180195");
     });
 
     it("renders all official URLs with external link icons", () => {
@@ -486,40 +529,18 @@ describe("AdRevenueEstimator", () => {
       expect(externalLinkIcons.length).toBeGreaterThan(0);
     });
 
-    it("renders traffic requirement links for ineligible networks", () => {
+    it("renders learn more links for all networks", () => {
       render(<AdRevenueEstimator />);
 
-      const ezoicReqLink = screen.getByText("10,000 sessions/month").closest("a");
-      expect(ezoicReqLink).toHaveAttribute("href", "https://www.ezoic.com/requirements/");
-      expect(ezoicReqLink).toHaveAttribute("target", "_blank");
+      const learnMoreLinks = screen.getAllByText("Learn more");
+      expect(learnMoreLinks.length).toBe(3);
     });
 
-    it("renders traffic requirement text without link when no source provided", () => {
-      const estimatesWithoutSource = [
-        {
-          ...mockStrategyEstimates[0],
-          meetsRequirements: false,
-          trafficRequirement: "Custom requirement",
-          trafficRequirementSource: undefined,
-        },
-      ];
+    it("renders external link icons next to learn more links", () => {
+      const { container } = render(<AdRevenueEstimator />);
 
-      mockUseAdRevenue.mockReturnValue({
-        data: {
-          engagement: mockEngagement,
-          strategyEstimates: estimatesWithoutSource,
-          period: "30d",
-        },
-        loading: false,
-        period: "30d",
-        setPeriod: vi.fn(),
-        refetch: vi.fn(),
-      });
-
-      render(<AdRevenueEstimator />);
-
-      const reqText = screen.getByText("Custom requirement");
-      expect(reqText.closest("a")).toBeNull();
+      const externalLinkIcons = container.querySelectorAll('svg.lucide-external-link');
+      expect(externalLinkIcons.length).toBeGreaterThan(0);
     });
   });
 
@@ -554,7 +575,7 @@ describe("AdRevenueEstimator", () => {
       render(<AdRevenueEstimator />);
 
       expect(screen.getAllByText("$10.00").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Google AdSense").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Google").length).toBeGreaterThan(0);
     });
 
     it("shows No Program when best revenue is null", () => {
