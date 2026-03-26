@@ -44,11 +44,33 @@ const mockAdNetworkConfig = {
             name: "single_high_viewability_unit",
             description: "Use one strong above-the-fold unit",
             formula: "estimated_revenue = (pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
+            inputs: {
+              pageviews: "Number of page views in the period",
+            },
+            parameters: {
+              ad_slots_per_page: { value: 2, source: "None", confidence: "medium" },
+              fill_rate: { value: 0.9, source: "None", confidence: "medium" },
+              viewability_rate: { value: 0.7, source: "None", confidence: "medium" },
+              cpm: { value: 1.5, source: "None", confidence: "medium" },
+              engagement_factor: { value: 1.0, source: "None", confidence: "high" },
+              policy_compliance_factor: { value: 1.0, source: "None", confidence: "high" },
+            },
           },
           {
             name: "balanced_multi_slot_layout",
             description: "Use moderate in-content and sidebar units",
             formula: "estimated_revenue = (pageviews * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
+            inputs: {
+              pageviews: "Number of page views in the period",
+            },
+            parameters: {
+              ad_slots_per_page: { value: 3, source: "None", confidence: "medium" },
+              fill_rate: { value: 0.85, source: "None", confidence: "medium" },
+              viewability_rate: { value: 0.65, source: "None", confidence: "medium" },
+              cpm: { value: 1.5, source: "None", confidence: "medium" },
+              engagement_factor: { value: 1.0, source: "None", confidence: "high" },
+              policy_compliance_factor: { value: 1.0, source: "None", confidence: "high" },
+            },
           },
         ],
       },
@@ -70,6 +92,17 @@ const mockAdNetworkConfig = {
             name: "session_depth_strategy",
             description: "Increase pages per session",
             formula: "estimated_revenue = (sessions * pages_per_session * ad_slots_per_page * fill_rate * viewability_rate * cpm / 1000)",
+            inputs: {
+              sessions: "Number of user sessions",
+              pagesPerSession: "Average pages viewed per session",
+            },
+            parameters: {
+              ad_slots_per_page: { value: 4, source: "None", confidence: "medium" },
+              fill_rate: { value: 0.95, source: "None", confidence: "high" },
+              viewability_rate: { value: 0.75, source: "None", confidence: "high" },
+              cpm: { value: 15, source: "None", confidence: "low" },
+              engagement_factor: { value: 1.1, source: "None", confidence: "medium" },
+            },
           },
         ],
       },
@@ -163,14 +196,16 @@ describe("useAdRevenue", () => {
       (s) => s.programKey === "google_adsense" && s.strategyName === "single_high_viewability_unit"
     );
     expect(googleStrategy).toBeDefined();
-    expect(googleStrategy?.programName).toBe("Google");
+    expect(googleStrategy?.company).toBe("Google");
     expect(googleStrategy?.cpm).toBe(1.5);
     expect(googleStrategy?.estimatedRevenue).toBeGreaterThan(0);
     expect(googleStrategy?.estimatedImpressions).toBeGreaterThan(0);
     expect(googleStrategy?.estimatedRpm).toBeGreaterThan(0);
+    expect(googleStrategy?.inputs).toBeDefined();
+    expect(googleStrategy?.inputs?.pageviews).toBe(225);
   });
 
-  it("determines if traffic requirements are met", async () => {
+  it("includes traffic requirement information", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
@@ -184,11 +219,11 @@ describe("useAdRevenue", () => {
       (s) => s.programKey === "mediavine_core"
     );
 
-    expect(googleStrategy?.meetsRequirements).toBe(true);
-    expect(mediavineStrategy?.meetsRequirements).toBe(false);
+    expect(googleStrategy?.trafficRequirement?.value).toBe("No minimum traffic requirement");
+    expect(mediavineStrategy?.trafficRequirement?.value).toBe("50,000 sessions/month");
   });
 
-  it("sorts strategies by traffic requirements ascending", async () => {
+  it("sorts strategies by estimated revenue descending", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
@@ -196,8 +231,9 @@ describe("useAdRevenue", () => {
     });
 
     const strategies = result.current.data?.strategyEstimates || [];
-    expect(strategies[0].programKey).toBe("google_adsense");
-    expect(strategies[strategies.length - 1].programKey).toBe("mediavine_core");
+    for (let i = 0; i < strategies.length - 1; i++) {
+      expect(strategies[i].estimatedRevenue).toBeGreaterThanOrEqual(strategies[i + 1].estimatedRevenue);
+    }
   });
 
   it("handles page views fetch error gracefully", async () => {
@@ -431,8 +467,8 @@ describe("useAdRevenue", () => {
     expect(googleStrategy?.strategyDescription).toBe("Use one strong above-the-fold unit");
     expect(googleStrategy?.formula).toContain("estimated_revenue");
     expect(googleStrategy?.officialUrl).toBe("https://www.google.com/adsense/start/");
-    expect(googleStrategy?.cpmSource).toBe("https://example.com/cpm");
-    expect(googleStrategy?.trafficRequirementSource).toBe("https://example.com/req");
+    expect(googleStrategy?.programCpm?.source).toBe("https://example.com/cpm");
+    expect(googleStrategy?.trafficRequirement?.source).toBe("https://example.com/req");
   });
 
   it("calculates all strategies for each program", async () => {
@@ -508,11 +544,10 @@ describe("useAdRevenue", () => {
       (s) => s.programKey === "google_adsense"
     );
 
-    expect(googleStrategy?.trafficRequirement).toBe("No minimum traffic requirement");
-    expect(googleStrategy?.meetsRequirements).toBe(true);
+    expect(googleStrategy?.trafficRequirement?.value).toBe("No minimum traffic requirement");
   });
 
-  it("extracts numeric values from traffic requirements for sorting", async () => {
+  it("includes all strategies from all programs", async () => {
     const { result } = renderHook(() => useAdRevenue());
 
     await waitFor(() => {
@@ -520,11 +555,10 @@ describe("useAdRevenue", () => {
     });
 
     const strategies = result.current.data?.strategyEstimates || [];
+    const programKeys = [...new Set(strategies.map((s) => s.programKey))];
 
-    const googleIdx = strategies.findIndex((s) => s.programKey === "google_adsense");
-    const mediavineIdx = strategies.findIndex((s) => s.programKey === "mediavine_core");
-
-    expect(googleIdx).toBeLessThan(mediavineIdx);
+    expect(programKeys).toContain("google_adsense");
+    expect(programKeys).toContain("mediavine_core");
   });
 
   it("includes all required fields in strategy estimates", async () => {
@@ -545,9 +579,10 @@ describe("useAdRevenue", () => {
     expect(strategy).toHaveProperty("estimatedRevenue");
     expect(strategy).toHaveProperty("estimatedImpressions");
     expect(strategy).toHaveProperty("estimatedRpm");
-    expect(strategy).toHaveProperty("meetsRequirements");
     expect(strategy).toHaveProperty("formula");
     expect(strategy).toHaveProperty("trafficRequirement");
+    expect(strategy).toHaveProperty("inputs");
+    expect(strategy).toHaveProperty("parameters");
   });
 
   it("calculates RPM correctly from revenue and page views", async () => {
@@ -582,6 +617,43 @@ describe("useAdRevenue", () => {
     });
   });
 
+  it("populates inputs with actual calculated values", async () => {
+    const { result } = renderHook(() => useAdRevenue());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const googleStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "google_adsense" && s.strategyName === "single_high_viewability_unit"
+    );
+    const mediavineStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "mediavine_core"
+    );
+
+    expect(googleStrategy?.inputs).toBeDefined();
+    expect(googleStrategy?.inputs?.pageviews).toBe(225);
+
+    expect(mediavineStrategy?.inputs).toBeDefined();
+    expect(mediavineStrategy?.inputs?.sessions).toBe(225);
+    expect(mediavineStrategy?.inputs?.pagesPerSession).toBe(1);
+  });
+
+  it("only includes inputs defined in strategy config", async () => {
+    const { result } = renderHook(() => useAdRevenue());
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    const googleStrategy = result.current.data?.strategyEstimates.find(
+      (s) => s.programKey === "google_adsense" && s.strategyName === "single_high_viewability_unit"
+    );
+
+    expect(googleStrategy?.inputs).toBeDefined();
+    expect(Object.keys(googleStrategy?.inputs || {})).toEqual(["pageviews"]);
+  });
+
   it("handles malformed CPM values gracefully", async () => {
     const malformedConfig = {
       config: {
@@ -604,6 +676,10 @@ describe("useAdRevenue", () => {
                 name: "test_strategy",
                 description: "Test",
                 formula: "test",
+                inputs: {},
+                parameters: {
+                  cpm: { value: "invalid", source: "None", confidence: "low" },
+                },
               },
             ],
           },
