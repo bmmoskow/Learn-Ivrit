@@ -23,16 +23,27 @@ function formatMoney(n: number): string {
 }
 
 function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <TooltipProvider>
-      <Tooltip>
+      <Tooltip open={open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>
-          <button className="inline-flex items-center gap-1 hover:text-primary">
+          <button
+            className="inline-flex items-center gap-1 hover:text-primary"
+            onClick={(e) => {
+              e.preventDefault();
+              setOpen(!open);
+            }}
+          >
             <span className="text-sm">{strategy.strategyName.replace(/_/g, ' ')}</span>
             <Info className="w-3 h-3" />
           </button>
         </TooltipTrigger>
-        <TooltipContent className="max-w-md p-4 space-y-3">
+        <TooltipContent
+          className="max-w-md p-4 space-y-3"
+          onPointerDownOutside={() => setOpen(false)}
+        >
           <div>
             <h4 className="font-semibold text-sm mb-1">
               Strategy: {strategy.strategyName.replace(/_/g, ' ')}
@@ -43,16 +54,17 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           {strategy.programCpm && (
             <div className="pt-2 border-t border-border">
               <h5 className="font-medium text-xs mb-1">Program CPM Range:</h5>
-              <p className="text-xs">{strategy.programCpm.value}</p>
-              {strategy.programCpm.source && strategy.programCpm.source !== 'None' && (
+              {strategy.programCpm.source && strategy.programCpm.source !== 'None' ? (
                 <a
                   href={strategy.programCpm.source}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  Source <ExternalLink className="w-3 h-3" />
+                  {strategy.programCpm.value} <ExternalLink className="w-3 h-3" />
                 </a>
+              ) : (
+                <p className="text-xs">{strategy.programCpm.value}</p>
               )}
               {strategy.programCpm.confidence && (
                 <span className="text-xs text-muted-foreground ml-2">
@@ -65,16 +77,17 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           {strategy.revenueShare && (
             <div className="pt-2 border-t border-border">
               <h5 className="font-medium text-xs mb-1">Revenue Share:</h5>
-              <p className="text-xs">{strategy.revenueShare.value}</p>
-              {strategy.revenueShare.source && strategy.revenueShare.source !== 'None' && (
+              {strategy.revenueShare.source && strategy.revenueShare.source !== 'None' ? (
                 <a
                   href={strategy.revenueShare.source}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  Source <ExternalLink className="w-3 h-3" />
+                  {strategy.revenueShare.value} <ExternalLink className="w-3 h-3" />
                 </a>
+              ) : (
+                <p className="text-xs">{strategy.revenueShare.value}</p>
               )}
               {strategy.revenueShare.confidence && (
                 <span className="text-xs text-muted-foreground ml-2">
@@ -87,16 +100,17 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           {strategy.trafficRequirement && (
             <div className="pt-2 border-t border-border">
               <h5 className="font-medium text-xs mb-1">Traffic Requirement:</h5>
-              <p className="text-xs">{strategy.trafficRequirement.value}</p>
-              {strategy.trafficRequirement.source && strategy.trafficRequirement.source !== 'None' && (
+              {strategy.trafficRequirement.source && strategy.trafficRequirement.source !== 'None' ? (
                 <a
                   href={strategy.trafficRequirement.source}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-primary hover:underline inline-flex items-center gap-1"
                 >
-                  Source <ExternalLink className="w-3 h-3" />
+                  {strategy.trafficRequirement.value} <ExternalLink className="w-3 h-3" />
                 </a>
+              ) : (
+                <p className="text-xs">{strategy.trafficRequirement.value}</p>
               )}
               {strategy.trafficRequirement.confidence && (
                 <span className="text-xs text-muted-foreground ml-2">
@@ -134,16 +148,18 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
             <ul className="text-xs space-y-1">
               {Object.entries(strategy.parameters).map(([key, param]) => (
                 <li key={key}>
-                  • {key.replace(/_/g, ' ')}: {typeof param.value === 'number' ? param.value : param.value}
-                  {param.source && param.source !== 'None' && (
+                  • {key.replace(/_/g, ' ')}: {param.source && param.source !== 'None' ? (
                     <a
                       href={param.source}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-1 text-primary hover:underline"
+                      className="text-primary hover:underline inline-flex items-center gap-0.5"
                     >
-                      [source]
+                      {typeof param.value === 'number' ? param.value : param.value}
+                      <ExternalLink className="w-2.5 h-2.5" />
                     </a>
+                  ) : (
+                    <>{typeof param.value === 'number' ? param.value : param.value}</>
                   )}
                   {param.confidence && (
                     <span className="ml-1 text-muted-foreground">
@@ -168,23 +184,27 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
           {strategy.company && (
             <span className="text-xs text-muted-foreground">{strategy.company}</span>
           )}
-          <span className="font-medium">
-            {strategy.programName}
-          </span>
-          {strategy.officialUrl && (
+          {strategy.officialUrl ? (
             <a
               href={strategy.officialUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+              className="font-medium text-primary hover:underline inline-flex items-center gap-1"
             >
-              Learn more <ExternalLink className="w-3 h-3" />
+              {strategy.programName} <ExternalLink className="w-3 h-3" />
             </a>
+          ) : (
+            <span className="font-medium">
+              {strategy.programName}
+            </span>
           )}
         </div>
       </TableCell>
       <TableCell>
         <StrategyTooltip strategy={strategy} />
+      </TableCell>
+      <TableCell className="text-right text-sm">
+        {strategy.trafficRequirement ? strategy.trafficRequirement.value : 'None'}
       </TableCell>
       <TableCell className="text-right text-sm">
         ${strategy.cpm.toFixed(2)}
@@ -339,10 +359,25 @@ export function AdRevenueEstimator() {
     }
   };
 
+  // Helper function to parse traffic requirement and check if we qualify
+  const parseTrafficRequirement = (requirement: string | undefined): number => {
+    if (!requirement) return 0;
+    const match = requirement.match(/[\d,]+/);
+    if (!match) return 0;
+    return parseInt(match[0].replace(/,/g, ''), 10);
+  };
+
+  const qualifiesForStrategy = (strategy: StrategyEstimate, totalViews: number): boolean => {
+    const required = parseTrafficRequirement(strategy.trafficRequirement?.value);
+    return required === 0 || totalViews >= required;
+  };
+
   const bestRevenue = data?.strategyEstimates && data.strategyEstimates.length > 0
-    ? data.strategyEstimates.reduce((max, curr) =>
-        curr.estimatedRevenue > max.estimatedRevenue ? curr : max
-      , data.strategyEstimates[0])
+    ? data.strategyEstimates
+        .filter(s => qualifiesForStrategy(s, data.engagement.totalViews))
+        .reduce((max, curr) =>
+          curr.estimatedRevenue > max.estimatedRevenue ? curr : max
+        , data.strategyEstimates.filter(s => qualifiesForStrategy(s, data.engagement.totalViews))[0] || null)
     : null;
 
   return (
@@ -502,6 +537,7 @@ export function AdRevenueEstimator() {
                   <TableRow>
                     <TableHead>Network</TableHead>
                     <TableHead>Plan/Strategy</TableHead>
+                    <TableHead className="text-right">Traffic Requirement</TableHead>
                     <TableHead className="text-right">CPM</TableHead>
                     <TableHead className="text-right">Est. Impressions</TableHead>
                     <TableHead className="text-right">Est. RPM</TableHead>
@@ -509,9 +545,15 @@ export function AdRevenueEstimator() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.strategyEstimates.map((strategy, idx) => (
-                    <StrategyRow key={`${strategy.programKey}-${strategy.strategyName}-${idx}`} strategy={strategy} />
-                  ))}
+                  {data.strategyEstimates
+                    .sort((a, b) => {
+                      const reqA = parseTrafficRequirement(a.trafficRequirement?.value);
+                      const reqB = parseTrafficRequirement(b.trafficRequirement?.value);
+                      return reqA - reqB;
+                    })
+                    .map((strategy, idx) => (
+                      <StrategyRow key={`${strategy.programKey}-${strategy.strategyName}-${idx}`} strategy={strategy} />
+                    ))}
                   {data.strategyEstimates.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
