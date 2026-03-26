@@ -217,12 +217,6 @@ export function AdRevenueEstimator() {
   const [configs, setConfigs] = useState<ConfigHistory[]>([]);
   const [showConfigs, setShowConfigs] = useState(false);
 
-  const bestRevenue = data?.strategyEstimates && data.strategyEstimates.length > 0
-    ? data.strategyEstimates.reduce((max, curr) =>
-        curr.estimatedRevenue > max.estimatedRevenue ? curr : max
-      , data.strategyEstimates[0])
-    : null;
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
