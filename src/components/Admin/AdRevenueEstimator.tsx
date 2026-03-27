@@ -46,7 +46,7 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
         </TooltipTrigger>
         <TooltipContent
           className="max-w-md p-4 space-y-3"
-          onPointerDownOutside={(e) => {
+          onPointerDownOutside={() => {
             // Only close when clicking outside, not on focus changes
             setOpen(false);
           }}
