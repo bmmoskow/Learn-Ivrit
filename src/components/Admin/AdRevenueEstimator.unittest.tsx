@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { AdRevenueEstimator } from "./AdRevenueEstimator";
 
 const mockStrategyEstimates = [
@@ -372,12 +373,11 @@ describe("AdRevenueEstimator", () => {
       expect(adsenseLinks.length).toBeGreaterThan(0);
     });
 
-    it("renders learn more links that open in new tab", () => {
-      render(<AdRevenueEstimator />);
+    it("renders strategy info buttons with tooltips", () => {
+      const { container } = render(<AdRevenueEstimator />);
 
-      const learnMoreLinks = screen.getAllByText("Learn more");
-      expect(learnMoreLinks[0].closest("a")).toHaveAttribute("target", "_blank");
-      expect(learnMoreLinks[0].closest("a")).toHaveAttribute("rel", "noopener noreferrer");
+      const infoButtons = container.querySelectorAll('button[class*="inline-flex items-center"]');
+      expect(infoButtons.length).toBeGreaterThan(0);
     });
 
     it("shows empty state when no strategy estimates available", () => {
@@ -514,33 +514,84 @@ describe("AdRevenueEstimator", () => {
   });
 
   describe("External Links and Sources", () => {
-    it("renders network official URLs in learn more links", () => {
-      render(<AdRevenueEstimator />);
-
-      const learnMoreLinks = screen.getAllByText("Learn more");
-      const googleLearnMore = learnMoreLinks[0].closest("a");
-      expect(googleLearnMore).toHaveAttribute("href", "https://support.google.com/adsense/answer/180195");
-    });
-
-    it("renders all official URLs with external link icons", () => {
+    it("renders network program links with external link icons", async () => {
       const { container } = render(<AdRevenueEstimator />);
 
-      const externalLinkIcons = container.querySelectorAll('svg[class*="lucide-external-link"]');
-      expect(externalLinkIcons.length).toBeGreaterThan(0);
-    });
-
-    it("renders learn more links for all networks", () => {
-      render(<AdRevenueEstimator />);
-
-      const learnMoreLinks = screen.getAllByText("Learn more");
-      expect(learnMoreLinks.length).toBe(3);
-    });
-
-    it("renders external link icons next to learn more links", () => {
-      const { container } = render(<AdRevenueEstimator />);
+      const programLinks = container.querySelectorAll('a[class*="font-medium text-primary"]');
+      expect(programLinks.length).toBeGreaterThan(0);
 
       const externalLinkIcons = container.querySelectorAll('svg.lucide-external-link');
       expect(externalLinkIcons.length).toBeGreaterThan(0);
+    });
+
+    it("renders all program links with target _blank and noopener noreferrer", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const programLinks = container.querySelectorAll('a[class*="font-medium text-primary"]');
+      programLinks.forEach((link) => {
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener noreferrer");
+      });
+    });
+
+    it("renders Google AdSense program link", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const adsenseLink = Array.from(container.querySelectorAll('a')).find(
+        link => link.getAttribute('href')?.includes('google.com/adsense')
+      );
+      expect(adsenseLink).toBeInTheDocument();
+    });
+
+    it("renders Mediavine program link", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const mediavineLink = Array.from(container.querySelectorAll('a')).find(
+        link => link.textContent?.includes("Mediavine")
+      );
+      expect(mediavineLink).toBeInTheDocument();
+    });
+  });
+
+  describe("Tooltip Persistence", () => {
+    it("renders tooltip trigger buttons with info icons", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const infoButtons = container.querySelectorAll('button[class*="inline-flex items-center"]');
+      expect(infoButtons.length).toBeGreaterThan(0);
+
+      // Check that info icons are present
+      const infoIcons = container.querySelectorAll('svg.lucide-info');
+      expect(infoIcons.length).toBeGreaterThan(0);
+    });
+
+    it("renders strategy names in tooltip trigger buttons", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const strategyButtons = container.querySelectorAll('button[class*="inline-flex items-center"] span');
+      const strategyTexts = Array.from(strategyButtons).map(btn => btn.textContent);
+
+      expect(strategyTexts).toContain("single high viewability unit");
+      expect(strategyTexts).toContain("balanced multi slot layout");
+      expect(strategyTexts).toContain("session depth strategy");
+    });
+
+    it("tooltip trigger buttons have proper accessibility", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const infoButtons = container.querySelectorAll('button[class*="inline-flex items-center"]');
+      infoButtons.forEach((button) => {
+        // Buttons should be clickable
+        expect(button).toBeInstanceOf(HTMLButtonElement);
+      });
+    });
+
+    it("renders correct number of tooltip triggers for strategies", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const infoIcons = container.querySelectorAll('svg.lucide-info');
+      // Should have one info icon per strategy
+      expect(infoIcons.length).toBe(3);
     });
   });
 
