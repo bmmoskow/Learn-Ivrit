@@ -218,18 +218,22 @@ export function useAdRevenue() {
                 actualInputs[key] = totalViews;
                 break;
               case 'activeSeconds':
+              case 'active_seconds':
                 actualInputs[key] = totalActiveSeconds;
                 break;
               case 'activeMinutes':
+              case 'active_minutes':
                 actualInputs[key] = totalActiveMinutes;
                 break;
               case 'sessions':
                 actualInputs[key] = totalViews;
                 break;
               case 'pagesPerSession':
+              case 'pages_per_session':
                 actualInputs[key] = 1;
                 break;
               case 'avgViewableSecondsPerPage':
+              case 'avg_viewable_seconds_per_page':
                 actualInputs[key] = Math.round(avgViewableSecondsPerPage * 10) / 10;
                 break;
               default:
