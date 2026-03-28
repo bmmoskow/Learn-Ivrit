@@ -206,7 +206,6 @@ export function useAdRevenue() {
 
         const cpm = getNumericValue(strategy.parameters.cpm) || getNumericValue(strategy.parameters.event_cpm);
 
-        // Compute actual input values based on what's defined in strategy.inputs
         const actualInputs: Record<string, number | string> = {};
 
         if (strategy.inputs) {
