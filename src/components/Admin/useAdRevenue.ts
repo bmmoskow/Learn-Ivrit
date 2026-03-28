@@ -210,6 +210,7 @@ export function useAdRevenue() {
 
         if (strategy.inputs) {
           const avgViewableSecondsPerPage = totalViews > 0 ? totalActiveSeconds / totalViews : 0;
+          const totalActiveMinutes = Math.round(totalActiveSeconds / 60);
 
           for (const key of Object.keys(strategy.inputs)) {
             switch (key) {
@@ -218,6 +219,9 @@ export function useAdRevenue() {
                 break;
               case 'activeSeconds':
                 actualInputs[key] = totalActiveSeconds;
+                break;
+              case 'activeMinutes':
+                actualInputs[key] = totalActiveMinutes;
                 break;
               case 'sessions':
                 actualInputs[key] = totalViews;
