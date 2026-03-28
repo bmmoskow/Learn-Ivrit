@@ -233,7 +233,10 @@ export function useAdRevenue() {
                 actualInputs[key] = Math.round(avgViewableSecondsPerPage * 10) / 10;
                 break;
               default:
-                actualInputs[key] = strategy.inputs[key];
+                const inputValue = strategy.inputs[key];
+                if (typeof inputValue === 'number') {
+                  actualInputs[key] = inputValue;
+                }
             }
           }
         }
