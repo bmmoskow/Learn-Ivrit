@@ -206,11 +206,11 @@ export function useAdRevenue() {
 
         const cpm = getNumericValue(strategy.parameters.cpm) || getNumericValue(strategy.parameters.event_cpm);
 
-        // Compute actual input values based on what's defined in strategy.inputs
         const actualInputs: Record<string, number | string> = {};
 
         if (strategy.inputs) {
           const avgViewableSecondsPerPage = totalViews > 0 ? totalActiveSeconds / totalViews : 0;
+          const totalActiveMinutes = Math.round(totalActiveSeconds / 60);
 
           for (const key of Object.keys(strategy.inputs)) {
             switch (key) {
@@ -218,19 +218,31 @@ export function useAdRevenue() {
                 actualInputs[key] = totalViews;
                 break;
               case 'activeSeconds':
+              case 'active_seconds':
                 actualInputs[key] = totalActiveSeconds;
+                break;
+              case 'activeMinutes':
+              case 'active_minutes':
+                actualInputs[key] = totalActiveMinutes;
                 break;
               case 'sessions':
                 actualInputs[key] = totalViews;
                 break;
               case 'pagesPerSession':
+              case 'pages_per_session':
                 actualInputs[key] = 1;
                 break;
               case 'avgViewableSecondsPerPage':
+              case 'avg_viewable_seconds_per_page':
                 actualInputs[key] = Math.round(avgViewableSecondsPerPage * 10) / 10;
                 break;
-              default:
-                actualInputs[key] = strategy.inputs[key];
+              default: {
+                const inputValue = strategy.inputs[key];
+                if (typeof inputValue === 'number') {
+                  actualInputs[key] = inputValue;
+                }
+                break;
+              }
             }
           }
         }
