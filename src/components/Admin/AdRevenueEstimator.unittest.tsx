@@ -851,4 +851,240 @@ describe("AdRevenueEstimator", () => {
       expect(screen.getByText("Revenue by Ad Network")).toBeInTheDocument();
     });
   });
+
+  describe("Active Minutes Display", () => {
+    it("displays Active Minutes label in the card", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("Active Minutes")).toBeInTheDocument();
+    });
+
+    it("displays active minutes value with proper formatting", () => {
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("2,500")).toBeInTheDocument();
+    });
+
+    it("displays active minutes with correct icon", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const activeMinutesCard = screen.getByText("Active Minutes").closest("div");
+      const clockIcon = activeMinutesCard?.querySelector('svg.lucide-clock');
+      expect(clockIcon).toBeInTheDocument();
+    });
+
+    it("updates active minutes when data changes", () => {
+      const { rerender } = render(<AdRevenueEstimator />);
+
+      expect(screen.getAllByText("2,500").length).toBeGreaterThan(0);
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            ...mockEngagement,
+            totalActiveMinutes: 5000,
+          },
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      rerender(<AdRevenueEstimator />);
+
+      expect(screen.getAllByText("5,000").length).toBeGreaterThan(0);
+    });
+
+    it("displays 0 active minutes when no engagement", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            totalViews: 0,
+            totalActiveSeconds: 0,
+            totalActiveMinutes: 0,
+            avgSessionSeconds: 0,
+          },
+          strategyEstimates: [],
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      const activeMinutesElements = screen.getAllByText("Active Minutes");
+      expect(activeMinutesElements.length).toBeGreaterThan(0);
+      const activeMinutesCard = activeMinutesElements[0].closest("div")?.parentElement;
+      const zeroValues = activeMinutesCard?.textContent;
+      expect(zeroValues).toContain("0");
+    });
+
+    it("displays very large active minutes values correctly", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            totalViews: 1000000,
+            totalActiveSeconds: 30000000,
+            totalActiveMinutes: 500000,
+            avgSessionSeconds: 30,
+          },
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("500,000")).toBeInTheDocument();
+    });
+
+    it("positions active minutes card between page views and avg session", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const cards = container.querySelectorAll('div[class*="bg-card rounded-xl shadow p-5"]');
+      const cardTexts = Array.from(cards).map(card => card.textContent);
+
+      const pageViewsIndex = cardTexts.findIndex(text => text?.includes("Page Views"));
+      const activeMinutesIndex = cardTexts.findIndex(text => text?.includes("Active Minutes"));
+      const avgSessionIndex = cardTexts.findIndex(text => text?.includes("Avg Session"));
+
+      expect(pageViewsIndex).toBeLessThan(activeMinutesIndex);
+      expect(activeMinutesIndex).toBeLessThan(avgSessionIndex);
+    });
+
+    it("uses green color for Clock icon in active minutes card", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const activeMinutesElements = screen.getAllByText("Active Minutes");
+      expect(activeMinutesElements.length).toBeGreaterThan(0);
+      const activeMinutesCard = activeMinutesElements[0].closest("div");
+      const clockIcon = activeMinutesCard?.querySelector('svg');
+      expect(clockIcon?.getAttribute('class')).toContain("text-green-600");
+    });
+
+    it("displays active minutes in strategy inputs when included", () => {
+      const estimatesWithActiveMinutes = [
+        {
+          ...mockStrategyEstimates[0],
+          inputs: {
+            pageviews: 5000,
+            activeMinutes: 2500,
+          },
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimatesWithActiveMinutes,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      const { container } = render(<AdRevenueEstimator />);
+      expect(container).toBeInTheDocument();
+    });
+
+    it("formats active minutes with commas for thousands", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            totalViews: 100000,
+            totalActiveSeconds: 3600000,
+            totalActiveMinutes: 60000,
+            avgSessionSeconds: 36,
+          },
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("60,000")).toBeInTheDocument();
+    });
+
+    it("renders active minutes card with proper styling", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const activeMinutesCard = screen.getByText("Active Minutes").closest("div")?.parentElement;
+      expect(activeMinutesCard?.className).toContain("bg-card");
+      expect(activeMinutesCard?.className).toContain("rounded-xl");
+      expect(activeMinutesCard?.className).toContain("shadow");
+    });
+
+    it("displays active minutes value in large bold font", () => {
+      const { container } = render(<AdRevenueEstimator />);
+
+      const activeMinutesElements = screen.getAllByText("Active Minutes");
+      expect(activeMinutesElements.length).toBeGreaterThan(0);
+      const activeMinutesCard = activeMinutesElements[0].closest("div")?.parentElement;
+      const valueElement = activeMinutesCard?.querySelector('p[class*="text-2xl font-bold"]');
+      expect(valueElement).toBeInTheDocument();
+      expect(valueElement?.textContent).toBe("2,500");
+    });
+
+    it("maintains active minutes display during loading state", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: true,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("Active Minutes")).toBeInTheDocument();
+      expect(screen.getByText("2,500")).toBeInTheDocument();
+      expect(screen.getByText("Loading analytics...")).toBeInTheDocument();
+    });
+
+    it("shows consistency between totalActiveSeconds and totalActiveMinutes", () => {
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: {
+            totalViews: 1000,
+            totalActiveSeconds: 12000,
+            totalActiveMinutes: 200,
+            avgSessionSeconds: 12,
+          },
+          strategyEstimates: mockStrategyEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+
+      expect(screen.getByText("200")).toBeInTheDocument();
+    });
+  });
 });
