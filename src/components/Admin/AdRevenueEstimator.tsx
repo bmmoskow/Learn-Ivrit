@@ -131,7 +131,7 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
           <div className="pt-2 border-t border-border">
             <h5 className="font-medium text-xs mb-1">Formula:</h5>
             <code className="text-xs bg-muted p-1 rounded block break-all whitespace-pre-wrap">
-              {strategy.formula}
+              {strategy.formula.split(';').map(line => line.trim()).filter(line => line).join(';\n')}
             </code>
           </div>
 
