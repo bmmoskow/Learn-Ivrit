@@ -1141,4 +1141,129 @@ describe("useAdRevenue", () => {
       expect(result.current.data?.engagement.totalActiveMinutes).toBe(100);
     });
   });
+
+  describe("Multi-step formula computation", () => {
+    beforeEach(() => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    { page: "/", view_date: "2024-03-15", view_count: 1000, total_active_seconds: 60000 },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  config: {
+                    programs: {
+                      test_program: {
+                        company: "Test",
+                        strategies: [
+                          {
+                            name: "multi_step_test",
+                            description: "Tests multi-step formula",
+                            formula: "refresh_count_per_page = floor((active_minutes * 60 * active_share_for_refresh_unit / pageviews) / refresh_interval_seconds); estimated_revenue = pageviews * ad_slots_per_page * fill_rate * (1 + refresh_count_per_page) * cpm / 1000",
+                            inputs: { pageviews: "test", active_minutes: "test" },
+                            parameters: {
+                              ad_slots_per_page: { value: 1, source: "None", confidence: "high" },
+                              fill_rate: { value: 0.8, source: "None", confidence: "high" },
+                              refresh_interval_seconds: { value: 60, source: "None", confidence: "high" },
+                              active_share_for_refresh_unit: { value: 0.5, source: "None", confidence: "high" },
+                              cpm: { value: 2.0, source: "None", confidence: "high" },
+                            },
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      });
+    });
+
+    it("computes multi-step formulas correctly", async () => {
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      const strategy = result.current.data?.strategyEstimates[0];
+      expect(strategy).toBeDefined();
+      expect(strategy?.computedSteps).toBeDefined();
+      expect(strategy?.computedSteps?.length).toBe(2);
+      expect(strategy?.estimatedRevenue).toBeGreaterThan(0);
+    });
+
+    it("shows error when data is missing", async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    { page: "/", view_date: "2024-03-15", view_count: 1000, total_active_seconds: 60000 },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  config: {
+                    programs: {
+                      test_program: {
+                        company: "Test",
+                        strategies: [
+                          {
+                            name: "missing_data_test",
+                            description: "Tests error handling",
+                            formula: "estimated_revenue = missing_variable * 100",
+                            inputs: { pageviews: "test" },
+                            parameters: {},
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      const strategy = result.current.data?.strategyEstimates[0];
+      expect(strategy).toBeDefined();
+      expect(strategy?.error).toBeDefined();
+      expect(strategy?.estimatedRevenue).toBe(0);
+    });
+  });
 });
