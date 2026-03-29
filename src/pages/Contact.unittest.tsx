@@ -142,7 +142,14 @@ describe('Contact', () => {
 
     await user.type(screen.getByLabelText(/name/i), 'John Doe');
     await user.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await user.click(screen.getByLabelText(/message type/i));
+
+    const selectTrigger = screen.getByRole('combobox', { name: /message type/i });
+    await user.click(selectTrigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /bug report/i })).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('option', { name: /bug report/i }));
     await user.type(screen.getByLabelText(/^message$/i), 'Test message');
 
@@ -183,7 +190,14 @@ describe('Contact', () => {
 
     await user.type(screen.getByLabelText(/name/i), 'John Doe');
     await user.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await user.click(screen.getByLabelText(/message type/i));
+
+    const selectTrigger = screen.getByRole('combobox', { name: /message type/i });
+    await user.click(selectTrigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /bug report/i })).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('option', { name: /bug report/i }));
     await user.type(screen.getByLabelText(/^message$/i), 'Test message');
 
@@ -229,7 +243,14 @@ describe('Contact', () => {
 
     await user.type(screen.getByLabelText(/name/i), 'John Doe');
     await user.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await user.click(screen.getByLabelText(/message type/i));
+
+    const selectTrigger = screen.getByRole('combobox', { name: /message type/i });
+    await user.click(selectTrigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /bug report/i })).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('option', { name: /bug report/i }));
     await user.type(screen.getByLabelText(/^message$/i), 'Test message');
 
@@ -262,7 +283,14 @@ describe('Contact', () => {
 
     await user.type(nameInput, 'John Doe');
     await user.type(emailInput, 'john@example.com');
-    await user.click(screen.getByLabelText(/message type/i));
+
+    const selectTrigger = screen.getByRole('combobox', { name: /message type/i });
+    await user.click(selectTrigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: /bug report/i })).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole('option', { name: /bug report/i }));
     await user.type(messageInput, 'Test message');
 
