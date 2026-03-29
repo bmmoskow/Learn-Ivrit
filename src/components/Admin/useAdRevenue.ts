@@ -236,11 +236,13 @@ export function useAdRevenue() {
               case 'avg_viewable_seconds_per_page':
                 actualInputs[key] = Math.round(avgViewableSecondsPerPage * 10) / 10;
                 break;
-              default:
+              default: {
                 const inputValue = strategy.inputs[key];
                 if (typeof inputValue === 'number') {
                   actualInputs[key] = inputValue;
                 }
+                break;
+              }
             }
           }
         }
