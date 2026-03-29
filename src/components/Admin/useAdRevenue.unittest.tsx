@@ -730,4 +730,415 @@ describe("useAdRevenue", () => {
     const strategy = result.current.data?.strategyEstimates[0];
     expect(strategy?.cpm).toBe(0);
   });
+
+  describe("Active Minutes", () => {
+    it("calculates totalActiveMinutes correctly from totalActiveSeconds", async () => {
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.data?.engagement.totalActiveSeconds).toBe(10000);
+      expect(result.current.data?.engagement.totalActiveMinutes).toBe(167);
+    });
+
+    it("rounds totalActiveMinutes to nearest integer", async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    { page: "/", view_date: "2024-03-15", view_count: 100, total_active_seconds: 6550 },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: mockAdNetworkConfig,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.data?.engagement.totalActiveMinutes).toBe(109);
+    });
+
+    it("includes activeMinutes in strategy inputs when requested", async () => {
+      const configWithActiveMinutes = {
+        config: {
+          programs: {
+            test_network: {
+              company: "Test Network",
+              strategies: [
+                {
+                  name: "engagement_based_strategy",
+                  description: "Strategy using active minutes",
+                  formula: "revenue = activeMinutes * rate",
+                  inputs: {
+                    pageviews: "Page views",
+                    activeMinutes: "Total active minutes",
+                  },
+                  parameters: {
+                    cpm: { value: 2.0, source: "None", confidence: "medium" },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: mockPageViewData,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: configWithActiveMinutes,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      const strategy = result.current.data?.strategyEstimates[0];
+      expect(strategy?.inputs?.activeMinutes).toBe(167);
+      expect(strategy?.inputs?.pageviews).toBe(225);
+    });
+
+    it("includes active_minutes in strategy inputs with snake_case key", async () => {
+      const configWithActiveMinutesSnakeCase = {
+        config: {
+          programs: {
+            test_network: {
+              company: "Test Network",
+              strategies: [
+                {
+                  name: "engagement_strategy",
+                  description: "Strategy using active_minutes",
+                  formula: "revenue = active_minutes * rate",
+                  inputs: {
+                    active_minutes: "Total active minutes",
+                  },
+                  parameters: {
+                    cpm: { value: 2.0, source: "None", confidence: "medium" },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: mockPageViewData,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: configWithActiveMinutesSnakeCase,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      const strategy = result.current.data?.strategyEstimates[0];
+      expect(strategy?.inputs?.active_minutes).toBe(167);
+    });
+
+    it("includes activeSeconds input alongside activeMinutes when both requested", async () => {
+      const configWithBothMetrics = {
+        config: {
+          programs: {
+            test_network: {
+              company: "Test Network",
+              strategies: [
+                {
+                  name: "dual_metric_strategy",
+                  description: "Strategy using both metrics",
+                  formula: "revenue = activeSeconds * secondRate + activeMinutes * minuteRate",
+                  inputs: {
+                    activeSeconds: "Total active seconds",
+                    activeMinutes: "Total active minutes",
+                  },
+                  parameters: {
+                    cpm: { value: 2.0, source: "None", confidence: "medium" },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      };
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: mockPageViewData,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: configWithBothMetrics,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      const strategy = result.current.data?.strategyEstimates[0];
+      expect(strategy?.inputs?.activeSeconds).toBe(10000);
+      expect(strategy?.inputs?.activeMinutes).toBe(167);
+    });
+
+    it("calculates activeMinutes as 0 when no active time tracked", async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    { page: "/", view_date: "2024-03-15", view_count: 100, total_active_seconds: 0 },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: mockAdNetworkConfig,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.data?.engagement.totalActiveMinutes).toBe(0);
+    });
+
+    it("handles fractional minutes correctly with large second values", async () => {
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    { page: "/", view_date: "2024-03-15", view_count: 1000, total_active_seconds: 123456 },
+                  ],
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: mockAdNetworkConfig,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      expect(result.current.data?.engagement.totalActiveSeconds).toBe(123456);
+      expect(result.current.data?.engagement.totalActiveMinutes).toBe(2058);
+    });
+
+    it("ensures activeMinutes calculation consistency across periods", async () => {
+      const testData = [
+        { page: "/", view_date: "2024-03-15", view_count: 50, total_active_seconds: 3000 },
+        { page: "/vocab", view_date: "2024-03-14", view_count: 50, total_active_seconds: 3000 },
+      ];
+
+      mockSupabase.from.mockImplementation((table: string) => {
+        if (table === "page_views_daily") {
+          return {
+            select: vi.fn().mockReturnValue({
+              gte: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: testData,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === "ad_config") {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: mockAdNetworkConfig,
+                  error: null,
+                }),
+              }),
+            }),
+          };
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        };
+      });
+
+      const { result } = renderHook(() => useAdRevenue());
+
+      await waitFor(() => {
+        expect(result.current.loading).toBe(false);
+      });
+
+      const expectedMinutes = Math.round(6000 / 60);
+      expect(result.current.data?.engagement.totalActiveMinutes).toBe(expectedMinutes);
+      expect(result.current.data?.engagement.totalActiveMinutes).toBe(100);
+    });
+  });
 });
