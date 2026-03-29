@@ -866,7 +866,7 @@ describe("AdRevenueEstimator", () => {
     });
 
     it("displays active minutes with correct icon", () => {
-      const { container } = render(<AdRevenueEstimator />);
+      render(<AdRevenueEstimator />);
 
       const activeMinutesCard = screen.getByText("Active Minutes").closest("div");
       const clockIcon = activeMinutesCard?.querySelector('svg.lucide-clock');
@@ -963,7 +963,7 @@ describe("AdRevenueEstimator", () => {
     });
 
     it("uses green color for Clock icon in active minutes card", () => {
-      const { container } = render(<AdRevenueEstimator />);
+      render(<AdRevenueEstimator />);
 
       const activeMinutesElements = screen.getAllByText("Active Minutes");
       expect(activeMinutesElements.length).toBeGreaterThan(0);
@@ -1025,7 +1025,7 @@ describe("AdRevenueEstimator", () => {
     });
 
     it("renders active minutes card with proper styling", () => {
-      const { container } = render(<AdRevenueEstimator />);
+      render(<AdRevenueEstimator />);
 
       const activeMinutesCard = screen.getByText("Active Minutes").closest("div")?.parentElement;
       expect(activeMinutesCard?.className).toContain("bg-card");
@@ -1034,7 +1034,7 @@ describe("AdRevenueEstimator", () => {
     });
 
     it("displays active minutes value in large bold font", () => {
-      const { container } = render(<AdRevenueEstimator />);
+      render(<AdRevenueEstimator />);
 
       const activeMinutesElements = screen.getAllByText("Active Minutes");
       expect(activeMinutesElements.length).toBeGreaterThan(0);
