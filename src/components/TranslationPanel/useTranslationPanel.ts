@@ -264,15 +264,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
               errorMessage = errorText || errorMessage;
             }
 
-            if (response.status === 403) {
-              throw new Error("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
-            } else if (response.status === 404) {
-              throw new Error("The page was not found. Please check the URL and try again.");
-            } else if (response.status === 500 || response.status === 502 || response.status === 503 || response.status === 504) {
-              throw new Error("Server error while processing the URL. Please try again or use a different source.");
-            } else {
-              throw new Error(errorMessage);
-            }
+            throw new Error(errorMessage);
           }
 
           const data = await response.json();
@@ -310,16 +302,8 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       setShowUrlInput(false);
       setUrlInput("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (message.includes("403") || message.includes("Forbidden") || message.includes("blocks automated")) {
-        setError("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
-      } else if (message.includes("NetworkError") || message.includes("Failed to fetch")) {
-        setError("Network error. Please check your internet connection and try again.");
-      } else if (message.includes("timeout")) {
-        setError("Request timed out. The website may be slow or unavailable. Please try again.");
-      } else {
-        setError(message || "Failed to load content from URL. Please check the URL and try again.");
-      }
+      const message = err instanceof Error ? err.message : "Failed to load content from URL. Please check the URL and try again.";
+      setError(message);
       console.error("URL extraction error:", err);
     } finally {
       setLoadingUrl(false);

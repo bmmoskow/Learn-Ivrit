@@ -250,9 +250,9 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     if (response.status === 404) {
       return createErrorResponse("The page was not found. Please check the URL and try again.", 404);
     } else if (response.status === 403) {
-      return createErrorResponse("Access to this page is forbidden. The website may be blocking automated requests.", 403);
+      return createErrorResponse("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.", 403);
     } else if (response.status >= 500) {
-      return createErrorResponse("The website's server returned an error. Please try again later.", 502);
+      return createErrorResponse("Server error while processing the URL. Please try again or use a different source.", 502);
     } else {
       return createErrorResponse(`Failed to fetch URL (${response.status}): ${response.statusText}`, response.status);
     }
