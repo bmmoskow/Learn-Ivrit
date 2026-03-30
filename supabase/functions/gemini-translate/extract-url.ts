@@ -247,7 +247,15 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   console.log("Response status:", response.status);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch URL (${response.status}): ${response.statusText}`);
+    if (response.status === 404) {
+      return createErrorResponse("The page was not found. Please check the URL and try again.", 404);
+    } else if (response.status === 403) {
+      return createErrorResponse("Access to this page is forbidden. The website may be blocking automated requests.", 403);
+    } else if (response.status >= 500) {
+      return createErrorResponse("The website's server returned an error. Please try again later.", 502);
+    } else {
+      return createErrorResponse(`Failed to fetch URL (${response.status}): ${response.statusText}`, response.status);
+    }
   }
 
   const html = await response.text();
