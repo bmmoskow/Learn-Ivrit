@@ -2284,7 +2284,9 @@ describe("useTranslationPanel", () => {
       });
 
       const fetchCall = mockFetch.mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1].body as string);
+      expect(fetchCall).toBeDefined();
+      expect(fetchCall[1]).toBeDefined();
+      const requestBody = JSON.parse(fetchCall[1]!.body as string);
       expect(requestBody.url).toBe("https://example.com");
     });
 
@@ -2310,7 +2312,9 @@ describe("useTranslationPanel", () => {
       });
 
       const fetchCall = mockFetch.mock.calls[0];
-      const requestBody = JSON.parse(fetchCall[1].body as string);
+      expect(fetchCall).toBeDefined();
+      expect(fetchCall[1]).toBeDefined();
+      const requestBody = JSON.parse(fetchCall[1]!.body as string);
       expect(requestBody.url).toBe("https://example.com");
     });
 
