@@ -188,13 +188,29 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   }, [sourceText]);
 
   const loadFromUrl = async () => {
-    if (!urlInput.trim()) return;
+    const trimmedUrl = urlInput.trim();
+
+    if (!trimmedUrl) {
+      setError("Please enter a URL");
+      return;
+    }
+
+    const urlPattern = /^(https?:\/\/)?([\w.-]+\.[a-z]{2,})(\/\S*)?$/i;
+    if (!urlPattern.test(trimmedUrl)) {
+      setError("Please enter a valid URL (e.g., https://example.com/article)");
+      return;
+    }
+
+    let normalizedUrl = trimmedUrl;
+    if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+      normalizedUrl = 'https://' + trimmedUrl;
+    }
 
     setLoadingUrl(true);
     setError("");
 
     try {
-      const url = urlInput.trim();
+      const url = normalizedUrl;
       const requestKey = createRequestKey("load-url", { url });
 
       const content = await requestDeduplicator.dedupe(requestKey, async () => {
@@ -238,12 +254,35 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Failed to load URL");
+            const errorText = await response.text();
+            let errorMessage = "Failed to load URL";
+
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.error || errorMessage;
+            } catch {
+              errorMessage = errorText || errorMessage;
+            }
+
+            if (response.status === 403) {
+              throw new Error("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
+            } else if (response.status === 404) {
+              throw new Error("The page was not found. Please check the URL and try again.");
+            } else if (response.status === 500) {
+              throw new Error("Server error while processing the URL. Please try again or use a different source.");
+            } else if (response.status >= 400) {
+              throw new Error(errorMessage);
+            }
+
+            throw new Error(errorMessage);
           }
 
           const data = await response.json();
           content = data.content;
+
+          if (!content || (typeof content === 'string' && content.trim().length === 0)) {
+            throw new Error("No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.");
+          }
 
           if (!isGuest && user) {
             supabase
@@ -262,6 +301,11 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       });
 
       const extractedText = typeof content === "string" ? content : "";
+
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error("No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.");
+      }
+
       console.log("Hebrew text loaded, length:", extractedText.length);
 
       importHebrewContent(extractedText, { source: url });
@@ -269,8 +313,12 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       setUrlInput("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      if (message.includes("403") || message.includes("Forbidden")) {
+      if (message.includes("403") || message.includes("Forbidden") || message.includes("blocks automated")) {
         setError("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
+      } else if (message.includes("NetworkError") || message.includes("Failed to fetch")) {
+        setError("Network error. Please check your internet connection and try again.");
+      } else if (message.includes("timeout")) {
+        setError("Request timed out. The website may be slow or unavailable. Please try again.");
       } else {
         setError(message || "Failed to load content from URL. Please check the URL and try again.");
       }

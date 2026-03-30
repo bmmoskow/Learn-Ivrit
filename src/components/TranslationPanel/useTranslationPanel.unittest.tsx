@@ -665,7 +665,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 429,
-        json: () => Promise.resolve({ error: "Rate limit exceeded. Try again later." }),
+        text: () => Promise.resolve(JSON.stringify({ error: "Rate limit exceeded. Try again later." })),
       } as Response);
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -695,7 +695,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        json: () => Promise.resolve({ error: "403 Forbidden" }),
+        text: () => Promise.resolve(JSON.stringify({ error: "403 Forbidden" })),
       } as Response);
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -763,7 +763,7 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toBe("Connection timeout");
+      expect(result.current.error).toContain("timeout");
       expect(result.current.error).not.toContain("blocks automated");
       expect(result.current.loadingUrl).toBe(false);
 
@@ -1103,7 +1103,8 @@ describe("useTranslationPanel", () => {
 
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () => Promise.resolve({ error: "Unable to extract content from this URL" }),
+        status: 400,
+        text: () => Promise.resolve(JSON.stringify({ error: "Unable to extract content from this URL" })),
       } as unknown as Response);
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -2207,6 +2208,276 @@ describe("useTranslationPanel", () => {
         (entry: unknown) => (entry as Record<string, unknown>).cache_hit === true,
       );
       expect(cacheHitLogs.length).toBe(0);
+    });
+  });
+
+  describe("loadFromUrl error handling", () => {
+    it("sets error when URL input is empty", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setUrlInput("");
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Please enter a URL");
+    });
+
+    it("sets error when URL input is only whitespace", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setUrlInput("   ");
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Please enter a URL");
+    });
+
+    it("sets error for invalid URL format", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setUrlInput("not a url");
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Please enter a valid URL (e.g., https://example.com/article)");
+    });
+
+    it("sets error for URL without domain extension", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setUrlInput("http://example");
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBe("Please enter a valid URL (e.g., https://example.com/article)");
+    });
+
+    it("trims whitespace from URL input", async () => {
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: "Test content" }),
+      } as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("  https://example.com  ");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+      });
+
+      const fetchCall = mockFetch.mock.calls[0];
+      const requestBody = JSON.parse(fetchCall[1].body as string);
+      expect(requestBody.url).toBe("https://example.com");
+    });
+
+    it("adds https:// prefix to URLs without protocol", async () => {
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: "Test content" }),
+      } as Response);
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      act(() => {
+        result.current.setUrlInput("example.com");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
+      });
+
+      const fetchCall = mockFetch.mock.calls[0];
+      const requestBody = JSON.parse(fetchCall[1].body as string);
+      expect(requestBody.url).toBe("https://example.com");
+    });
+
+    it("handles 403 forbidden error", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: async () => JSON.stringify({ error: "Forbidden" }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://blocked-site.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("blocks automated text extraction");
+      });
+    });
+
+    it("handles 404 not found error", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 404,
+        text: async () => JSON.stringify({ error: "Not Found" }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com/missing");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("page was not found");
+      });
+    });
+
+    it("handles 500 server error", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => JSON.stringify({ error: "Internal Server Error" }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("Server error");
+      });
+    });
+
+    it("handles network error", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockRejectedValue(new Error("Failed to fetch"));
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("Network error");
+      });
+    });
+
+    it("handles timeout error", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockRejectedValue(new Error("Request timeout"));
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("timeout");
+      });
+    });
+
+    it("handles empty content response", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: "" }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("No text content could be extracted");
+      });
+    });
+
+    it("handles whitespace-only content response", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: "   \n  \t  " }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("No text content could be extracted");
+      });
+    });
+
+    it("clears error on successful URL load", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      await act(async () => {
+        result.current.setUrlInput("invalid");
+        await result.current.loadFromUrl();
+      });
+
+      expect(result.current.error).toBeTruthy();
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: "Valid content" }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.sourceText).toBeTruthy();
+      });
+
+      expect(result.current.error).toBe("");
+    });
+
+    it("resets URL input and closes dialog on successful load", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ content: "Test content" }),
+      } as Response);
+
+      await act(async () => {
+        result.current.setUrlInput("https://example.com");
+        result.current.setShowUrlInput(true);
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.sourceText).toBeTruthy();
+      });
+
+      expect(result.current.urlInput).toBe("");
+      expect(result.current.showUrlInput).toBe(false);
     });
   });
 });
