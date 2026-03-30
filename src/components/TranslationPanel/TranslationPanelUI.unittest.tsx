@@ -78,6 +78,20 @@ describe("TranslationPanelUI", () => {
       render(<TranslationPanelUI {...createDefaultProps()} showBibleInput={true} />);
       expect(findByText("Paste or Type")).toBeUndefined();
     });
+
+    it("displays URL input with error message when error prop is set", () => {
+      const errorMessage = "Unable to connect to this URL";
+      render(<TranslationPanelUI {...createDefaultProps()} showUrlInput={true} error={errorMessage} />);
+      const errorBox = document.querySelector(".bg-red-50");
+      expect(errorBox).toBeInTheDocument();
+      expect(document.body.textContent).toContain(errorMessage);
+    });
+
+    it("passes error prop to UrlInput component", () => {
+      const errorMessage = "Failed to load URL";
+      render(<TranslationPanelUI {...createDefaultProps()} showUrlInput={true} error={errorMessage} />);
+      expect(document.body.textContent).toContain(errorMessage);
+    });
   });
 
   describe("Translation view", () => {

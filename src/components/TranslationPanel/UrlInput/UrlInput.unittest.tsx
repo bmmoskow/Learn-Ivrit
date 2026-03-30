@@ -193,6 +193,25 @@ describe("UrlInput", () => {
       render(<UrlInput {...createDefaultProps()} error={errorMessage} />);
       expect(document.body.textContent).toContain(errorMessage);
     });
+
+    it("displays DNS/connection error message for unreachable URLs", () => {
+      const errorMessage = "Unable to connect to this URL. Please check the address and try again, or use the \"Paste / Type\" option to enter the text manually.";
+      render(<UrlInput {...createDefaultProps()} error={errorMessage} />);
+      expect(document.body.textContent).toContain("Unable to connect to this URL");
+      expect(document.body.textContent).toContain("Paste / Type");
+    });
+
+    it("displays 404 not found error message", () => {
+      const errorMessage = "The page was not found. Please check the URL and try again.";
+      render(<UrlInput {...createDefaultProps()} error={errorMessage} />);
+      expect(document.body.textContent).toContain("The page was not found");
+    });
+
+    it("displays empty content extraction error message", () => {
+      const errorMessage = "No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.";
+      render(<UrlInput {...createDefaultProps()} error={errorMessage} />);
+      expect(document.body.textContent).toContain("No text content could be extracted");
+    });
   });
 
   describe("Enter Key Behavior", () => {
