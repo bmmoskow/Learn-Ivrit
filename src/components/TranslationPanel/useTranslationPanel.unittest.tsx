@@ -695,7 +695,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        text: () => Promise.resolve(JSON.stringify({ error: "Access to this page is forbidden. The website may be blocking automated requests." })),
+        text: () => Promise.resolve(JSON.stringify({ error: "This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead." })),
       } as Response);
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -736,7 +736,7 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toContain("blocks automated text extraction");
+      expect(result.current.error).toBe("Request failed: Forbidden");
       expect(result.current.loadingUrl).toBe(false);
 
       vi.unstubAllEnvs();
@@ -2325,7 +2325,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        text: async () => JSON.stringify({ error: "Access to this page is forbidden. The website may be blocking automated requests." }),
+        text: async () => JSON.stringify({ error: "This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead." }),
       } as Response);
 
       act(() => {
@@ -2371,7 +2371,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
-        text: async () => JSON.stringify({ error: "The website's server returned an error. Please try again later." }),
+        text: async () => JSON.stringify({ error: "Server error while processing the URL. Please try again or use a different source." }),
       } as Response);
 
       act(() => {
@@ -2394,7 +2394,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 502,
-        text: async () => JSON.stringify({ error: "The website's server returned an error. Please try again later." }),
+        text: async () => JSON.stringify({ error: "Server error while processing the URL. Please try again or use a different source." }),
       } as Response);
 
       act(() => {
@@ -2471,7 +2471,7 @@ describe("useTranslationPanel", () => {
       });
 
       await vi.waitFor(() => {
-        expect(result.current.error).toContain("Network error");
+        expect(result.current.error).toBe("Failed to fetch");
       });
     });
 
