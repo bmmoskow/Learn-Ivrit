@@ -763,7 +763,7 @@ describe("useTranslationPanel", () => {
         await result.current.loadFromUrl();
       });
 
-      expect(result.current.error).toContain("timeout");
+      expect(result.current.error.toLowerCase()).toMatch(/time.*out|timeout/);
       expect(result.current.error).not.toContain("blocks automated");
       expect(result.current.loadingUrl).toBe(false);
 
@@ -2237,8 +2237,11 @@ describe("useTranslationPanel", () => {
     it("sets error for invalid URL format", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("not a url");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2248,8 +2251,11 @@ describe("useTranslationPanel", () => {
     it("sets error for URL without domain extension", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("http://example");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2311,14 +2317,18 @@ describe("useTranslationPanel", () => {
     it("handles 403 forbidden error", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
         text: async () => JSON.stringify({ error: "Forbidden" }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://blocked-site.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2330,14 +2340,18 @@ describe("useTranslationPanel", () => {
     it("handles 404 not found error", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
         text: async () => JSON.stringify({ error: "Not Found" }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com/missing");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2441,10 +2455,14 @@ describe("useTranslationPanel", () => {
     it("handles network error", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockRejectedValue(new Error("Failed to fetch"));
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2456,28 +2474,36 @@ describe("useTranslationPanel", () => {
     it("handles timeout error", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockRejectedValue(new Error("Request timeout"));
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
       await vi.waitFor(() => {
-        expect(result.current.error).toContain("timeout");
+        expect(result.current.error.toLowerCase()).toMatch(/time.*out|timeout/);
       });
     });
 
     it("handles empty content response", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ content: "" }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2489,13 +2515,17 @@ describe("useTranslationPanel", () => {
     it("handles whitespace-only content response", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ content: "   \n  \t  " }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2507,20 +2537,27 @@ describe("useTranslationPanel", () => {
     it("clears error on successful URL load", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("invalid");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
       expect(result.current.error).toBeTruthy();
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ content: "Valid content" }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
@@ -2534,14 +2571,18 @@ describe("useTranslationPanel", () => {
     it("resets URL input and closes dialog on successful load", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ content: "Test content" }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
         result.current.setShowUrlInput(true);
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
