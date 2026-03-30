@@ -235,14 +235,23 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   const urlToFetch = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
   console.log("Fetching URL:", urlToFetch);
 
-  const response = await fetch(urlToFetch, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-      "Accept-Language": "he,en-US;q=0.9,en;q=0.8",
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetch(urlToFetch, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "he,en-US;q=0.9,en;q=0.8",
+      },
+    });
+  } catch (fetchError) {
+    console.error("Fetch error:", fetchError);
+    return createErrorResponse(
+      "Unable to connect to this URL. Please check the address and try again, or use the \"Paste / Type\" option to enter the text manually.",
+      400
+    );
+  }
 
   console.log("Response status:", response.status);
 
