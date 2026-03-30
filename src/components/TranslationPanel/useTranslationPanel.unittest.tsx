@@ -695,7 +695,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        text: () => Promise.resolve(JSON.stringify({ error: "403 Forbidden" })),
+        text: () => Promise.resolve(JSON.stringify({ error: "Access to this page is forbidden. The website may be blocking automated requests." })),
       } as Response);
 
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
@@ -2325,7 +2325,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 403,
-        text: async () => JSON.stringify({ error: "Forbidden" }),
+        text: async () => JSON.stringify({ error: "Access to this page is forbidden. The website may be blocking automated requests." }),
       } as Response);
 
       act(() => {
@@ -2348,7 +2348,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 404,
-        text: async () => JSON.stringify({ error: "Not Found" }),
+        text: async () => JSON.stringify({ error: "The page was not found. Please check the URL and try again." }),
       } as Response);
 
       act(() => {
@@ -2360,7 +2360,7 @@ describe("useTranslationPanel", () => {
       });
 
       await vi.waitFor(() => {
-        expect(result.current.error).toContain("page was not found");
+        expect(result.current.error).toBe("The page was not found. Please check the URL and try again.");
       });
     });
 
@@ -2371,7 +2371,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
-        text: async () => JSON.stringify({ error: "Internal Server Error" }),
+        text: async () => JSON.stringify({ error: "The website's server returned an error. Please try again later." }),
       } as Response);
 
       act(() => {
@@ -2394,7 +2394,7 @@ describe("useTranslationPanel", () => {
       mockFetch.mockResolvedValue({
         ok: false,
         status: 502,
-        text: async () => JSON.stringify({ error: "Bad Gateway" }),
+        text: async () => JSON.stringify({ error: "The website's server returned an error. Please try again later." }),
       } as Response);
 
       act(() => {
