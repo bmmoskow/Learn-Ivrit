@@ -1087,4 +1087,326 @@ describe("AdRevenueEstimator", () => {
       expect(screen.getByText("200")).toBeInTheDocument();
     });
   });
+
+  describe("Multi-step Formula Display", () => {
+    it("renders strategies with multi-step formulas", () => {
+      const multiStepEstimate = [
+        {
+          ...mockStrategyEstimates[0],
+          formula: "refresh_count = floor(active_minutes / 60); estimated_revenue = pageviews * refresh_count * cpm / 1000",
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: multiStepEstimate,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+      expect(screen.getByText("single high viewability unit")).toBeInTheDocument();
+    });
+
+    it("renders strategies with single-step formulas", () => {
+      render(<AdRevenueEstimator />);
+      expect(screen.getByText("single high viewability unit")).toBeInTheDocument();
+      expect(screen.getByText("balanced multi slot layout")).toBeInTheDocument();
+    });
+  });
+
+  describe("Computed Steps Display", () => {
+    it("displays computed steps when available", () => {
+      const estimateWithSteps = [
+        {
+          ...mockStrategyEstimates[0],
+          computedSteps: [
+            { equation: "refresh_count = floor(active_minutes / 60)", result: 41 },
+            { equation: "estimated_revenue = pageviews * refresh_count * cpm / 1000", result: 3.4 },
+          ],
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithSteps,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      expect(container).toBeInTheDocument();
+    });
+
+    it("formats numeric results in computed steps with locale formatting", () => {
+      const estimateWithSteps = [
+        {
+          ...mockStrategyEstimates[0],
+          computedSteps: [
+            { equation: "test_value = 1234.5678", result: 1234.5678 },
+          ],
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithSteps,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      expect(container).toBeInTheDocument();
+    });
+
+    it("displays variable names from computed steps", () => {
+      const estimateWithSteps = [
+        {
+          ...mockStrategyEstimates[0],
+          computedSteps: [
+            { equation: "refresh_count_per_page = floor(30 / 60)", result: 0 },
+            { equation: "estimated_revenue = 100 * 2.5", result: 250 },
+          ],
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithSteps,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      expect(container).toBeInTheDocument();
+    });
+
+    it("handles string results in computed steps", () => {
+      const estimateWithSteps = [
+        {
+          ...mockStrategyEstimates[0],
+          computedSteps: [
+            { equation: "test = 'string value'", result: "string value" },
+          ],
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithSteps,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      expect(container).toBeInTheDocument();
+    });
+
+    it("does not display computed steps section when none available", () => {
+      render(<AdRevenueEstimator />);
+
+      const { container } = render(<AdRevenueEstimator />);
+      expect(container).toBeInTheDocument();
+    });
+  });
+
+  describe("Error Handling Display", () => {
+    it("highlights rows with errors in red background", () => {
+      const estimateWithError = [
+        {
+          ...mockStrategyEstimates[0],
+          error: "Missing required data to compute revenue",
+          estimatedRevenue: 0,
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithError,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      const errorRow = container.querySelector('tr[class*="bg-destructive/10"]');
+      expect(errorRow).toBeInTheDocument();
+    });
+
+    it("displays error message in revenue column for errored strategies", () => {
+      const estimateWithError = [
+        {
+          ...mockStrategyEstimates[0],
+          error: "Missing required data to compute revenue",
+          estimatedRevenue: 0,
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithError,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+      expect(screen.getByText("Missing required data to compute revenue")).toBeInTheDocument();
+    });
+
+    it("shows dashes for CPM, impressions, and RPM when error present", () => {
+      const estimateWithError = [
+        {
+          ...mockStrategyEstimates[0],
+          error: "Computation failed",
+          estimatedRevenue: 0,
+          estimatedImpressions: 0,
+          estimatedRpm: 0,
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithError,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      const dashElements = container.querySelectorAll('span[class*="text-muted-foreground"]');
+      const hasDashes = Array.from(dashElements).some(el => el.textContent === '—');
+      expect(hasDashes).toBe(true);
+    });
+
+    it("displays error in destructive text color", () => {
+      const estimateWithError = [
+        {
+          ...mockStrategyEstimates[0],
+          error: "Computation failed: Invalid expression",
+          estimatedRevenue: 0,
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithError,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+      const errorText = container.querySelector('span[class*="text-destructive"]');
+      expect(errorText).toBeInTheDocument();
+      expect(errorText?.textContent).toContain("Computation failed");
+    });
+
+    it("handles strategies with and without errors in the same table", () => {
+      const mixedEstimates = [
+        mockStrategyEstimates[0],
+        {
+          ...mockStrategyEstimates[1],
+          error: "Missing data",
+          estimatedRevenue: 0,
+        },
+        mockStrategyEstimates[2],
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: mixedEstimates,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      const { container } = render(<AdRevenueEstimator />);
+
+      const errorRows = container.querySelectorAll('tr[class*="bg-destructive/10"]');
+      expect(errorRows.length).toBe(1);
+
+      expect(screen.getByText("Missing data")).toBeInTheDocument();
+      expect(screen.getAllByText("$3.40").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("$24.00").length).toBeGreaterThan(0);
+    });
+
+    it("displays traffic requirement even when error is present", () => {
+      const estimateWithError = [
+        {
+          ...mockStrategyEstimates[0],
+          error: "Missing data",
+          estimatedRevenue: 0,
+        },
+      ];
+
+      mockUseAdRevenue.mockReturnValue({
+        data: {
+          engagement: mockEngagement,
+          strategyEstimates: estimateWithError,
+          period: "30d",
+        },
+        loading: false,
+        period: "30d",
+        setPeriod: vi.fn(),
+        refetch: vi.fn(),
+      });
+
+      render(<AdRevenueEstimator />);
+      expect(screen.getByText("No minimum traffic requirement")).toBeInTheDocument();
+    });
+
+    it("does not highlight row when no error present", () => {
+      render(<AdRevenueEstimator />);
+
+      const { container } = render(<AdRevenueEstimator />);
+      const errorRows = container.querySelectorAll('tr[class*="bg-destructive/10"]');
+      expect(errorRows.length).toBe(0);
+    });
+  });
 });

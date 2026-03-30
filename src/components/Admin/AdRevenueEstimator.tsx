@@ -130,10 +130,28 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
 
           <div className="pt-2 border-t border-border">
             <h5 className="font-medium text-xs mb-1">Formula:</h5>
-            <code className="text-xs bg-muted p-1 rounded block break-all">
-              {strategy.formula}
+            <code className="text-xs bg-muted p-1 rounded block break-all whitespace-pre-wrap">
+              {strategy.formula.split(';').map(line => line.trim()).filter(line => line).join(';\n')}
             </code>
           </div>
+
+          {strategy.computedSteps && strategy.computedSteps.length > 0 && (
+            <div className="pt-2 border-t border-border">
+              <h5 className="font-medium text-xs mb-1">Computation Steps:</h5>
+              <ul className="text-xs space-y-1 font-mono">
+                {strategy.computedSteps.map((step, idx) => (
+                  <li key={idx} className="bg-muted p-1 rounded">
+                    <span className="text-muted-foreground">{step.equation.split('=')[0].trim()} =</span>{' '}
+                    <span className="font-semibold">
+                      {typeof step.result === 'number'
+                        ? step.result.toLocaleString(undefined, { maximumFractionDigits: 4 })
+                        : step.result}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div>
             <h5 className="font-medium text-xs mb-1">Inputs:</h5>
@@ -185,8 +203,10 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
 }
 
 function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
+  const hasError = !!strategy.error;
+
   return (
-    <TableRow>
+    <TableRow className={hasError ? "bg-destructive/10" : ""}>
       <TableCell>
         <div className="flex flex-col gap-1">
           {strategy.company && (
@@ -215,16 +235,32 @@ function StrategyRow({ strategy }: { strategy: StrategyEstimate }) {
         {strategy.trafficRequirement ? strategy.trafficRequirement.value : 'None'}
       </TableCell>
       <TableCell className="text-right text-sm">
-        ${strategy.cpm.toFixed(2)}
+        {hasError ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          `$${strategy.cpm.toFixed(2)}`
+        )}
       </TableCell>
       <TableCell className="text-right text-sm">
-        {strategy.estimatedImpressions.toLocaleString()}
+        {hasError ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          strategy.estimatedImpressions.toLocaleString()
+        )}
       </TableCell>
       <TableCell className="text-right text-sm">
-        ${strategy.estimatedRpm.toFixed(2)}
+        {hasError ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          `$${strategy.estimatedRpm.toFixed(2)}`
+        )}
       </TableCell>
       <TableCell className="text-right font-bold">
-        {formatMoney(strategy.estimatedRevenue)}
+        {hasError ? (
+          <span className="text-destructive text-xs">{strategy.error}</span>
+        ) : (
+          formatMoney(strategy.estimatedRevenue)
+        )}
       </TableCell>
     </TableRow>
   );
