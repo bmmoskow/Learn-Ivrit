@@ -268,13 +268,11 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
               throw new Error("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
             } else if (response.status === 404) {
               throw new Error("The page was not found. Please check the URL and try again.");
-            } else if (response.status === 500) {
+            } else if (response.status === 500 || response.status === 502 || response.status === 503 || response.status === 504) {
               throw new Error("Server error while processing the URL. Please try again or use a different source.");
-            } else if (response.status >= 400) {
+            } else {
               throw new Error(errorMessage);
             }
-
-            throw new Error(errorMessage);
           }
 
           const data = await response.json();

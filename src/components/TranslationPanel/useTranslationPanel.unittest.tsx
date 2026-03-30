@@ -2349,19 +2349,92 @@ describe("useTranslationPanel", () => {
     it("handles 500 server error", async () => {
       const { result } = renderHook(() => useTranslationPanel(), { wrapper });
 
+      mockFetch.mockClear();
       mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         text: async () => JSON.stringify({ error: "Internal Server Error" }),
       } as Response);
 
-      await act(async () => {
+      act(() => {
         result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
         await result.current.loadFromUrl();
       });
 
       await vi.waitFor(() => {
         expect(result.current.error).toContain("Server error");
+      });
+    });
+
+    it("handles 502 bad gateway error", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 502,
+        text: async () => JSON.stringify({ error: "Bad Gateway" }),
+      } as Response);
+
+      act(() => {
+        result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toContain("Server error");
+      });
+    });
+
+    it("handles 429 rate limit with custom error message", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 429,
+        text: async () => JSON.stringify({ error: "Rate limit exceeded. Try again later." }),
+      } as Response);
+
+      act(() => {
+        result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toBe("Rate limit exceeded. Try again later.");
+      });
+    });
+
+    it("handles 400 bad request with custom error message", async () => {
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+
+      mockFetch.mockClear();
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        text: async () => JSON.stringify({ error: "Invalid URL format" }),
+      } as Response);
+
+      act(() => {
+        result.current.setUrlInput("https://example.com");
+      });
+
+      await act(async () => {
+        await result.current.loadFromUrl();
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.error).toBe("Invalid URL format");
       });
     });
 
