@@ -188,13 +188,29 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   }, [sourceText]);
 
   const loadFromUrl = async () => {
-    if (!urlInput.trim()) return;
+    const trimmedUrl = urlInput.trim();
+
+    if (!trimmedUrl) {
+      setError("Please enter a URL");
+      return;
+    }
+
+    const urlPattern = /^(https?:\/\/)?([\w.-]+\.[a-z]{2,})(\/\S*)?$/i;
+    if (!urlPattern.test(trimmedUrl)) {
+      setError("Please enter a valid URL (e.g., https://example.com/article)");
+      return;
+    }
+
+    let normalizedUrl = trimmedUrl;
+    if (!trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')) {
+      normalizedUrl = 'https://' + trimmedUrl;
+    }
 
     setLoadingUrl(true);
     setError("");
 
     try {
-      const url = urlInput.trim();
+      const url = normalizedUrl;
       const requestKey = createRequestKey("load-url", { url });
 
       const content = await requestDeduplicator.dedupe(requestKey, async () => {
@@ -238,12 +254,25 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Failed to load URL");
+            const errorText = await response.text();
+            let errorMessage = "Failed to load URL";
+
+            try {
+              const errorData = JSON.parse(errorText);
+              errorMessage = errorData.error || errorMessage;
+            } catch {
+              errorMessage = errorText || errorMessage;
+            }
+
+            throw new Error(errorMessage);
           }
 
           const data = await response.json();
           content = data.content;
+
+          if (!content || (typeof content === 'string' && content.trim().length === 0)) {
+            throw new Error("No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.");
+          }
 
           if (!isGuest && user) {
             supabase
@@ -262,18 +291,19 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       });
 
       const extractedText = typeof content === "string" ? content : "";
+
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error("No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.");
+      }
+
       console.log("Hebrew text loaded, length:", extractedText.length);
 
       importHebrewContent(extractedText, { source: url });
       setShowUrlInput(false);
       setUrlInput("");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (message.includes("403") || message.includes("Forbidden")) {
-        setError("This website blocks automated text extraction. Try copying and pasting the article text manually using the \"Paste / Type\" option instead.");
-      } else {
-        setError(message || "Failed to load content from URL. Please check the URL and try again.");
-      }
+      const message = err instanceof Error ? err.message : "Failed to load content from URL. Please check the URL and try again.";
+      setError(message);
       console.error("URL extraction error:", err);
     } finally {
       setLoadingUrl(false);

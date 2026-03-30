@@ -152,6 +152,7 @@ export function TranslationPanelUI({
               <UrlInput
                 urlInput={urlInput}
                 loadingUrl={loadingUrl}
+                error={error}
                 setUrlInput={setUrlInput}
                 setShowUrlInput={setShowUrlInput}
                 loadFromUrl={loadFromUrl}
