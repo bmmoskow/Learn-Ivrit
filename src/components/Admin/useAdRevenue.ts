@@ -54,6 +54,8 @@ export interface StrategyEstimate {
   estimatedRpm: number;
   formula: string;
   parameters: Record<string, ParameterValue>;
+  error?: string;
+  computedSteps?: Array<{equation: string; result: number | string}>;
 }
 
 export interface EngagementTotals {
@@ -76,53 +78,97 @@ function getNumericValue(param: ParameterValue | undefined): number {
   return match ? parseFloat(match[0]) : 0;
 }
 
+function safeEval(expression: string): number {
+  const func = new Function('Math', `"use strict"; return (${expression})`);
+  return func(Math);
+}
+
 function calculateRevenue(
   strategy: StrategyConfig,
   pageviews: number,
   activeSeconds: number
-): { revenue: number; impressions: number; rpm: number } {
+): { revenue: number; impressions: number; rpm: number; error?: string; computedSteps?: Array<{equation: string; result: number | string}> } {
   const params = strategy.parameters;
+  const activeMinutes = activeSeconds / 60;
 
-  const adSlotsPerPage = getNumericValue(params.ad_slots_per_page);
-  const fillRate = getNumericValue(params.fill_rate);
-  const viewabilityRate = getNumericValue(params.viewability_rate);
-  const cpm = getNumericValue(params.cpm) || getNumericValue(params.event_cpm);
-  const engagementFactor = getNumericValue(params.engagement_factor) || 1.0;
-  const policyComplianceFactor = getNumericValue(params.policy_compliance_factor) || 1.0;
-  const refreshIntervalSeconds = getNumericValue(params.refresh_interval_seconds);
+  const context: Record<string, number> = {
+    pageviews,
+    active_minutes: activeMinutes,
+    active_seconds: activeSeconds,
+  };
 
-  const avgViewableSecondsPerPage = pageviews > 0 ? activeSeconds / pageviews : 0;
-  const sessions = pageviews;
-  const pagesPerSession = 1;
-
-  let impressions = 0;
-  let revenue = 0;
-
-  if (strategy.formula.includes("refresh_interval_seconds") && refreshIntervalSeconds > 0) {
-    const eligibleRefreshes = Math.floor(avgViewableSecondsPerPage / refreshIntervalSeconds);
-    impressions = Math.floor(
-      pageviews * adSlotsPerPage * fillRate * (1 + eligibleRefreshes)
-    );
-    revenue = (impressions * cpm / 1000) * policyComplianceFactor;
-  } else if (strategy.formula.includes("sessions") && strategy.formula.includes("pages_per_session")) {
-    impressions = Math.floor(
-      sessions * pagesPerSession * adSlotsPerPage * fillRate * viewabilityRate
-    );
-    revenue = (impressions * cpm / 1000) * engagementFactor;
-  } else if (strategy.formula.includes("event_count")) {
-    const eventCount = pageviews;
-    revenue = (eventCount * cpm / 1000) * policyComplianceFactor;
-    impressions = eventCount;
-  } else {
-    impressions = Math.floor(
-      pageviews * adSlotsPerPage * fillRate * viewabilityRate
-    );
-    revenue = (impressions * cpm / 1000) * engagementFactor * policyComplianceFactor;
+  for (const [key, param] of Object.entries(params)) {
+    context[key] = getNumericValue(param);
   }
 
-  const rpm = pageviews > 0 ? (revenue / pageviews) * 1000 : 0;
+  const formulas = strategy.formula.split(';').map(f => f.trim()).filter(f => f.length > 0);
+  const computedSteps: Array<{equation: string; result: number | string}> = [];
 
-  return { revenue, impressions, rpm };
+  try {
+    for (const formula of formulas) {
+      const [varName, expression] = formula.split('=').map(s => s.trim());
+
+      if (!expression) {
+        continue;
+      }
+
+      let evalExpression = expression;
+
+      for (const [key, value] of Object.entries(context)) {
+        const regex = new RegExp(`\\b${key}\\b`, 'g');
+        evalExpression = evalExpression.replace(regex, String(value));
+      }
+
+      evalExpression = evalExpression
+        .replace(/floor\(/g, 'Math.floor(')
+        .replace(/min\(/g, 'Math.min(')
+        .replace(/max\(/g, 'Math.max(');
+
+      const result = safeEval(evalExpression);
+
+      context[varName] = result;
+      computedSteps.push({ equation: formula, result });
+    }
+
+    const estimatedRevenue = context.estimated_revenue;
+
+    if (estimatedRevenue === undefined || isNaN(estimatedRevenue)) {
+      return {
+        revenue: 0,
+        impressions: 0,
+        rpm: 0,
+        error: "Missing required data to compute revenue. Formula requires values not available in current dataset.",
+        computedSteps
+      };
+    }
+
+    let impressions = context.estimated_impressions || context.impressions || 0;
+
+    if (impressions === 0 && context.ad_slots_per_page && context.fill_rate) {
+      if (context.viewability_rate) {
+        impressions = Math.floor(
+          pageviews * context.ad_slots_per_page * context.fill_rate * context.viewability_rate
+        );
+      } else {
+        impressions = Math.floor(
+          pageviews * context.ad_slots_per_page * context.fill_rate
+        );
+      }
+    }
+
+    const rpm = pageviews > 0 ? (estimatedRevenue / pageviews) * 1000 : 0;
+
+    return { revenue: estimatedRevenue, impressions, rpm, computedSteps };
+
+  } catch (error) {
+    return {
+      revenue: 0,
+      impressions: 0,
+      rpm: 0,
+      error: `Computation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      computedSteps
+    };
+  }
 }
 
 export function useAdRevenue() {
@@ -198,7 +244,7 @@ export function useAdRevenue() {
           continue;
         }
 
-        const { revenue, impressions, rpm } = calculateRevenue(
+        const { revenue, impressions, rpm, error, computedSteps } = calculateRevenue(
           strategy,
           totalViews,
           totalActiveSeconds
@@ -264,6 +310,8 @@ export function useAdRevenue() {
           estimatedRpm: rpm,
           formula: strategy.formula,
           parameters: strategy.parameters,
+          error,
+          computedSteps,
         });
       }
     }
