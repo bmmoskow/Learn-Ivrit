@@ -16,8 +16,14 @@ const hashCache = new Map<string, string>();
 
 /**
  * Cached version of hashUserId. Computes once per raw ID per session.
+ * Special case: "guest-user" is returned as-is for better analytics visibility.
  */
 export async function hashUserIdCached(userId: string): Promise<string> {
+  // Don't hash guest-user - it contains no PII and is useful for analytics
+  if (userId === "guest-user") {
+    return userId;
+  }
+
   const cached = hashCache.get(userId);
   if (cached) return cached;
   const hashed = await hashUserId(userId);
