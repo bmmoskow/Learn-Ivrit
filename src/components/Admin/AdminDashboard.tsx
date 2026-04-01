@@ -11,9 +11,15 @@ import {
 import { useAdmin } from "./useAdmin";
 import { summarize, REQUEST_TYPES, TIME_PERIODS } from "./adminUtils";
 import { AdRevenueEstimator } from "./AdRevenueEstimator";
+import { AlertBanner } from "./AlertBanner";
+import { SpendMonitor } from "./SpendMonitor";
+import { useAlerts } from "./useAlerts";
+import { useSpendTracking } from "./useSpendTracking";
 
 export function AdminDashboard() {
   const { logs, loading, period, typeFilter, setPeriod, setTypeFilter, fetchLogs } = useAdmin();
+  const { alerts, dismissAlert } = useAlerts();
+  const { spendTracking, refresh: refreshSpendTracking } = useSpendTracking();
 
   useEffect(() => {
     fetchLogs();
@@ -27,6 +33,12 @@ export function AdminDashboard() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">API Usage Dashboard</h1>
           <p className="text-gray-600">Monitor Gemini API calls, costs, and cache efficiency</p>
+        </div>
+
+        <AlertBanner alerts={alerts} onDismiss={dismissAlert} />
+
+        <div className="mb-6">
+          <SpendMonitor spendTracking={spendTracking} onRefresh={refreshSpendTracking} />
         </div>
 
         {/* Filters */}
