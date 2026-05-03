@@ -23,6 +23,22 @@ Deno.serve(async (req: Request) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // CIRCUIT BREAKER CHECK: Verify API is enabled before processing
+    const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+    const { data: spendTracking, error: trackingError } = await supabase
+      .from('monthly_spend_tracking')
+      .select('api_enabled, total_spend, spend_cap, current_tier')
+      .eq('month', currentMonth)
+      .maybeSingle();
+
+    if (!trackingError && spendTracking && !spendTracking.api_enabled) {
+      console.log('Circuit breaker active - API calls disabled');
+      return createErrorResponse(
+        `Service temporarily unavailable: Monthly API budget limit reached ($${spendTracking.total_spend} / $${spendTracking.spend_cap}). Service will resume automatically on the 1st of next month. We apologize for the inconvenience.`,
+        503
+      );
+    }
+
     // Check for authentication (optional - guests allowed for translation)
     const authHeader = req.headers.get("Authorization");
     let userId: string | null = null;

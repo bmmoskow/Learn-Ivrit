@@ -491,6 +491,177 @@ describe("Integration Tests", () => {
   });
 });
 
+describe("Guest User Handling", () => {
+  beforeEach(() => {
+    clearHashCache();
+  });
+
+  describe("Guest User Pass-Through", () => {
+    it("returns 'guest-user' without hashing", async () => {
+      const result = await hashUserIdCached("guest-user");
+      expect(result).toBe("guest-user");
+    });
+
+    it("does not hash guest-user (returns as-is, not 64-char hash)", async () => {
+      const result = await hashUserIdCached("guest-user");
+      expect(result.length).not.toBe(64); // Not a SHA-256 hash
+      expect(result).toBe("guest-user");
+    });
+
+    it("does not cache guest-user", async () => {
+      await hashUserIdCached("guest-user");
+      expect(getHashCacheSize()).toBe(0); // Guest user doesn't consume cache
+    });
+
+    it("handles multiple guest-user calls without caching", async () => {
+      await hashUserIdCached("guest-user");
+      await hashUserIdCached("guest-user");
+      await hashUserIdCached("guest-user");
+      expect(getHashCacheSize()).toBe(0);
+    });
+
+    it("returns guest-user immediately without crypto computation", async () => {
+      const spy = vi.spyOn(crypto.subtle, "digest");
+
+      await hashUserIdCached("guest-user");
+
+      expect(spy).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+  });
+
+  describe("Guest vs Authenticated Users", () => {
+    it("distinguishes between guest-user and actual users", async () => {
+      const guestHash = await hashUserIdCached("guest-user");
+      const userHash = await hashUserIdCached("550e8400-e29b-41d4-a716-446655440000");
+
+      expect(guestHash).toBe("guest-user");
+      expect(userHash).not.toBe("guest-user");
+      expect(userHash.length).toBe(64);
+    });
+
+    it("handles mixed guest and authenticated users in same session", async () => {
+      const results = await Promise.all([
+        hashUserIdCached("guest-user"),
+        hashUserIdCached("user-123"),
+        hashUserIdCached("guest-user"),
+        hashUserIdCached("user-456"),
+      ]);
+
+      expect(results[0]).toBe("guest-user");
+      expect(results[1]).not.toBe("guest-user");
+      expect(results[1].length).toBe(64);
+      expect(results[2]).toBe("guest-user");
+      expect(results[3]).not.toBe("guest-user");
+      expect(results[3].length).toBe(64);
+
+      // Only actual users are cached, not guest-user
+      expect(getHashCacheSize()).toBe(2);
+    });
+
+    it("handles case-sensitive guest-user check", async () => {
+      const lowercase = await hashUserIdCached("guest-user");
+      const uppercase = await hashUserIdCached("GUEST-USER");
+      const mixedcase = await hashUserIdCached("Guest-User");
+
+      // Only exact "guest-user" passes through
+      expect(lowercase).toBe("guest-user");
+      expect(uppercase).not.toBe("GUEST-USER");
+      expect(uppercase.length).toBe(64); // Gets hashed
+      expect(mixedcase.length).toBe(64); // Gets hashed
+    });
+
+    it("treats guest-user variants as regular users", async () => {
+      const variants = [
+        "guest-user-1",
+        "guest-user-2",
+        "my-guest-user",
+        "guestuser",
+        "guest user",
+      ];
+
+      const hashes = await Promise.all(variants.map(hashUserIdCached));
+
+      // None of these should be treated as guest-user
+      hashes.forEach((hash) => {
+        expect(hash.length).toBe(64);
+        expect(hash).not.toContain("guest");
+      });
+
+      expect(getHashCacheSize()).toBe(5);
+    });
+  });
+
+  describe("Database Anonymity Requirements", () => {
+    it("guest-user provides clear analytics visibility in DB", async () => {
+      const result = await hashUserIdCached("guest-user");
+      // In the database, admins will see "guest-user" instead of a hash
+      // This makes it immediately obvious which usage is from guests
+      expect(result).toBe("guest-user");
+    });
+
+    it("authenticated users remain anonymous via hashing", async () => {
+      const userId = "550e8400-e29b-41d4-a716-446655440000";
+      const hash = await hashUserIdCached(userId);
+
+      // Actual user IDs are still hashed for privacy
+      expect(hash).not.toContain(userId);
+      expect(hash).not.toContain("550e");
+      expect(hash.length).toBe(64);
+    });
+
+    it("allows easy filtering of guest vs authenticated usage in queries", async () => {
+      const mixedUsers = [
+        "guest-user",
+        "550e8400-e29b-41d4-a716-446655440000",
+        "guest-user",
+        "23a4b5c6-d78e-90f1-2g3h-4i5j6k7l8m9n",
+        "guest-user",
+      ];
+
+      const hashes = await Promise.all(mixedUsers.map(hashUserIdCached));
+
+      // In DB, you can filter with: WHERE user_id = 'guest-user'
+      const guestCount = hashes.filter(h => h === "guest-user").length;
+      const authenticatedCount = hashes.filter(h => h !== "guest-user").length;
+
+      expect(guestCount).toBe(3);
+      expect(authenticatedCount).toBe(2);
+    });
+  });
+
+  describe("Performance with Guest Users", () => {
+    it("guest-user lookups are faster than hashed lookups", async () => {
+      const guestStart = performance.now();
+      await hashUserIdCached("guest-user");
+      const guestDuration = performance.now() - guestStart;
+
+      const userStart = performance.now();
+      await hashUserIdCached("550e8400-e29b-41d4-a716-446655440000");
+      const userDuration = performance.now() - userStart;
+
+      // Guest lookups should be instant (no crypto)
+      expect(guestDuration).toBeLessThan(userDuration);
+      expect(guestDuration).toBeLessThan(1); // Should be sub-millisecond
+    });
+
+    it("handles high-volume guest traffic efficiently", async () => {
+      const promises = [];
+      for (let i = 0; i < 1000; i++) {
+        promises.push(hashUserIdCached("guest-user"));
+      }
+
+      const startTime = performance.now();
+      await Promise.all(promises);
+      const duration = performance.now() - startTime;
+
+      // Should handle 1000 guest lookups very quickly
+      expect(duration).toBeLessThan(50);
+      expect(getHashCacheSize()).toBe(0); // No cache bloat
+    });
+  });
+});
+
 describe("Real-world Usage Scenarios", () => {
   beforeEach(() => {
     clearHashCache();
@@ -544,5 +715,22 @@ describe("Real-world Usage Scenarios", () => {
     }
 
     expect(getHashCacheSize()).toBe(3); // Still just 3 entries
+  });
+
+  it("simulates realistic mixed traffic pattern", async () => {
+    // Simulate 70% guest users, 30% authenticated
+    const trafficPattern = [
+      ...Array(70).fill("guest-user"),
+      ...Array(30).fill(null).map((_, i) => `user-${i}`),
+    ];
+
+    const hashes = await Promise.all(trafficPattern.map(hashUserIdCached));
+
+    const guestCount = hashes.filter(h => h === "guest-user").length;
+    const authenticatedCount = hashes.filter(h => h !== "guest-user").length;
+
+    expect(guestCount).toBe(70);
+    expect(authenticatedCount).toBe(30);
+    expect(getHashCacheSize()).toBe(30); // Only authenticated users cached
   });
 });
