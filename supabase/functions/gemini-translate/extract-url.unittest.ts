@@ -342,6 +342,17 @@ describe("_normalizeArticleBody", () => {
   it("trims surrounding whitespace", () => {
     expect(_normalizeArticleBody("  מאמר  ")).toBe("מאמר");
   });
+
+  it("decodes HTML entities embedded in JSON-LD articleBody", () => {
+    // Sites like Mako/N12 and Reshet 13 put HTML entities in articleBody
+    const result = _normalizeArticleBody('פעילות צה&quot;ל בבינת ג&#x27;ביל');
+    expect(result).toBe('פעילות צה"ל בבינת ג\'ביל');
+  });
+
+  it("decodes &amp; last so &amp;quot; becomes &quot; not \"", () => {
+    const result = _normalizeArticleBody("AT&amp;T");
+    expect(result).toBe("AT&T");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -502,7 +513,7 @@ describe("_detectPaywall", () => {
 // ---------------------------------------------------------------------------
 
 describe("_detectSpaShell", () => {
-  it("returns false for normal article HTML with plenty of text", () => {
+  it("returns null for normal article HTML with plenty of text", () => {
     const html = `
       <html><head><title>כתבה בדיקה</title></head>
       <body>
@@ -515,25 +526,46 @@ describe("_detectSpaShell", () => {
         </article>
         <footer>כל הזכויות שמורות | צור קשר | מדיניות פרטיות</footer>
       </body></html>`;
-    expect(_detectSpaShell(html)).toBe(false);
+    expect(_detectSpaShell(html)).toBeNull();
   });
 
-  it("detects empty React root mount point", () => {
+  it("returns 'spa' for empty React root mount point", () => {
     const html = `<html><body><div id="root"></div><script src="bundle.js"></script></body></html>`;
-    expect(_detectSpaShell(html)).toBe(true);
+    expect(_detectSpaShell(html)).toBe("spa");
   });
 
-  it("detects empty Vue app mount point", () => {
+  it("returns 'sparse' for empty Vue app shell (id=app not a SPA signal, caught by sparse text)", () => {
+    // id="app" is too generic to trigger alone; this is caught by the sparse-text signal
     const html = `<html><body><div id="app"></div><script src="app.js"></script></body></html>`;
-    expect(_detectSpaShell(html)).toBe(true);
+    expect(_detectSpaShell(html)).toBe("sparse");
   });
 
-  it("detects empty Next.js mount point", () => {
+  it("returns null for id=app with substantial SSR content", () => {
+    // News sites commonly use id="app" as a layout wrapper around server-rendered content
+    const html = `
+      <html><head><title>כתבה - אתר חדשות</title></head>
+      <body>
+        <header>ראשי | חדשות | ספורט | כלכלה | תרבות | בריאות</header>
+        <div id="app">
+          <article>
+            <h1>כותרת הכתבה שנטענה בצד השרת</h1>
+            <p>זוהי כתבה שהוגשה בצד השרת (SSR). היא מכילה תוכן עברי חשוב ומעניין
+            שמוצג ישירות בHTML ולא נטען דינמית על ידי JavaScript בדפדפן.</p>
+            <p>פסקה נוספת עם מידע שנטען בצד השרת ולא בצד הלקוח כלל. זה מאמר
+            ארוך ומפורט שמוכיח שהדף הזה הוא SSR אמיתי עם תוכן מלא.</p>
+          </article>
+        </div>
+        <footer>צור קשר | מדיניות פרטיות | תנאי שימוש</footer>
+      </body></html>`;
+    expect(_detectSpaShell(html)).toBeNull();
+  });
+
+  it("returns 'spa' for empty Next.js mount point", () => {
     const html = `<html><body><div id="__next"></div><script src="/_next/static/chunks/main.js"></script></body></html>`;
-    expect(_detectSpaShell(html)).toBe(true);
+    expect(_detectSpaShell(html)).toBe("spa");
   });
 
-  it("does not false-positive on Next.js with SSR content inside __next", () => {
+  it("returns null for Next.js with SSR content inside __next", () => {
     const html = `
       <html><head><title>כתבה - אתר חדשות</title></head>
       <body>
@@ -549,21 +581,40 @@ describe("_detectSpaShell", () => {
         </div>
         <footer>צור קשר | מדיניות פרטיות | תנאי שימוש</footer>
       </body></html>`;
-    expect(_detectSpaShell(html)).toBe(false);
+    expect(_detectSpaShell(html)).toBeNull();
   });
 
-  it("detects noscript JavaScript warning", () => {
+  it("returns 'spa' for explicit JS-required noscript message", () => {
+    // "enable JavaScript" phrasing used by React/Angular apps
     const html = `
       <html><body>
         <noscript>You need to enable JavaScript to run this app.</noscript>
         <div id="root"></div>
       </body></html>`;
-    expect(_detectSpaShell(html)).toBe(true);
+    expect(_detectSpaShell(html)).toBe("spa");
   });
 
-  it("detects pages with extremely sparse visible text", () => {
+  it("returns null for analytics noscript that does not require JavaScript", () => {
+    // Analytics tags commonly include "javascript" in noscript fallback pixels
+    const html = `
+      <html><head><title>כתבה בדיקה</title></head>
+      <body>
+        <noscript><img src="https://analytics.example.com/collect?tid=UA-12345&amp;t=pageview" /></noscript>
+        <header>אתר החדשות שלנו | בית | ספורט | כלכלה | בריאות | טכנולוגיה</header>
+        <article>
+          <h1>כותרת הכתבה הראשית של הדף</h1>
+          <p>זוהי כתבה עם תוכן רב ומפורט. היא מכילה פסקאות ארוכות ומידע חשוב
+          לקוראים. הכתבה ממשיכה עם פרטים נוספים ומעמיקים בנושא הנדון.</p>
+          <p>פסקה שנייה עם עוד מידע חשוב ורלוונטי לנושא שנדון בכתבה זו בהרחבה.</p>
+        </article>
+        <footer>כל הזכויות שמורות | צור קשר | מדיניות פרטיות</footer>
+      </body></html>`;
+    expect(_detectSpaShell(html)).toBeNull();
+  });
+
+  it("returns 'sparse' for pages with extremely sparse visible text", () => {
     const html = `<html><head><title>App</title></head><body><script>/* big bundle */</script></body></html>`;
-    expect(_detectSpaShell(html)).toBe(true);
+    expect(_detectSpaShell(html)).toBe("sparse");
   });
 });
 

@@ -106,17 +106,17 @@ export function _extractRecipeBody(block: Record<string, unknown>): string {
 
   const ingredients = block.recipeIngredient as string[] | undefined;
   if (Array.isArray(ingredients) && ingredients.length > 0) {
-    parts.push("מצרכים:\n" + ingredients.join("\n"));
+    parts.push("מצרכים:\n" + ingredients.map(_decodeHtmlEntities).join("\n"));
   }
 
   const instructions = block.recipeInstructions;
   if (Array.isArray(instructions) && instructions.length > 0) {
     const steps = (instructions as (string | Record<string, unknown>)[])
       .map((step, i) => {
-        if (typeof step === "string") return `${i + 1}. ${step}`;
+        if (typeof step === "string") return `${i + 1}. ${_decodeHtmlEntities(step)}`;
         if (step && typeof step === "object") {
           const text = (step as Record<string, unknown>).text as string | undefined;
-          return text ? `${i + 1}. ${text}` : "";
+          return text ? `${i + 1}. ${_decodeHtmlEntities(text)}` : "";
         }
         return "";
       })
@@ -164,9 +164,9 @@ export function _extractFaqBody(block: Record<string, unknown>): string {
 
   return entities
     .map((item) => {
-      const question = (item.name as string) || "";
+      const question = _decodeHtmlEntities((item.name as string) || "");
       const answerData = item.acceptedAnswer as Record<string, unknown> | undefined;
-      const answer = (answerData?.text as string) || "";
+      const answer = _decodeHtmlEntities((answerData?.text as string) || "");
       if (!question) return "";
       return `שאלה: ${question}\n\n${answer}`;
     })
@@ -175,12 +175,24 @@ export function _extractFaqBody(block: Record<string, unknown>): string {
 }
 
 export function _extractVideoBody(block: Record<string, unknown>): string {
-  const description = (block.description as string) || "";
+  const description = _decodeHtmlEntities((block.description as string) || "");
   return `[תיאור הסרטון בלבד — תוכן הוידאו אינו נגיש לחילוץ טקסט]\n\n${description}`;
 }
 
+function _decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)))
+    .replace(/&#x([0-9A-Fa-f]+);/g, (_m, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, "&"); // last so &amp;quot; → &quot;, not "
+}
+
 export function _normalizeArticleBody(articleBody: string): string {
-  let text = articleBody;
+  let text = _decodeHtmlEntities(articleBody);
   text = text.replace(/\r\n/g, "\n\n");
   text = text.replace(/(?<!\n)\n(?!\n)/g, "\n\n");
   text = text.replace(/ {2,}/g, "\n\n");
@@ -204,10 +216,7 @@ export function _extractWithReadability(html: string): string | null {
     text = text.replace(/<\/li>/gi, "\n");
     text = text.replace(/<br\s*\/?>/gi, "\n");
     text = text.replace(/<[^>]+>/g, "");
-    text = text
-      .replace(/&nbsp;/g, " ")
-      .replace(/&quot;/g, '"')
-      .replace(/&amp;/g, "&");
+    text = _decodeHtmlEntities(text);
     text = text.replace(/\n{3,}/g, "\n\n").trim();
     return text || null;
   } catch {
@@ -250,25 +259,31 @@ export function _detectPaywall(text: string): boolean {
   return PAYWALL_MARKERS.some((marker) => text.includes(marker));
 }
 
-export function _detectSpaShell(html: string): boolean {
-  // Empty React/Vue/Next.js mount point — content is assembled client-side
-  if (/<div[^>]+id=["'](root|app|__next)["'][^>]*>\s*<\/div>/i.test(html)) return true;
-
-  // noscript tag warning the user to enable JavaScript
-  for (const match of html.matchAll(/<noscript[^>]*>([\s\S]*?)<\/noscript>/gi)) {
-    if (/javascript/i.test(match[1])) return true;
-  }
-
-  // Extremely sparse visible text — less than 500 chars after stripping all code
+export function _detectSpaShell(html: string): "spa" | "sparse" | null {
   const visibleText = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (visibleText.length < 200) return true;
 
-  return false;
+  // Empty React/Next.js mount point — definitive SPA signal.
+  // id="app" intentionally excluded — too generic, used by many SSR news sites.
+  if (
+    /<div[^>]+id=["'](root|__next)["'][^>]*>\s*<\/div>/i.test(html) &&
+    visibleText.length < 1000
+  ) return "spa";
+
+  // Explicit JS-required message in a noscript block (React/Angular style).
+  // Plain "javascript" excluded — analytics noscripts use it too.
+  for (const match of html.matchAll(/<noscript[^>]*>([\s\S]*?)<\/noscript>/gi)) {
+    if (/enable javascript|javascript.*required|requires javascript/i.test(match[1])) return "spa";
+  }
+
+  // Extremely sparse visible text without the above SPA signals — page has too little content.
+  if (visibleText.length < 200) return "sparse";
+
+  return null;
 }
 
 export function _extractTextFromHtml(html: string): string {
@@ -379,7 +394,14 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     );
   }
 
-  const urlToFetch = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+  let urlToFetch = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
+
+  // Percent-encode non-ASCII characters in the path/query (e.g. Hebrew Wikipedia titles)
+  try {
+    urlToFetch = new URL(urlToFetch).toString();
+  } catch {
+    // keep urlToFetch as-is if URL parsing fails
+  }
 
   console.log("Fetching URL:", urlToFetch);
 
@@ -396,7 +418,7 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   } catch (fetchError) {
     console.error("Fetch error:", fetchError);
     return createErrorResponse(
-      'Unable to connect to this URL. Please check the address and try again, or use the "Paste / Type" option to enter the text manually.',
+      'Unable to reach this URL. The site may be temporarily unavailable. Try again later, or use the "Paste / Type" option to enter the text manually.',
       400,
     );
   }
@@ -434,8 +456,15 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     return createErrorResponse("Received too little content from the URL.", 422);
   }
 
-  if (_detectSpaShell(html)) {
-    console.log("SPA shell detected — no server-rendered content available");
+  const spaReason = _detectSpaShell(html);
+  if (spaReason) {
+    console.log("SPA/sparse detection:", spaReason);
+    if (spaReason === "sparse") {
+      return createErrorResponse(
+        'This page doesn\'t contain enough readable text to extract. Try a different page on this site, or use the "Paste / Type" option to enter the text manually.',
+        422,
+      );
+    }
     return createErrorResponse(
       'This site loads content dynamically and cannot be extracted automatically. Please use the "Paste / Type" option instead.',
       422,
@@ -456,8 +485,8 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   )?.[1];
   const htmlTitle = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
 
-  let title = ogTitle || htmlTitle || "Untitled";
-  let description: string | undefined = ogDesc;
+  let title = _decodeHtmlEntities(ogTitle || htmlTitle || "Untitled");
+  let description: string | undefined = ogDesc ? _decodeHtmlEntities(ogDesc) : undefined;
   let content = "";
 
   // Unsupported type: product/e-commerce pages produce only spec tables, not prose
@@ -472,8 +501,8 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   if (contentType === "recipe") {
     const recipeBlock = jsonLdBlocks.find((b) => blockHasType(b, RECIPE_TYPES));
     if (recipeBlock) {
-      title = (recipeBlock.name as string) || title;
-      description = (recipeBlock.description as string) || description;
+      title = _decodeHtmlEntities((recipeBlock.name as string) || "") || title;
+      description = _decodeHtmlEntities((recipeBlock.description as string) || "") || description;
       content = _extractRecipeBody(recipeBlock);
     }
   }
@@ -503,7 +532,7 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   else if (contentType === "video") {
     const videoBlock = jsonLdBlocks.find((b) => blockHasType(b, VIDEO_TYPES));
     if (videoBlock) {
-      title = (videoBlock.name as string) || title;
+      title = _decodeHtmlEntities((videoBlock.name as string) || "") || title;
       const desc = (videoBlock.description as string) || "";
       if (desc.trim().length > 0) {
         content = _extractVideoBody(videoBlock);
@@ -514,8 +543,8 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   // Article / unknown: three-level cascade
   else {
     const articleData = _extractArticleFromJsonLd(jsonLdBlocks);
-    if (articleData.title) title = articleData.title;
-    if (articleData.description) description = articleData.description;
+    if (articleData.title) title = _decodeHtmlEntities(articleData.title);
+    if (articleData.description) description = _decodeHtmlEntities(articleData.description);
 
     // Level 1: JSON-LD articleBody
     if (articleData.articleBody) {
