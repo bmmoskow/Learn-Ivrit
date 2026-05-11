@@ -1,7 +1,7 @@
 import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { createJsonResponse, createErrorResponse } from "./shared.ts";
-import { SPA_DOMAINS, PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
+import { PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
 
 export interface ExtractUrlRequest {
   url: string;
@@ -250,6 +250,27 @@ export function _detectPaywall(text: string): boolean {
   return PAYWALL_MARKERS.some((marker) => text.includes(marker));
 }
 
+export function _detectSpaShell(html: string): boolean {
+  // Empty React/Vue/Next.js mount point — content is assembled client-side
+  if (/<div[^>]+id=["'](root|app|__next)["'][^>]*>\s*<\/div>/i.test(html)) return true;
+
+  // noscript tag warning the user to enable JavaScript
+  for (const match of html.matchAll(/<noscript[^>]*>([\s\S]*?)<\/noscript>/gi)) {
+    if (/javascript/i.test(match[1])) return true;
+  }
+
+  // Extremely sparse visible text — less than 500 chars after stripping all code
+  const visibleText = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (visibleText.length < 200) return true;
+
+  return false;
+}
+
 export function _extractTextFromHtml(html: string): string {
   let text = html;
 
@@ -360,19 +381,6 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
 
   const urlToFetch = trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
 
-  // Fast-fail for known SPA-only domains that return no article HTML
-  try {
-    const hostname = new URL(urlToFetch).hostname.replace(/^www\./, "");
-    if (SPA_DOMAINS.some((d) => hostname === d || hostname.endsWith(`.${d}`))) {
-      return createErrorResponse(
-        'This site loads content dynamically and cannot be extracted automatically. Please use the "Paste / Type" option instead.',
-        422,
-      );
-    }
-  } catch {
-    // If URL parsing fails, proceed and let the fetch attempt fail naturally
-  }
-
   console.log("Fetching URL:", urlToFetch);
 
   let response: Response;
@@ -424,6 +432,14 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
 
   if (html.length < 100) {
     return createErrorResponse("Received too little content from the URL.", 422);
+  }
+
+  if (_detectSpaShell(html)) {
+    console.log("SPA shell detected — no server-rendered content available");
+    return createErrorResponse(
+      'This site loads content dynamically and cannot be extracted automatically. Please use the "Paste / Type" option instead.',
+      422,
+    );
   }
 
   // Parse all JSON-LD blocks and detect content type
