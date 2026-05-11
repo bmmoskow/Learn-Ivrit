@@ -8,6 +8,31 @@ export const GEMINI_URL = `${GEMINI_API_BASE_URL}/${GEMINI_MODEL}:generateConten
 // Thinking budget: 0 disables internal reasoning tokens (faster, cheaper, no quality loss for translation)
 export const THINKING_BUDGET = parseInt(Deno.env.get("GEMINI_THINKING_BUDGET") || "0", 10);
 
+// URL extraction configuration
+export const SPA_DOMAINS = [
+  "walla.co.il",
+  "n12.co.il",
+  "13tv.co.il",
+];
+
+export const PAYWALL_MARKERS = [
+  "מנויים",
+  "לקריאת הכתבה המלאה",
+  "התחברו כמנויים",
+  "הירשמו לקריאה",
+];
+
+export const ARTICLE_TYPES = [
+  "NewsArticle",
+  "Article",
+  "WebPage",
+  "ReportageNewsArticle",
+  "BlogPosting",
+  "TechArticle",
+  "GovernmentService",
+  "AboutPage",
+];
+
 // Rate limiting configuration - values from Supabase secrets with sensible defaults
 export const RATE_LIMITS = {
   word_definition: {

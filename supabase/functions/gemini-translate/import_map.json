@@ -1,6 +1,8 @@
 {
   "imports": {
     "@supabase/supabase-js": "jsr:@supabase/supabase-js@2",
-    "openai": "npm:openai@^4.52.5"
+    "openai": "npm:openai@^4.52.5",
+    "linkedom": "npm:linkedom@^0.18.0",
+    "@mozilla/readability": "npm:@mozilla/readability@^0.5.0"
   }
 }
