@@ -16,6 +16,15 @@ export const PAYWALL_MARKERS = [
   "הירשמו לקריאה",
 ];
 
+// Subset used for pre-extraction paywall detection (before Readability runs).
+// These phrases are unambiguous — they never appear in free articles.
+// "מנויים" is excluded because it can appear in free-article context.
+export const DEFINITIVE_PAYWALL_MARKERS = [
+  "לקריאת הכתבה המלאה",
+  "התחברו כמנויים",
+  "הירשמו לקריאה",
+];
+
 export const ARTICLE_TYPES = [
   "NewsArticle",
   "Article",

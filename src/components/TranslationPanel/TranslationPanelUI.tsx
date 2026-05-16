@@ -4,6 +4,7 @@ import {
   BookPlus,
   Loader2,
   ArrowRightLeft,
+  AlertTriangle,
 } from "lucide-react";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 import { BibleInput } from "./BibleInput/BibleInput";
@@ -34,6 +35,7 @@ interface TranslationPanelUIProps {
   currentBibleRef: { book: string; chapter: number } | null;
   processingImage: boolean;
   isGuest: boolean;
+  urlWarning: string;
   syncedParagraphs: SyncedParagraph[] | null;
 
   // Setters
@@ -78,6 +80,7 @@ export function TranslationPanelUI({
   currentBibleRef,
   processingImage,
   isGuest,
+  urlWarning,
   syncedParagraphs,
   setSourceText,
   setUrlInput,
@@ -204,6 +207,15 @@ export function TranslationPanelUI({
             canNavigatePrev={canNavigatePrev}
             canNavigateNext={canNavigateNext}
           />
+        )}
+
+        {urlWarning && (
+          <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              {urlWarning}
+            </p>
+          </div>
         )}
 
         {sourceText && !isGuest && !bibleLoaded && (

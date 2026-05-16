@@ -1,13 +1,13 @@
 import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { createJsonResponse, createErrorResponse } from "./shared.ts";
-import { PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
+import { PAYWALL_MARKERS, DEFINITIVE_PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
 
 export interface ExtractUrlRequest {
   url: string;
 }
 
-type ContentType = "article" | "recipe" | "job" | "faq" | "video" | "unsupported" | "unknown";
+export type ContentType = "article" | "recipe" | "job" | "faq" | "video" | "unsupported" | "unknown";
 
 const RECIPE_TYPES = ["Recipe"];
 const JOB_TYPES = ["JobPosting"];
@@ -78,8 +78,8 @@ export function _detectContentType(blocks: Record<string, unknown>[]): ContentTy
 
 export function _extractArticleFromJsonLd(
   blocks: Record<string, unknown>[],
-): { title?: string; description?: string; articleBody?: string } {
-  const result: { title?: string; description?: string; articleBody?: string } = {};
+): { title?: string; description?: string; articleBody?: string; isAccessibleForFree?: string | boolean } {
+  const result: { title?: string; description?: string; articleBody?: string; isAccessibleForFree?: string | boolean } = {};
 
   for (const block of blocks) {
     const isArticleType = blockHasType(block, ARTICLE_TYPES);
@@ -93,6 +93,9 @@ export function _extractArticleFromJsonLd(
       }
       if (!result.articleBody) {
         result.articleBody = (block.articleBody as string | undefined) || undefined;
+      }
+      if (result.isAccessibleForFree === undefined && block.isAccessibleForFree !== undefined) {
+        result.isAccessibleForFree = block.isAccessibleForFree as string | boolean;
       }
     }
     if (result.title && result.description && result.articleBody) break;
@@ -204,13 +207,26 @@ export function _normalizeArticleBody(articleBody: string): string {
 export function _extractWithReadability(html: string): string | null {
   try {
     const { document } = parseHTML(html);
+
+    // Remove elements from the DOM before Readability runs so their text
+    // can't bleed into the extracted article content
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const reader = new Readability(document as any);
+    const doc = document as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll('[class*="paywall"],[id*="paywall"]').forEach((el: any) => el.remove());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll("h1").forEach((el: any) => el.remove()); // title comes from metadata preamble
+
+    const reader = new Readability(doc);
     const article = reader.parse();
     if (!article?.content) return null;
 
-    // Convert Readability's cleaned HTML to plain text with paragraph breaks preserved
+    // Remove non-article elements from Readability's cleaned HTML before stripping tags
     let text = article.content;
+    text = text.replace(/<figure[\s\S]*?<\/figure>/gi, "");
+    text = text.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, "");
+
+    // Convert block elements to paragraph breaks, then strip remaining tags
     text = text.replace(/<\/p>/gi, "\n\n");
     text = text.replace(/<\/h[1-6]>/gi, "\n\n");
     text = text.replace(/<\/li>/gi, "\n");
@@ -255,8 +271,60 @@ export function _checkQualityGate(text: string, mode: ContentType): boolean {
   }
 }
 
-export function _detectPaywall(text: string): boolean {
-  return PAYWALL_MARKERS.some((marker) => text.includes(marker));
+export function _selectBestContent(
+  readabilityContent: string | null,
+  articleBodyContent: string | null,
+  contentType: ContentType,
+): string {
+  const articleBodyPasses = !!articleBodyContent && _checkQualityGate(articleBodyContent, contentType);
+  const readabilityPasses = !!readabilityContent && _checkQualityGate(readabilityContent, contentType);
+
+  if (readabilityPasses && articleBodyPasses) {
+    // Readability is semantically aware and filters captions/figures — prefer it unless
+    // articleBody has substantially more content (suggesting Readability missed paragraphs)
+    const articleBodyIsMuchLonger = articleBodyContent!.length > readabilityContent!.length * 1.5;
+    return articleBodyIsMuchLonger ? articleBodyContent! : readabilityContent!;
+  }
+  if (readabilityPasses) return readabilityContent!;
+  if (articleBodyPasses) return articleBodyContent!;
+  // Neither passes quality gate — return whatever exists rather than nothing
+  return readabilityContent || articleBodyContent || "";
+}
+
+export function _isDefinitePaywall(
+  html: string,
+  isAccessibleForFree?: string | boolean,
+): boolean {
+  if (isAccessibleForFree === "False" || isAccessibleForFree === false) return true;
+  if (/(?:class|id)="[^"]*paywall[^"]*"/i.test(html)) return true;
+  return DEFINITIVE_PAYWALL_MARKERS.some((marker) => html.includes(marker));
+}
+
+export function _buildContentWithPreamble(
+  content: string,
+  title: string,
+  description: string | undefined,
+): string {
+  const preamble: string[] = [];
+  if (title) preamble.push(title);
+  if (description && !content.includes(description.substring(0, 50))) {
+    preamble.push(description);
+  }
+  return preamble.length > 0 ? preamble.join("\n\n") + "\n\n" + content : content;
+}
+
+export function _detectPaywall(
+  text: string,
+  html?: string,
+  isAccessibleForFree?: string | boolean,
+): boolean {
+  // Schema.org standard: isAccessibleForFree = "False" (string) or false (boolean)
+  if (isAccessibleForFree === "False" || isAccessibleForFree === false) return true;
+  // Common HTML pattern: paywall element identified by class or id attribute
+  if (html && /(?:class|id)="[^"]*paywall[^"]*"/i.test(html)) return true;
+  // Text-marker fallback: paywall phrases in extracted content or raw HTML
+  // Check HTML too — the paywall UI is often stripped during extraction
+  return PAYWALL_MARKERS.some((marker) => text.includes(marker) || (html || "").includes(marker));
 }
 
 export function _detectSpaShell(html: string): "spa" | "sparse" | null {
@@ -488,6 +556,7 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   let title = _decodeHtmlEntities(ogTitle || htmlTitle || "Untitled");
   let description: string | undefined = ogDesc ? _decodeHtmlEntities(ogDesc) : undefined;
   let content = "";
+  let paywallDetected = false;
 
   // Unsupported type: product/e-commerce pages produce only spec tables, not prose
   if (contentType === "unsupported") {
@@ -540,38 +609,24 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     }
   }
 
-  // Article / unknown: three-level cascade
+  // Article / unknown: always compare Readability and articleBody, pick the better one.
+  // Even for definitive paywalls, Readability on the visible HTML typically beats a short
+  // JSON-LD articleBody (e.g. Haaretz preview ≈ 300 chars). For client-side paywalls
+  // (e.g. ynet) the full article is in the HTML anyway, so Readability wins cleanly.
+  // Sites that put the full article in articleBody (more than 1.5× what Readability sees)
+  // are still handled correctly by _selectBestContent's length threshold.
   else {
     const articleData = _extractArticleFromJsonLd(jsonLdBlocks);
     if (articleData.title) title = _decodeHtmlEntities(articleData.title);
     if (articleData.description) description = _decodeHtmlEntities(articleData.description);
 
-    // Level 1: JSON-LD articleBody
-    if (articleData.articleBody) {
-      const normalized = _normalizeArticleBody(articleData.articleBody);
-      if (_checkQualityGate(normalized, "article")) {
-        content = normalized;
-        console.log("Using JSON-LD articleBody, length:", content.length);
-      }
-    }
-
-    // Level 2: Mozilla Readability semantic extraction
-    if (!content) {
-      const readabilityResult = _extractWithReadability(html);
-      if (readabilityResult && _checkQualityGate(readabilityResult, "unknown")) {
-        content = readabilityResult;
-        console.log("Using Readability, length:", content.length);
-      }
-    }
-
-    // Level 3: Heuristic CSS-selector-based extraction (last resort)
-    if (!content) {
-      const heuristicResult = _extractTextFromHtml(html);
-      if (heuristicResult && _checkQualityGate(heuristicResult, "unknown")) {
-        content = heuristicResult;
-        console.log("Using heuristic extraction, length:", content.length);
-      }
-    }
+    if (_detectPaywall("", html, articleData.isAccessibleForFree)) paywallDetected = true;
+    const articleBodyCandidate = articleData.articleBody
+      ? _normalizeArticleBody(articleData.articleBody)
+      : null;
+    const readabilityCandidate = _extractWithReadability(html);
+    content = _selectBestContent(readabilityCandidate, articleBodyCandidate, contentType);
+    if (content) console.log("Content selected, length:", content.length);
   }
 
   // Quality gate for structured non-article types (recipe, job, faq, video)
@@ -583,29 +638,23 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   }
 
   // Paywall detection: sites return HTTP 200 with truncated preview + subscription prompt
-  if (content && _detectPaywall(content)) {
-    return createErrorResponse(
-      'This article is behind a paywall. Only a preview is available. Please use the "Paste / Type" option to enter the full text manually.',
-      422,
-    );
+  if (content && _detectPaywall(content, html)) {
+    paywallDetected = true;
+    console.log("Paywall detected in extracted content");
   }
 
-  // Prepend title and description if not already present in extracted body
   if (content) {
-    const preamble: string[] = [];
-    if (title && !content.includes(title.substring(0, 40))) {
-      preamble.push(title);
-    }
-    if (description && !content.includes(description.substring(0, 50))) {
-      preamble.push(description);
-    }
-    if (preamble.length > 0) {
-      content = preamble.join("\n\n") + "\n\n" + content;
-    }
+    content = _buildContentWithPreamble(content, title, description);
     console.log("Final content length:", content.length);
   }
 
   if (!content || content.length < 50) {
+    if (paywallDetected) {
+      return createErrorResponse(
+        'This article appears to require a subscription. If you have access, try pasting the article text manually.',
+        422,
+      );
+    }
     const typeHint =
       contentType === "video"
         ? "This appears to be a video page with no text synopsis available."
@@ -617,5 +666,6 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     title,
     content,
     excerpt: content.substring(0, 200),
+    paywallDetected,
   });
 }

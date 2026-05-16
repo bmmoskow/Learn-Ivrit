@@ -38,6 +38,7 @@ export function TranslationPanel() {
         currentBibleRef={hook.currentBibleRef}
         processingImage={hook.processingImage}
         isGuest={isGuest}
+        urlWarning={hook.urlWarning}
         syncedParagraphs={hook.syncedParagraphs}
         setSourceText={hook.setSourceText}
         setUrlInput={hook.setUrlInput}

@@ -11,6 +11,9 @@ import {
   _extractWithReadability,
   _hebrewDensity,
   _checkQualityGate,
+  _selectBestContent,
+  _buildContentWithPreamble,
+  _isDefinitePaywall,
   _detectPaywall,
   _detectSpaShell,
   _stripHtmlToText,
@@ -189,6 +192,34 @@ describe("_extractArticleFromJsonLd", () => {
       { "@type": "NewsArticle", headline: "כותרת", articleBody: "גוף" },
     ]);
     expect(result.title).toBe("כותרת");
+  });
+
+  it("extracts isAccessibleForFree string 'False' (paywalled article)", () => {
+    const result = _extractArticleFromJsonLd([
+      { "@type": "NewsArticle", headline: "כתבה נעולה", isAccessibleForFree: "False" },
+    ]);
+    expect(result.isAccessibleForFree).toBe("False");
+  });
+
+  it("extracts isAccessibleForFree boolean false", () => {
+    const result = _extractArticleFromJsonLd([
+      { "@type": "NewsArticle", headline: "כתבה נעולה", isAccessibleForFree: false },
+    ]);
+    expect(result.isAccessibleForFree).toBe(false);
+  });
+
+  it("extracts isAccessibleForFree 'True' for open-access articles", () => {
+    const result = _extractArticleFromJsonLd([
+      { "@type": "NewsArticle", headline: "כתבה חופשית", isAccessibleForFree: "True" },
+    ]);
+    expect(result.isAccessibleForFree).toBe("True");
+  });
+
+  it("returns undefined isAccessibleForFree when field is absent", () => {
+    const result = _extractArticleFromJsonLd([
+      { "@type": "NewsArticle", headline: "כתבה" },
+    ]);
+    expect(result.isAccessibleForFree).toBeUndefined();
   });
 });
 
@@ -483,6 +514,169 @@ describe("_checkQualityGate", () => {
 });
 
 // ---------------------------------------------------------------------------
+// _isDefinitePaywall
+// ---------------------------------------------------------------------------
+
+describe("_isDefinitePaywall", () => {
+  it("returns true for Schema.org isAccessibleForFree string 'False'", () => {
+    expect(_isDefinitePaywall("<html></html>", "False")).toBe(true);
+  });
+
+  it("returns true for Schema.org isAccessibleForFree boolean false", () => {
+    expect(_isDefinitePaywall("<html></html>", false)).toBe(true);
+  });
+
+  it("returns true for HTML with paywall class attribute", () => {
+    expect(_isDefinitePaywall('<div class="paywall-wall">תוכן נעול</div>')).toBe(true);
+  });
+
+  it("returns true when לקריאת הכתבה המלאה appears in raw HTML", () => {
+    expect(_isDefinitePaywall('<p>לקריאת הכתבה המלאה הירשמו לאתר</p>')).toBe(true);
+  });
+
+  it("returns true when התחברו כמנויים appears in raw HTML", () => {
+    expect(_isDefinitePaywall('<p>התחברו כמנויים לצפייה בתוכן המלא</p>')).toBe(true);
+  });
+
+  it("returns true when הירשמו לקריאה appears in raw HTML", () => {
+    expect(_isDefinitePaywall('<p>הירשמו לקריאה של כל הכתבות שלנו</p>')).toBe(true);
+  });
+
+  it("returns false when only מנויים appears — ambiguous, not a definitive signal", () => {
+    expect(_isDefinitePaywall('<p>תוכן זמין למנויים בלבד</p>')).toBe(false);
+  });
+
+  it("returns false for clean HTML with no paywall signals", () => {
+    expect(_isDefinitePaywall('<article><p>כתבה פתוחה לכולם ללא תשלום</p></article>')).toBe(false);
+  });
+
+  it("returns false for isAccessibleForFree 'True'", () => {
+    expect(_isDefinitePaywall("<html></html>", "True")).toBe(false);
+  });
+
+  it("returns false for isAccessibleForFree boolean true", () => {
+    expect(_isDefinitePaywall("<html></html>", true)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _buildContentWithPreamble
+// ---------------------------------------------------------------------------
+
+describe("_buildContentWithPreamble", () => {
+  const body = "גוף המאמר עם תוכן חשוב";
+
+  it("always places title first regardless of whether it appears in content", () => {
+    const content = `כותרת הכתבה\n\n${body}`;
+    const result = _buildContentWithPreamble(content, "כותרת הכתבה", undefined);
+    expect(result.startsWith("כותרת הכתבה")).toBe(true);
+  });
+
+  it("prepends description after title when description is not in content", () => {
+    const result = _buildContentWithPreamble(body, "כותרת", "תיאור קצר של הכתבה");
+    const lines = result.split("\n\n");
+    expect(lines[0]).toBe("כותרת");
+    expect(lines[1]).toBe("תיאור קצר של הכתבה");
+    expect(result).toContain(body);
+  });
+
+  it("does not prepend description when it already appears in content", () => {
+    const description = "תיאור שכבר קיים בגוף הכתבה ומופיע בהתחלה";
+    const content = `${description}\n\n${body}`;
+    const result = _buildContentWithPreamble(content, "כותרת", description);
+    const occurrences = result.split(description).length - 1;
+    expect(occurrences).toBe(1);
+  });
+
+  it("returns content unchanged when title is empty and description is in content", () => {
+    const description = "תיאור שכבר קיים";
+    const content = `${description}\n\n${body}`;
+    const result = _buildContentWithPreamble(content, "", description);
+    expect(result).toBe(content);
+  });
+
+  it("handles undefined description without error", () => {
+    const result = _buildContentWithPreamble(body, "כותרת", undefined);
+    expect(result).toBe(`כותרת\n\n${body}`);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _selectBestContent
+// ---------------------------------------------------------------------------
+
+describe("_selectBestContent", () => {
+  // Enough Hebrew text to pass quality gates
+  const longPara = "זהו פסקה ארוכה בעברית המכילה מידע חשוב ומפורט לגבי הנושא הנדון במאמר זה";
+
+  function makeArticle(n: number): string {
+    return Array.from({ length: n }, () => longPara).join("\n\n");
+  }
+
+  it("prefers Readability over articleBody when lengths are similar (ynet regression test)", () => {
+    // Simulates ynet: articleBody has same content as Readability but with embedded captions
+    const readability = makeArticle(3);
+    const articleBody = makeArticle(3) + "\n\nצילום: שם הצלם\n\nמקור: הכתב הצבאי";
+    const result = _selectBestContent(readability, articleBody, "article");
+    expect(result).toBe(readability);
+  });
+
+  it("prefers articleBody when it is more than 1.5x longer than Readability", () => {
+    // Simulates a site where Readability missed half the content
+    const readability = makeArticle(3);
+    const articleBody = makeArticle(8); // much longer
+    expect(articleBody.length).toBeGreaterThan(readability.length * 1.5);
+    const result = _selectBestContent(readability, articleBody, "article");
+    expect(result).toBe(articleBody);
+  });
+
+  it("uses Readability when articleBody is null", () => {
+    const readability = makeArticle(3);
+    expect(_selectBestContent(readability, null, "article")).toBe(readability);
+  });
+
+  it("uses articleBody when Readability is null", () => {
+    const articleBody = makeArticle(3);
+    expect(_selectBestContent(null, articleBody, "article")).toBe(articleBody);
+  });
+
+  it("uses articleBody when Readability fails quality gate but articleBody passes", () => {
+    const shortReadability = "קצר מדי"; // fails quality gate
+    const articleBody = makeArticle(3);
+    expect(_selectBestContent(shortReadability, articleBody, "article")).toBe(articleBody);
+  });
+
+  it("uses Readability when articleBody fails quality gate but Readability passes", () => {
+    const readability = makeArticle(3);
+    const shortArticleBody = "קצר מדי"; // fails quality gate
+    expect(_selectBestContent(readability, shortArticleBody, "article")).toBe(readability);
+  });
+
+  it("falls back to Readability when neither passes quality gate", () => {
+    const shortReadability = "קצר";
+    const shortArticleBody = "גם קצר";
+    expect(_selectBestContent(shortReadability, shortArticleBody, "article")).toBe(shortReadability);
+  });
+
+  it("falls back to articleBody when Readability is null and articleBody fails quality gate", () => {
+    const shortArticleBody = "קצר";
+    expect(_selectBestContent(null, shortArticleBody, "article")).toBe(shortArticleBody);
+  });
+
+  it("returns empty string when both are null", () => {
+    expect(_selectBestContent(null, null, "article")).toBe("");
+  });
+
+  it("applies unknown quality gate (looser) for unknown content type", () => {
+    // unknown mode requires only 2 paragraphs — articleBody with 2 paras should pass
+    const readability = makeArticle(2); // passes "unknown" gate (2 paras)
+    const articleBody = makeArticle(2);
+    const result = _selectBestContent(readability, articleBody, "unknown");
+    expect(result).toBe(readability); // Readability preferred when both pass and lengths similar
+  });
+});
+
+// ---------------------------------------------------------------------------
 // _detectPaywall
 // ---------------------------------------------------------------------------
 
@@ -505,6 +699,57 @@ describe("_detectPaywall", () => {
 
   it("detects הירשמו לקריאה marker", () => {
     expect(_detectPaywall("הירשמו לקריאה של כל הכתבות שלנו")).toBe(true);
+  });
+
+  // Schema.org isAccessibleForFree signal
+  it("returns true for isAccessibleForFree string 'False'", () => {
+    expect(_detectPaywall("", undefined, "False")).toBe(true);
+  });
+
+  it("returns true for isAccessibleForFree boolean false", () => {
+    expect(_detectPaywall("", undefined, false)).toBe(true);
+  });
+
+  it("returns false for isAccessibleForFree 'True'", () => {
+    expect(_detectPaywall("", undefined, "True")).toBe(false);
+  });
+
+  it("returns false for isAccessibleForFree boolean true", () => {
+    expect(_detectPaywall("", undefined, true)).toBe(false);
+  });
+
+  it("returns true via Schema.org signal even when extracted text has no markers", () => {
+    expect(_detectPaywall("כתבה רגילה ללא מילות מפתח", undefined, "False")).toBe(true);
+  });
+
+  // HTML class/id attribute signal
+  it("detects paywall via class attribute", () => {
+    expect(_detectPaywall("", '<div class="paywall">הירשמו</div>')).toBe(true);
+  });
+
+  it("detects paywall via compound class name containing 'paywall'", () => {
+    expect(_detectPaywall("", '<div class="article-paywall-overlay">...</div>')).toBe(true);
+  });
+
+  it("detects paywall via id attribute", () => {
+    expect(_detectPaywall("", '<div id="paywall">תוכן נעול</div>')).toBe(true);
+  });
+
+  it("returns false when 'paywall' appears only in text content, not in an attribute", () => {
+    expect(_detectPaywall("", "<p>this article is behind the paywall</p>")).toBe(false);
+  });
+
+  it("returns false for clean HTML with no paywall signals", () => {
+    expect(_detectPaywall("כתבה רגילה", '<article><p>תוכן פתוח</p></article>')).toBe(false);
+  });
+
+  it("detects Hebrew paywall marker in raw HTML even when extracted text is empty", () => {
+    // Paywall UI is often stripped during extraction — we must also check raw HTML
+    expect(_detectPaywall("", '<div class="subscription-box">הירשמו לקריאה של כל הכתבות</div>')).toBe(true);
+  });
+
+  it("detects מנויים marker in raw HTML even when not in extracted text", () => {
+    expect(_detectPaywall("רק שתי פסקאות חופשיות", '<div>תוכן זמין למנויים בלבד</div>')).toBe(true);
   });
 });
 
@@ -647,6 +892,66 @@ describe("_extractWithReadability", () => {
   it("returns null for HTML with no meaningful content", () => {
     const result = _extractWithReadability("<html><body></body></html>");
     expect(result).toBeNull();
+  });
+
+  it("removes elements with 'paywall' in class from DOM before extraction", () => {
+    const html = `
+      <html>
+        <body>
+          <article>
+            <p>פסקה ראשונה של המאמר עם תוכן חשוב ומפורט.</p>
+            <p>פסקה שנייה של המאמר ממשיכה את הנושא.</p>
+            <div class="paywall-overlay">הירשמו לקריאת המאמר המלא. תוכן זה זמין למנויים בלבד.</div>
+          </article>
+        </body>
+      </html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("הירשמו לקריאת המאמר");
+    expect(result).not.toContain("תוכן זה זמין למנויים");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
+  });
+
+  it("removes h1 from output since title comes from metadata", () => {
+    const html = `
+      <html>
+        <body>
+          <article>
+            <h1>כותרת הכתבה הראשית</h1>
+            <p>פסקה ראשונה של המאמר עם תוכן חשוב ומפורט לגבי הנושא.</p>
+            <p>פסקה שנייה של המאמר ממשיכה את הנושא ומוסיפה פרטים.</p>
+            <p>פסקה שלישית מסכמת את הכתבה בצורה ברורה ומפורטת.</p>
+          </article>
+        </body>
+      </html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("כותרת הכתבה הראשית");
+    expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("strips figure captions from output", () => {
+    const html = `
+      <html>
+        <body>
+          <article>
+            <p>פסקה ראשונה של המאמר עם תוכן חשוב ומפורט.</p>
+            <figure>
+              <img src="photo.jpg" />
+              <figcaption>צילום: שם הצלם הידוע</figcaption>
+            </figure>
+            <p>פסקה שנייה של המאמר ממשיכה את הנושא.</p>
+            <p>פסקה שלישית מסכמת את הכתבה בצורה ברורה.</p>
+          </article>
+        </body>
+      </html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("צילום:");
+    expect(result).not.toContain("שם הצלם");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
   });
 
   it("does not include nav or footer in output", () => {

@@ -29,6 +29,7 @@ describe("TranslationPanelUI", () => {
     currentBibleRef: null,
     processingImage: false,
     isGuest: false,
+    urlWarning: "",
     syncedParagraphs: null,
     setSourceText: vi.fn(),
     setUrlInput: vi.fn(),
