@@ -240,6 +240,30 @@ export function _extractWithReadability(html: string): string | null {
   }
 }
 
+export function _extractTitleFromHtml(html: string): string | null {
+  try {
+    const { document } = parseHTML(html);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = document as any;
+    // Prefer h1 scoped inside <article> — no DOM removal needed since <article>
+    // already excludes site navigation. (Removing <header> first would also remove
+    // article-level <header> elements that wrap the h1 on many news sites.)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let h1: any = doc.querySelector("article h1");
+    if (!h1) {
+      // Fallback: no <article> element — remove site chrome then take first h1
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      doc.querySelectorAll("header,nav").forEach((el: any) => el.remove());
+      h1 = doc.querySelector("h1");
+    }
+    if (!h1) return null;
+    const text = _decodeHtmlEntities((h1.textContent || "").trim());
+    return text || null;
+  } catch {
+    return null;
+  }
+}
+
 export function _hebrewDensity(text: string): number {
   // Hebrew letters (U+05D0–U+05EA) and nikud (U+05B0–U+05C7)
   const hebrewChars = (text.match(/[ְ-ׇא-ת]/g) || []).length;
@@ -619,6 +643,10 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     const articleData = _extractArticleFromJsonLd(jsonLdBlocks);
     if (articleData.title) title = _decodeHtmlEntities(articleData.title);
     if (articleData.description) description = _decodeHtmlEntities(articleData.description);
+
+    // In-page <h1> is the most accurate "on screen" title — prefer it over metadata
+    const h1Title = _extractTitleFromHtml(html);
+    if (h1Title) title = h1Title;
 
     if (_detectPaywall("", html, articleData.isAccessibleForFree)) paywallDetected = true;
     const articleBodyCandidate = articleData.articleBody

@@ -8,6 +8,7 @@ import {
   _extractFaqBody,
   _extractVideoBody,
   _normalizeArticleBody,
+  _extractTitleFromHtml,
   _extractWithReadability,
   _hebrewDensity,
   _checkQualityGate,
@@ -342,6 +343,88 @@ describe("_extractVideoBody", () => {
   it("still includes the note when description is empty", () => {
     const result = _extractVideoBody({});
     expect(result).toContain("תיאור הסרטון בלבד");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _extractTitleFromHtml
+// ---------------------------------------------------------------------------
+
+describe("_extractTitleFromHtml", () => {
+  it("extracts h1 from inside article element", () => {
+    const html = `
+      <html><body>
+        <header><h1>כותרת האתר</h1></header>
+        <article>
+          <h1>כותרת הכתבה האמיתית</h1>
+          <p>תוכן הכתבה</p>
+        </article>
+      </body></html>`;
+    expect(_extractTitleFromHtml(html)).toBe("כותרת הכתבה האמיתית");
+  });
+
+  it("prefers h1 inside article over h1 in site header", () => {
+    const html = `
+      <html><body>
+        <header><h1>שם האתר</h1></header>
+        <article>
+          <h1>כותרת הכתבה הנכונה</h1>
+          <p>תוכן</p>
+        </article>
+      </body></html>`;
+    expect(_extractTitleFromHtml(html)).toBe("כותרת הכתבה הנכונה");
+  });
+
+  it("finds h1 inside article-level header (Walla regression)", () => {
+    // Walla wraps the article h1 inside <article><header><h1>
+    // We must NOT remove <header> before searching inside <article>
+    const html = `
+      <html><body>
+        <header><nav><ul><li>ניווט</li></ul></nav></header>
+        <article>
+          <header>
+            <h1>במדבר העיראקי: ישראל הקימה 2 בסיסים חשאיים</h1>
+          </header>
+          <p>תוכן הכתבה</p>
+        </article>
+      </body></html>`;
+    expect(_extractTitleFromHtml(html)).toBe("במדבר העיראקי: ישראל הקימה 2 בסיסים חשאיים");
+  });
+
+  it("falls back to first h1 outside article when no article element exists", () => {
+    const html = `
+      <html><body>
+        <div class="content">
+          <h1>כותרת הדף</h1>
+          <p>תוכן</p>
+        </div>
+      </body></html>`;
+    expect(_extractTitleFromHtml(html)).toBe("כותרת הדף");
+  });
+
+  it("returns null when no h1 found", () => {
+    const html = `<html><body><p>תוכן ללא כותרת</p></body></html>`;
+    expect(_extractTitleFromHtml(html)).toBeNull();
+  });
+
+  it("decodes HTML entities in h1 (Walla regression: quotation marks in headline)", () => {
+    const html = `
+      <html><body>
+        <article>
+          <h1>תעלומת &quot;מלאך המוות&quot; מאושוויץ: שווייץ תפתח את הארכיונים</h1>
+        </article>
+      </body></html>`;
+    expect(_extractTitleFromHtml(html)).toBe('תעלומת "מלאך המוות" מאושוויץ: שווייץ תפתח את הארכיונים');
+  });
+
+  it("strips nested HTML tags from h1 content", () => {
+    const html = `
+      <html><body>
+        <article>
+          <h1><span class="prefix">בלעדי:</span> כותרת הכתבה המלאה</h1>
+        </article>
+      </body></html>`;
+    expect(_extractTitleFromHtml(html)).toBe("בלעדי: כותרת הכתבה המלאה");
   });
 });
 
