@@ -954,6 +954,47 @@ describe("_extractWithReadability", () => {
     expect(result).toContain("פסקה שנייה");
   });
 
+  it("removes nav elements from DOM before extraction (Walla regression)", () => {
+    const html = `
+      <html>
+        <body>
+          <nav>
+            <ul><li>צפייה ישירה</li><li>חדשות</li><li>ספורט</li></ul>
+          </nav>
+          <article>
+            <p>פסקה ראשונה של המאמר עם תוכן חשוב ומפורט.</p>
+            <p>פסקה שנייה של המאמר ממשיכה את הנושא ומוסיפה פרטים.</p>
+            <p>פסקה שלישית מסכמת את הכתבה בצורה ברורה ומפורטת.</p>
+          </article>
+        </body>
+      </html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("צפייה ישירה");
+    expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("removes header elements from DOM before extraction (Walla regression)", () => {
+    const html = `
+      <html>
+        <body>
+          <header>
+            <div class="title">צפייה ישירה</div>
+            <nav><ul><li>חדשות</li><li>ספורט</li><li>כלכלה</li></ul></nav>
+          </header>
+          <article>
+            <p>פסקה ראשונה של המאמר עם תוכן חשוב ומפורט.</p>
+            <p>פסקה שנייה של המאמר ממשיכה את הנושא ומוסיפה פרטים.</p>
+            <p>פסקה שלישית מסכמת את הכתבה בצורה ברורה ומפורטת.</p>
+          </article>
+        </body>
+      </html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("צפייה ישירה");
+    expect(result).toContain("פסקה ראשונה");
+  });
+
   it("does not include nav or footer in output", () => {
     const html = `
       <html>
