@@ -1096,6 +1096,82 @@ describe("_extractWithReadability", () => {
       expect(result).not.toContain("כותרת תחתית");
     }
   });
+
+  it("removes paragraphs whose content is entirely <a> link text (Globes related-article bullets)", () => {
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>● <a href="/article/1">כותרת כתבה קשורה אחת שלא צריכה להופיע בפלט</a><br />● <a href="/article/2">כותרת כתבה קשורה שנייה שלא צריכה להופיע</a></p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("כותרת כתבה קשורה אחת");
+    expect(result).not.toContain("כותרת כתבה קשורה שנייה");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
+  });
+
+  it("removes link-only bullet paragraphs even when &#32; entity trails after the last link", () => {
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>● <a href="/article/1">בית ההשקעות שהידרדר לתחתית טבלת התשואות<br /></a>● <a href="/article/2">בדרך למשבר בשווקים? האנליסט שמציע להיזהר</a>&#32;</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("בית ההשקעות שהידרדר");
+    expect(result).not.toContain("בדרך למשבר בשווקים");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
+  });
+
+  it("merges <h3> section headings into the following paragraph (Globes alignment fix)", () => {
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <h3><span class="roundBox">1</span>כותרת ביניים</h3>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה רביעית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    // heading + paragraph should be ONE \n\n-separated block
+    const paragraphs = result!.split(/\n\n+/).filter((p) => p.trim().length > 0);
+    const headingParaIndex = paragraphs.findIndex((p) => p.includes("כותרת ביניים"));
+    expect(headingParaIndex).toBeGreaterThanOrEqual(0);
+    expect(paragraphs[headingParaIndex]).toContain("פסקה שלישית");
+  });
+
+  it("strips \\r characters so \\r\\n\\r\\n between paragraphs does not create blank paragraph slots", () => {
+    // Source HTML with Windows-style CRLF line endings between elements.
+    // Without \r stripping, \r\n\r\n produces non-consecutive \n chars that
+    // \n{3,} doesn't collapse, leaving whitespace-only paragraph slots that
+    // show as blank rows in the synced display.
+    const html =
+      "<html lang=\"he\"><body><article>" +
+      "<p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>\r\n\r\n" +
+      "<p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>\r\n\r\n" +
+      "<p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>" +
+      "</article></body></html>";
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    const paragraphs = result!.split(/\n\n+/).filter((p) => p.trim().length > 0);
+    const allParagraphs = result!.split(/\n\n+/);
+    // All split pieces must have non-whitespace content — no blank-slot paragraphs
+    expect(allParagraphs.every((p) => p.trim().length > 0 || p.length === 0)).toBe(true);
+    expect(paragraphs.length).toBe(3);
+  });
 });
 
 // ---------------------------------------------------------------------------

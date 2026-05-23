@@ -226,13 +226,33 @@ export function _extractWithReadability(html: string): string | null {
     text = text.replace(/<figure[\s\S]*?<\/figure>/gi, "");
     text = text.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, "");
 
+    // Remove <p> elements whose only content is <a> link text — related-article bullets
+    // (e.g. Globes "● <a>title</a><br/>● <a>title</a>" pattern). These cause paragraph
+    // count mismatches between source and translation in the synced display.
+    text = text.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (match, inner) => {
+      const withoutLinks = inner.replace(/<a[\s\S]*?<\/a>/gi, "");
+      const residual = withoutLinks
+        .replace(/<[^>]+>/g, "")
+        .replace(/&[#\w]+;/g, " ") // decode HTML entities (e.g. &#32;) to spaces before checking
+        .replace(/[●•·\s]/g, "");
+      return residual.length === 0 ? "" : match;
+    });
+
+    // Merge headings into the following paragraph before doing block-to-newline
+    // substitutions. Readability places whitespace/newlines between </h3> and <p>, so we
+    // strip that gap first. This prevents section headings from becoming standalone
+    // \n\n-separated blocks that Gemini may merge differently in translation output,
+    // which would shift all subsequent paragraph pairings in the synced display.
+    text = text.replace(/<\/h([1-6])>\s*<p/gi, "</h$1><p");
+
     // Convert block elements to paragraph breaks, then strip remaining tags
     text = text.replace(/<\/p>/gi, "\n\n");
-    text = text.replace(/<\/h[1-6]>/gi, "\n\n");
+    text = text.replace(/<\/h[1-6]>/gi, "\n"); // single \n: flows into the following paragraph
     text = text.replace(/<\/li>/gi, "\n");
     text = text.replace(/<br\s*\/?>/gi, "\n");
     text = text.replace(/<[^>]+>/g, "");
     text = _decodeHtmlEntities(text);
+    text = text.replace(/\r/g, ""); // strip carriage returns — Windows \r\n in source HTML breaks \n{3,} matching
     text = text.replace(/\n{3,}/g, "\n\n").trim();
     return text || null;
   } catch {
