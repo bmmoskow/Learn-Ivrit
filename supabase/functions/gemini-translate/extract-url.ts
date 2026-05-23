@@ -238,16 +238,9 @@ export function _extractWithReadability(html: string): string | null {
       return residual.length === 0 ? "" : match;
     });
 
-    // Merge headings into the following paragraph before doing block-to-newline
-    // substitutions. Readability places whitespace/newlines between </h3> and <p>, so we
-    // strip that gap first. This prevents section headings from becoming standalone
-    // \n\n-separated blocks that Gemini may merge differently in translation output,
-    // which would shift all subsequent paragraph pairings in the synced display.
-    text = text.replace(/<\/h([1-6])>\s*<p/gi, "</h$1><p");
-
     // Convert block elements to paragraph breaks, then strip remaining tags
     text = text.replace(/<\/p>/gi, "\n\n");
-    text = text.replace(/<\/h[1-6]>/gi, "\n"); // single \n: flows into the following paragraph
+    text = text.replace(/<\/h[1-6]>/gi, "\n\n"); // headings become their own paragraph blocks
     text = text.replace(/<\/li>/gi, "\n");
     text = text.replace(/<br\s*\/?>/gi, "\n");
     text = text.replace(/<[^>]+>/g, "");

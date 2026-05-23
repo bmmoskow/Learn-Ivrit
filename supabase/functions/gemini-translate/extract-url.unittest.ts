@@ -1133,7 +1133,7 @@ describe("_extractWithReadability", () => {
     expect(result).toContain("פסקה שנייה");
   });
 
-  it("merges <h3> section headings into the following paragraph (Globes alignment fix)", () => {
+  it("preserves <h3> section headings as standalone paragraph blocks", () => {
     const html = `
       <html lang="he"><body>
         <article>
@@ -1146,11 +1146,14 @@ describe("_extractWithReadability", () => {
       </body></html>`;
     const result = _extractWithReadability(html);
     expect(result).not.toBeNull();
-    // heading + paragraph should be ONE \n\n-separated block
+    // heading should be its OWN \n\n-separated block, not merged into the following paragraph
     const paragraphs = result!.split(/\n\n+/).filter((p) => p.trim().length > 0);
     const headingParaIndex = paragraphs.findIndex((p) => p.includes("כותרת ביניים"));
     expect(headingParaIndex).toBeGreaterThanOrEqual(0);
-    expect(paragraphs[headingParaIndex]).toContain("פסקה שלישית");
+    // heading paragraph must NOT contain the following paragraph's text
+    expect(paragraphs[headingParaIndex]).not.toContain("פסקה שלישית");
+    // the paragraph immediately after the heading should contain the following paragraph's text
+    expect(paragraphs[headingParaIndex + 1]).toContain("פסקה שלישית");
   });
 
   it("strips \\r characters so \\r\\n\\r\\n between paragraphs does not create blank paragraph slots", () => {
