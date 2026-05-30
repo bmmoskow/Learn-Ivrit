@@ -682,6 +682,15 @@ describe("_buildContentWithPreamble", () => {
     const result = _buildContentWithPreamble(body, "כותרת", undefined);
     expect(result).toBe(`כותרת\n\n${body}`);
   });
+
+  it("deduplicates description when apostrophe characters differ (Sport5 ז'ילואז regression)", () => {
+    // og:description uses curly apostrophe (U+2019); h2 in HTML uses plain apostrophe (U+0027)
+    const descriptionWithCurly = "הישראלי בישל את השער הראשון של סן ז’ילואז בגמר הגביע";
+    const contentWithPlain     = "הישראלי בישל את השער הראשון של סן ז'ילואז בגמר הגביע\n\n" + body;
+    const result = _buildContentWithPreamble(contentWithPlain, "כותרת", descriptionWithCurly);
+    const occurrences = result.split("ישראלי").length - 1;
+    expect(occurrences).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1115,6 +1124,29 @@ describe("_extractWithReadability", () => {
     expect(result).toContain("פסקה שנייה");
   });
 
+  it("removes <li> elements whose content is entirely link text (Sport5 promo-list regression)", () => {
+    // Sport5 embeds promotional <ul><li><a>...</a></li></ul> blocks inside the article body.
+    // These contain no non-link text so the same link-density filter used for <p> should remove them.
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <ul>
+            <li><strong><a href="https://hevre.sport5.co.il/">הטירוף התחיל — משחק ניחושי תוצאות המונדיאל</a></strong></li>
+            <li><strong><a href="https://fantasywc.sport5.co.il/">הצטרפו לפנטזי מונדיאל של בנק יהב</a></strong></li>
+          </ul>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("הטירוף התחיל");
+    expect(result).not.toContain("הצטרפו לפנטזי");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
+  });
+
   it("removes link-only bullet paragraphs even when &#32; entity trails after the last link", () => {
     const html = `
       <html lang="he"><body>
@@ -1131,6 +1163,42 @@ describe("_extractWithReadability", () => {
     expect(result).not.toContain("בדרך למשבר בשווקים");
     expect(result).toContain("פסקה ראשונה");
     expect(result).toContain("פסקה שנייה");
+  });
+
+  it("removes standalone parenthetical photo credits (Sport5 caption regression)", () => {
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>(מאור אלקסלסי)</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("(מאור אלקסלסי)");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
+  });
+
+  it("removes Sport5 video-holder image caption (div.desc inside div.video-holder)", () => {
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <div class="video-holder img_videobackground">
+            <div class="desc"><span>ההתאחדות לכדורגל</span></div>
+            <img src="photo.jpg" alt="ההתאחדות לכדורגל" />
+          </div>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("ההתאחדות לכדורגל");
+    expect(result).toContain("פסקה ראשונה");
   });
 
   it("preserves <h3> section headings as standalone paragraph blocks", () => {

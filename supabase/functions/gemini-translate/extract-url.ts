@@ -216,6 +216,8 @@ export function _extractWithReadability(html: string): string | null {
     doc.querySelectorAll('[class*="paywall"],[id*="paywall"]').forEach((el: any) => el.remove());
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.querySelectorAll("h1,nav,header").forEach((el: any) => el.remove()); // title from metadata; nav/header are site chrome
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll(".video-holder").forEach((el: any) => el.remove()); // image/video embed wrappers (Sport5) — captions inside pollute article text
 
     const reader = new Readability(doc);
     const article = reader.parse();
@@ -238,6 +240,17 @@ export function _extractWithReadability(html: string): string | null {
       return residual.length === 0 ? "" : match;
     });
 
+    // Strip <li> elements whose content is entirely link text — same rationale as <p> above.
+    // Catches promotional link-lists embedded in article bodies (e.g. Sport5 World Cup promo).
+    text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, inner) => {
+      const withoutLinks = inner.replace(/<a[\s\S]*?<\/a>/gi, "");
+      const residual = withoutLinks
+        .replace(/<[^>]+>/g, "")
+        .replace(/&[#\w]+;/g, " ")
+        .replace(/[●•·\s]/g, "");
+      return residual.length === 0 ? "" : match;
+    });
+
     // Convert block elements to paragraph breaks, then strip remaining tags
     text = text.replace(/<\/p>/gi, "\n\n");
     text = text.replace(/<\/h[1-6]>/gi, "\n\n"); // headings become their own paragraph blocks
@@ -247,6 +260,14 @@ export function _extractWithReadability(html: string): string | null {
     text = _decodeHtmlEntities(text);
     text = text.replace(/\r/g, ""); // strip carriage returns — Windows \r\n in source HTML breaks \n{3,} matching
     text = text.replace(/\n{3,}/g, "\n\n").trim();
+
+    // Normalize each paragraph: collapse whitespace-only internal lines, then drop
+    // standalone parenthetical photo credits like "(Photographer Name)".
+    text = text.split("\n\n")
+      .map((p) => p.replace(/[ \t]*\n[ \t]*/g, "\n").replace(/\n{2,}/g, "\n").trim())
+      .filter((p) => p.length > 0 && !/^\([^)\n]{1,59}\)$/.test(p))
+      .join("\n\n");
+
     return text || null;
   } catch {
     return null;
@@ -344,8 +365,13 @@ export function _buildContentWithPreamble(
 ): string {
   const preamble: string[] = [];
   if (title) preamble.push(title);
-  if (description && !content.includes(description.substring(0, 50))) {
-    preamble.push(description);
+  if (description) {
+    // Strip all non-letter/digit characters before comparing — handles any quote or
+    // apostrophe character mismatch between og:description and Readability output.
+    const strip = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+    if (!strip(content).includes(strip(description.substring(0, 60)))) {
+      preamble.push(description);
+    }
   }
   return preamble.length > 0 ? preamble.join("\n\n") + "\n\n" + content : content;
 }
