@@ -3,6 +3,30 @@ import { Readability } from "@mozilla/readability";
 import { createJsonResponse, createErrorResponse } from "./shared.ts";
 import { PAYWALL_MARKERS, DEFINITIVE_PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
 
+async function fetchWithCertFallback(url: string, headers: HeadersInit): Promise<Response> {
+  try {
+    return await fetch(url, { headers });
+  } catch (err) {
+    const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+    if (msg.includes("certificate") || msg.includes("tls") || msg.includes("ssl")) {
+      // TLS_EXTRA_CA_CERT: GoDaddy G2 intermediate cert, needed for sites (e.g. yadvashem.org)
+      // that omit it from their TLS chain. Source: http://certificates.godaddy.com/repository/gdig2.crt (DER → PEM)
+      // SHA-256 fingerprint: 27:AC:93:69:FA:F2:52:07:BB:26:27:CE:FA:CC:BE:4E:F9:C3:19:B8:D4:55:2F:03:1B:A6:35:3F:28:B6:84:BA
+      const extraCert = Deno.env.get("TLS_EXTRA_CA_CERT");
+      if (!extraCert) throw err;
+      console.log("TLS error on first attempt, retrying with TLS_EXTRA_CA_CERT:", msg);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const client = (Deno as any).createHttpClient({ caCerts: [extraCert] });
+      try {
+        return await fetch(url, { client, headers });
+      } finally {
+        client.close();
+      }
+    }
+    throw err;
+  }
+}
+
 export interface ExtractUrlRequest {
   url: string;
 }
@@ -538,13 +562,11 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
 
   let response: Response;
   try {
-    response = await fetch(urlToFetch, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "he,en-US;q=0.9,en;q=0.8",
-      },
+    response = await fetchWithCertFallback(urlToFetch, {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "he,en-US;q=0.9,en;q=0.8",
     });
   } catch (fetchError) {
     console.error("Fetch error:", fetchError);
