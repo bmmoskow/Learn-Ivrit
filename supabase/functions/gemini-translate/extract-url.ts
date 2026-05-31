@@ -2,23 +2,72 @@ import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { createJsonResponse, createErrorResponse } from "./shared.ts";
 import { PAYWALL_MARKERS, DEFINITIVE_PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
+import { APP_NAME, RESEND_API_URL, RESEND_FROM_ALERTS } from "../_shared/resend.ts";
+
+// TLS_EXTRA_CA_CERT: PEM bundle of intermediate certs for CAs that sites commonly omit from
+// their TLS chain. Concatenate multiple PEM certs to cover more than one CA.
+// Included: GoDaddy G2, DigiCert SHA2, DigiCert TLS RSA 2020, GlobalSign RSA OV 2018, Sectigo RSA DV
+// To add a cert: download the DER from the CA's repository, convert to PEM, append to the secret.
+//   GoDaddy G2:   http://certificates.godaddy.com/repository/gdig2.crt
+//                 SHA-256: 27:AC:93:69:FA:F2:52:07:BB:26:27:CE:FA:CC:BE:4E:F9:C3:19:B8:D4:55:2F:03:1B:A6:35:3F:28:B6:84:BA
+//   DigiCert:     https://cacerts.digicert.com/DigiCertSHA2SecureServerCA.crt
+//   DigiCert:     https://cacerts.digicert.com/DigiCertTLSRSASHA2562020CA1-1.crt
+//   GlobalSign:   https://secure.globalsign.com/cacert/gsrsaovsslca2018.crt
+//   Sectigo:      http://crt.sectigo.com/SectigoRSADomainValidationSecureServerCA.crt
+// If a new site fails TLS even after retry, an alert email is sent with the failing URL.
+async function sendTlsAlert(url: string, errorMsg: string): Promise<void> {
+  const apiKey = Deno.env.get("RESEND_API_KEY");
+  const adminEmail = Deno.env.get("ADMIN_EMAIL");
+  if (!apiKey || !adminEmail) return;
+  try {
+    await fetch(RESEND_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        from: RESEND_FROM_ALERTS,
+        to: [adminEmail],
+        subject: `[${APP_NAME}] TLS certificate alert — new intermediate cert may be needed`,
+        text: `A URL failed with a TLS error even after retrying with the CA bundle.\n\nURL: ${url}\nError: ${errorMsg}\n\nYou may need to add the missing intermediate certificate to the TLS_EXTRA_CA_CERT secret.\nSee the comment in extract-url.ts for instructions.`,
+        html: `<p>A URL failed with a TLS error even after retrying with the CA bundle.</p><p><strong>URL:</strong> ${url}</p><p><strong>Error:</strong> ${errorMsg}</p><p>You may need to add the missing intermediate certificate to the <code>TLS_EXTRA_CA_CERT</code> secret. See the comment in <code>extract-url.ts</code> for instructions.</p>`,
+      }),
+    });
+  } catch {
+    // Alert failure must not affect the main error response
+  }
+}
+
+export function _isTlsError(err: unknown): boolean {
+  const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+  return msg.includes("certificate") || msg.includes("tls") || msg.includes("ssl");
+}
+
+export function _parseCertBundle(bundle: string): string[] {
+  return bundle
+    .split("-----END CERTIFICATE-----")
+    .map((s) => s.trim())
+    .filter((s) => s.includes("-----BEGIN CERTIFICATE-----"))
+    .map((s) => s + "\n-----END CERTIFICATE-----");
+}
 
 async function fetchWithCertFallback(url: string, headers: HeadersInit): Promise<Response> {
   try {
     return await fetch(url, { headers });
   } catch (err) {
-    const msg = String(err instanceof Error ? err.message : err).toLowerCase();
-    if (msg.includes("certificate") || msg.includes("tls") || msg.includes("ssl")) {
-      // TLS_EXTRA_CA_CERT: GoDaddy G2 intermediate cert, needed for sites (e.g. yadvashem.org)
-      // that omit it from their TLS chain. Source: http://certificates.godaddy.com/repository/gdig2.crt (DER → PEM)
-      // SHA-256 fingerprint: 27:AC:93:69:FA:F2:52:07:BB:26:27:CE:FA:CC:BE:4E:F9:C3:19:B8:D4:55:2F:03:1B:A6:35:3F:28:B6:84:BA
-      const extraCert = Deno.env.get("TLS_EXTRA_CA_CERT");
-      if (!extraCert) throw err;
-      console.log("TLS error on first attempt, retrying with TLS_EXTRA_CA_CERT:", msg);
+    if (_isTlsError(err)) {
+      const certBundle = Deno.env.get("TLS_EXTRA_CA_CERT");
+      if (!certBundle) throw err;
+      const msg = String(err instanceof Error ? err.message : err).toLowerCase();
+      console.log("TLS error on first attempt, retrying with CA bundle:", msg);
+      const certs = _parseCertBundle(certBundle);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const client = (Deno as any).createHttpClient({ caCerts: [extraCert] });
+      const client = (Deno as any).createHttpClient({ caCerts: certs });
       try {
         return await fetch(url, { client, headers });
+      } catch (retryErr) {
+        if (_isTlsError(retryErr)) {
+          await sendTlsAlert(url, String(retryErr instanceof Error ? retryErr.message : retryErr).toLowerCase());
+        }
+        throw retryErr;
       } finally {
         client.close();
       }

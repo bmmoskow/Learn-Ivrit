@@ -19,6 +19,8 @@ import {
   _detectSpaShell,
   _stripHtmlToText,
   _extractTextFromHtml,
+  _isTlsError,
+  _parseCertBundle,
 } from "./extract-url.ts";
 
 // ---------------------------------------------------------------------------
@@ -1285,5 +1287,94 @@ describe("_extractTextFromHtml", () => {
     expect(result).not.toContain("var x");
     expect(result).not.toContain("color: red");
     expect(result).toContain("תוכן ראוי");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _isTlsError
+// ---------------------------------------------------------------------------
+
+describe("_isTlsError", () => {
+  it("returns true for error containing 'certificate'", () => {
+    expect(_isTlsError(new Error("certificate verify failed"))).toBe(true);
+  });
+
+  it("returns true for error containing 'tls'", () => {
+    expect(_isTlsError(new Error("tls handshake failed"))).toBe(true);
+  });
+
+  it("returns true for error containing 'ssl'", () => {
+    expect(_isTlsError(new Error("ssl error occurred"))).toBe(true);
+  });
+
+  it("is case-insensitive", () => {
+    expect(_isTlsError(new Error("TLS handshake error"))).toBe(true);
+    expect(_isTlsError(new Error("SSL_ERROR_RX_RECORD_TOO_LONG"))).toBe(true);
+    expect(_isTlsError(new Error("Certificate expired"))).toBe(true);
+  });
+
+  it("returns false for unrelated network errors", () => {
+    expect(_isTlsError(new Error("network timeout"))).toBe(false);
+    expect(_isTlsError(new Error("fetch failed"))).toBe(false);
+    expect(_isTlsError(new Error("404 not found"))).toBe(false);
+  });
+
+  it("handles non-Error string values", () => {
+    expect(_isTlsError("tls error string")).toBe(true);
+    expect(_isTlsError("network error")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _parseCertBundle
+// ---------------------------------------------------------------------------
+
+describe("_parseCertBundle", () => {
+  const CERT_A = "-----BEGIN CERTIFICATE-----\nABCDEFGHIJKLMN\n-----END CERTIFICATE-----";
+  const CERT_B = "-----BEGIN CERTIFICATE-----\nOPQRSTUVWXYZAB\n-----END CERTIFICATE-----";
+
+  it("returns empty array for empty string", () => {
+    expect(_parseCertBundle("")).toEqual([]);
+  });
+
+  it("parses a single cert", () => {
+    const result = _parseCertBundle(CERT_A);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain("-----BEGIN CERTIFICATE-----");
+    expect(result[0]).toContain("-----END CERTIFICATE-----");
+    expect(result[0]).toContain("ABCDEFGHIJKLMN");
+  });
+
+  it("parses a two-cert bundle", () => {
+    const result = _parseCertBundle(CERT_A + "\n" + CERT_B);
+    expect(result).toHaveLength(2);
+    expect(result[0]).toContain("ABCDEFGHIJKLMN");
+    expect(result[1]).toContain("OPQRSTUVWXYZAB");
+  });
+
+  it("parses a five-cert bundle", () => {
+    const bundle = Array.from(
+      { length: 5 },
+      (_, i) => `-----BEGIN CERTIFICATE-----\nCERT${i}DATA\n-----END CERTIFICATE-----`,
+    ).join("\n");
+    expect(_parseCertBundle(bundle)).toHaveLength(5);
+  });
+
+  it("handles extra blank lines between certs", () => {
+    expect(_parseCertBundle(CERT_A + "\n\n\n" + CERT_B)).toHaveLength(2);
+  });
+
+  it("ignores segments with no BEGIN marker", () => {
+    const bundle = "stray text\n-----END CERTIFICATE-----\n" + CERT_A;
+    const result = _parseCertBundle(bundle);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain("ABCDEFGHIJKLMN");
+  });
+
+  it("every returned cert ends with -----END CERTIFICATE-----", () => {
+    const result = _parseCertBundle(CERT_A + "\n" + CERT_B);
+    result.forEach((cert) => {
+      expect(cert.trimEnd().endsWith("-----END CERTIFICATE-----")).toBe(true);
+    });
   });
 });
