@@ -469,6 +469,26 @@ describe("_normalizeArticleBody", () => {
     const result = _normalizeArticleBody("AT&amp;T");
     expect(result).toBe("AT&T");
   });
+
+  it("decodes double-encoded &amp;nbsp; to space (Drupal meta attribute encoding)", () => {
+    const result = _normalizeArticleBody("טקסט&amp;nbsp;עם&amp;nbsp;רווחים");
+    expect(result).toBe("טקסט עם רווחים");
+  });
+
+  it("decodes double-encoded &amp;ldquo; and &amp;rdquo; to curly quotes (Yad Vashem Drupal encoding)", () => {
+    const result = _normalizeArticleBody("&amp;ldquo;ציטוט&amp;rdquo;");
+    expect(result).toBe("“ציטוט”");
+  });
+
+  it("decodes double-encoded &amp;quot; to straight double-quote (Drupal meta attribute encoding)", () => {
+    const result = _normalizeArticleBody('מצה&amp;quot;ל');
+    expect(result).toBe('מצה"ל');
+  });
+
+  it("decodes double-encoded &amp;lsquo; and &amp;rsquo; to curly single quotes (Drupal encoding)", () => {
+    const result = _normalizeArticleBody("&amp;lsquo;מילה&amp;rsquo;");
+    expect(result).toBe("‘מילה’");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -683,6 +703,17 @@ describe("_buildContentWithPreamble", () => {
   it("handles undefined description without error", () => {
     const result = _buildContentWithPreamble(body, "כותרת", undefined);
     expect(result).toBe(`כותרת\n\n${body}`);
+  });
+
+  it("does not prepend description when curly-quote entities match article body (Yad Vashem Drupal og:description regression)", () => {
+    // Drupal encodes og:description with &amp;ldquo;/&amp;rdquo;; after _decodeHtmlEntities those
+    // become actual U+201C/U+201D characters — same as in the article body. The strip() comparison
+    // must recognise them as matching so the description is not prepended a second time.
+    const description = "“המחנות” היו מקום סבל ויסורים";
+    const body = "“המחנות” היו מקום סבל ויסורים\n\nפסקה נוספת עם מידע חשוב לגבי הנושא";
+    const result = _buildContentWithPreamble(body, "כותרת", description);
+    const occurrences = result.split("המחנות").length - 1;
+    expect(occurrences).toBe(1);
   });
 
   it("deduplicates description when apostrophe characters differ (Sport5 ז'ילואז regression)", () => {
@@ -1224,6 +1255,83 @@ describe("_extractWithReadability", () => {
     expect(paragraphs[headingParaIndex]).not.toContain("פסקה שלישית");
     // the paragraph immediately after the heading should contain the following paragraph's text
     expect(paragraphs[headingParaIndex + 1]).toContain("פסקה שלישית");
+  });
+
+  it("removes .ex_list navigation cards before extraction (Yad Vashem sub-article nav regression)", () => {
+    // Yad Vashem Drupal pages embed div.ex_list grids of linked sub-article cards inside the
+    // article body. Without removal, Readability includes their snippet text as article content.
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <div class="ex_list">
+            <div class="item"><a href="/he/link1">כותרת ערך קשור ראשון מרשימת הניווט</a><span>קטע מהערך הקשור שאסור שיופיע</span></div>
+            <div class="item"><a href="/he/link2">כותרת ערך קשור שני מרשימת הניווט</a><span>קטע מהערך השני שאסור שיופיע</span></div>
+          </div>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("כותרת ערך קשור ראשון");
+    expect(result).not.toContain("קטע מהערך הקשור");
+    expect(result).toContain("פסקה ראשונה");
+    expect(result).toContain("פסקה שנייה");
+  });
+
+  it("strips HTML comments before parsing to prevent --> artifact (Yad Vashem regression)", () => {
+    // linkedom can leave --> in the text when HTML comments are not stripped before parsing.
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <!-- תוכן גרסה 2.0 -->
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <!-- עדכון אחרון 2024 -->
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("-->");
+    expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("removes .messages Drupal site-wide notices before extraction (Yad Vashem upgrade banner regression)", () => {
+    const html = `
+      <html lang="he"><body>
+        <div class="messages warning">
+          <p>שימו לב: האתר עובר שדרוג. חלק מהשירותים עשויים להיות מוגבלים זמנית.</p>
+        </div>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("האתר עובר שדרוג");
+    expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("removes .modal-body Bootstrap modal dialogs before extraction (Drupal redirect notice regression)", () => {
+    const html = `
+      <html lang="he"><body>
+        <div class="modal fade"><div class="modal-body">
+          <p>הדף הזה עבר לכתובת חדשה. לחץ כאן להמשך לאתר המעודכן.</p>
+        </div></div>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("הדף הזה עבר לכתובת חדשה");
+    expect(result).toContain("פסקה ראשונה");
   });
 
   it("strips \\r characters so \\r\\n\\r\\n between paragraphs does not create blank paragraph slots", () => {

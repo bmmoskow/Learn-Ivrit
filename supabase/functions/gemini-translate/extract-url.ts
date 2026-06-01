@@ -257,14 +257,34 @@ export function _extractVideoBody(block: Record<string, unknown>): string {
 
 function _decodeHtmlEntities(text: string): string {
   return text
+    // Double-encoded entities (e.g. Drupal sometimes writes &amp;nbsp; / &amp;ldquo; in meta attributes)
+    .replace(/&amp;nbsp;/g, " ")
+    .replace(/&amp;quot;/g, '"')
+    .replace(/&amp;apos;/g, "'")
+    .replace(/&amp;ldquo;/g, "“")
+    .replace(/&amp;rdquo;/g, "”")
+    .replace(/&amp;lsquo;/g, "‘")
+    .replace(/&amp;rsquo;/g, "’")
+    .replace(/&amp;mdash;/g, "—")
+    .replace(/&amp;ndash;/g, "–")
+    .replace(/&amp;lt;/g, "<")
+    .replace(/&amp;gt;/g, ">")
     .replace(/&nbsp;/g, " ")
+    .replace(/&ldquo;/g, "“")
+    .replace(/&rdquo;/g, "”")
+    .replace(/&lsquo;/g, "‘")
+    .replace(/&rsquo;/g, "’")
+    .replace(/&mdash;/g, "—")
+    .replace(/&ndash;/g, "–")
+    .replace(/&hellip;/g, "…")
+    .replace(/&bull;/g, "•")
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)))
     .replace(/&#x([0-9A-Fa-f]+);/g, (_m, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/&amp;/g, "&"); // last so &amp;quot; → &quot;, not "
+    .replace(/&amp;/g, "&"); // last so &amp;quot; => &quot;, not "
 }
 
 export function _normalizeArticleBody(articleBody: string): string {
@@ -279,7 +299,7 @@ export function _normalizeArticleBody(articleBody: string): string {
 
 export function _extractWithReadability(html: string): string | null {
   try {
-    const { document } = parseHTML(html);
+    const { document } = parseHTML(html.replace(/<!--[\s\S]*?-->/g, ""));
 
     // Remove elements from the DOM before Readability runs so their text
     // can't bleed into the extracted article content
@@ -291,6 +311,12 @@ export function _extractWithReadability(html: string): string | null {
     doc.querySelectorAll("h1,nav,header").forEach((el: any) => el.remove()); // title from metadata; nav/header are site chrome
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.querySelectorAll(".video-holder").forEach((el: any) => el.remove()); // image/video embed wrappers (Sport5) — captions inside pollute article text
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll(".ex_list").forEach((el: any) => el.remove()); // sub-article navigation cards (Yad Vashem) — snippets from linked pages pollute body
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll(".messages").forEach((el: any) => el.remove()); // Drupal site-wide notices (upgrade banners, alerts)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll(".modal-body").forEach((el: any) => el.remove()); // Bootstrap modal dialogs (Drupal redirect notices, popups)
 
     const reader = new Readability(doc);
     const article = reader.parse();
