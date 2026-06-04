@@ -40,6 +40,7 @@ export function TranslationPanel() {
         isGuest={isGuest}
         urlWarning={hook.urlWarning}
         syncedParagraphs={hook.syncedParagraphs}
+        currentSource={hook.currentSource}
         setSourceText={hook.setSourceText}
         setUrlInput={hook.setUrlInput}
         setShowUrlInput={hook.setShowUrlInput}

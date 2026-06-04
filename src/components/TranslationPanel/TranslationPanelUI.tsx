@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Languages,
   BookPlus,
   Loader2,
   ArrowRightLeft,
   AlertTriangle,
+  ExternalLink,
 } from "lucide-react";
 import { SyncedParagraph, TranslationDirection } from "./translationPanelUtils";
 import { BibleInput } from "./BibleInput/BibleInput";
@@ -37,6 +39,7 @@ interface TranslationPanelUIProps {
   isGuest: boolean;
   urlWarning: string;
   syncedParagraphs: SyncedParagraph[] | null;
+  currentSource: string | null;
 
   // Setters
   setSourceText: (text: string) => void;
@@ -82,6 +85,7 @@ export function TranslationPanelUI({
   isGuest,
   urlWarning,
   syncedParagraphs,
+  currentSource,
   setSourceText,
   setUrlInput,
   setShowUrlInput,
@@ -105,6 +109,7 @@ export function TranslationPanelUI({
 }: TranslationPanelUIProps) {
   const [showTextInput, setShowTextInput] = useState(false);
   const isHebrewToEnglish = translationDirection === "hebrew-to-english";
+  const isUrlSource = !!currentSource && /^https?:\/\//i.test(currentSource);
 
   // Hidden file input is always rendered
   const fileInput = (
@@ -209,6 +214,30 @@ export function TranslationPanelUI({
           />
         )}
 
+        {isUrlSource && (
+          <div className="mb-2 text-sm text-gray-500 flex items-center gap-1 min-w-0">
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            <span className="shrink-0">Extracted from:</span>
+            <a
+              href={currentSource!}
+              target="_blank"
+              rel="noreferrer"
+              className="text-blue-600 hover:underline truncate"
+            >
+              {currentSource}
+            </a>
+          </div>
+        )}
+
+        {isUrlSource && (
+          <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-sm text-gray-600">
+              If the extracted content doesn't look right, please{" "}
+              <Link to="/contact" className="text-blue-600 hover:underline">contact us</Link>.
+            </p>
+          </div>
+        )}
+
         {urlWarning && (
           <div className="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-sm text-amber-800 flex items-center gap-2">
@@ -245,6 +274,15 @@ export function TranslationPanelUI({
             handleWordClick={handleWordClick}
           />
         </div>
+
+        {isUrlSource && (
+          <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <p className="text-sm text-gray-600">
+              If the extracted content doesn't look right, please{" "}
+              <Link to="/contact" className="text-blue-600 hover:underline">contact us</Link>.
+            </p>
+          </div>
+        )}
 
         {processingImage && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
