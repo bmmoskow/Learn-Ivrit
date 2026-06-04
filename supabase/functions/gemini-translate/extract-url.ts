@@ -301,10 +301,25 @@ export function _extractWithReadability(html: string): string | null {
   try {
     const { document } = parseHTML(html.replace(/<!--[\s\S]*?-->/g, ""));
 
-    // Remove elements from the DOM before Readability runs so their text
-    // can't bleed into the extracted article content
+    // Capture the article subtitle before any DOM removal.
+    // ynet wraps the subtitle in <div class="subTitleWrapper"><h2>…</h2></div> inside a
+    // container with role="header", which Readability penalises and excludes. We read it
+    // first so we can re-inject it if Readability drops it.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doc = document as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let articleSubtitle: string | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const subtitleEl: any = doc.querySelector(
+      '[class*="subTitleWrapper"] h2, [class*="subtitleWrapper"] h2, h2[class*="subTitle"], h2[class*="subtitle"]',
+    );
+    if (subtitleEl) {
+      const st = _decodeHtmlEntities(((subtitleEl as any).textContent || "").trim());
+      if (st.length > 10) articleSubtitle = st;
+    }
+
+    // Remove elements from the DOM before Readability runs so their text
+    // can't bleed into the extracted article content
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.querySelectorAll('[class*="paywall"],[id*="paywall"]').forEach((el: any) => el.remove());
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -317,6 +332,8 @@ export function _extractWithReadability(html: string): string | null {
     doc.querySelectorAll(".messages").forEach((el: any) => el.remove()); // Drupal site-wide notices (upgrade banners, alerts)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.querySelectorAll(".modal-body").forEach((el: any) => el.remove()); // Bootstrap modal dialogs (Drupal redirect notices, popups)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll('[class*="visible-False"]').forEach((el: any) => el.remove()); // ulpan-online app-level visibility flag — lesson-completion screens, hidden audio players
 
     const reader = new Readability(doc);
     const article = reader.parse();
@@ -366,6 +383,16 @@ export function _extractWithReadability(html: string): string | null {
       .map((p) => p.replace(/[ \t]*\n[ \t]*/g, "\n").replace(/\n{2,}/g, "\n").trim())
       .filter((p) => p.length > 0 && !/^\([^)\n]{1,59}\)$/.test(p))
       .join("\n\n");
+
+    // Prepend the captured subtitle if Readability excluded it (common on ynet where the
+    // subtitle lives inside a role="header" container that Readability scores negatively).
+    if (articleSubtitle) {
+      // Strip punctuation/spaces for comparison so minor encoding differences don't break it
+      const strip = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+      if (!strip(text).includes(strip(articleSubtitle.substring(0, 40)))) {
+        text = articleSubtitle + "\n\n" + text;
+      }
+    }
 
     return text || null;
   } catch {
@@ -460,19 +487,8 @@ export function _isDefinitePaywall(
 export function _buildContentWithPreamble(
   content: string,
   title: string,
-  description: string | undefined,
 ): string {
-  const preamble: string[] = [];
-  if (title) preamble.push(title);
-  if (description) {
-    // Strip all non-letter/digit characters before comparing — handles any quote or
-    // apostrophe character mismatch between og:description and Readability output.
-    const strip = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
-    if (!strip(content).includes(strip(description.substring(0, 60)))) {
-      preamble.push(description);
-    }
-  }
-  return preamble.length > 0 ? preamble.join("\n\n") + "\n\n" + content : content;
+  return title ? title + "\n\n" + content : content;
 }
 
 export function _detectPaywall(
@@ -808,7 +824,7 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   }
 
   if (content) {
-    content = _buildContentWithPreamble(content, title, description);
+    content = _buildContentWithPreamble(content, title);
     console.log("Final content length:", content.length);
   }
 

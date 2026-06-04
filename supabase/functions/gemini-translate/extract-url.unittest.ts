@@ -671,58 +671,20 @@ describe("_isDefinitePaywall", () => {
 describe("_buildContentWithPreamble", () => {
   const body = "גוף המאמר עם תוכן חשוב";
 
-  it("always places title first regardless of whether it appears in content", () => {
+  it("prepends title before content", () => {
+    const result = _buildContentWithPreamble(body, "כותרת הכתבה");
+    expect(result).toBe(`כותרת הכתבה\n\n${body}`);
+  });
+
+  it("returns content unchanged when title is empty", () => {
+    const result = _buildContentWithPreamble(body, "");
+    expect(result).toBe(body);
+  });
+
+  it("places title first even when its text already appears in content", () => {
     const content = `כותרת הכתבה\n\n${body}`;
-    const result = _buildContentWithPreamble(content, "כותרת הכתבה", undefined);
+    const result = _buildContentWithPreamble(content, "כותרת הכתבה");
     expect(result.startsWith("כותרת הכתבה")).toBe(true);
-  });
-
-  it("prepends description after title when description is not in content", () => {
-    const result = _buildContentWithPreamble(body, "כותרת", "תיאור קצר של הכתבה");
-    const lines = result.split("\n\n");
-    expect(lines[0]).toBe("כותרת");
-    expect(lines[1]).toBe("תיאור קצר של הכתבה");
-    expect(result).toContain(body);
-  });
-
-  it("does not prepend description when it already appears in content", () => {
-    const description = "תיאור שכבר קיים בגוף הכתבה ומופיע בהתחלה";
-    const content = `${description}\n\n${body}`;
-    const result = _buildContentWithPreamble(content, "כותרת", description);
-    const occurrences = result.split(description).length - 1;
-    expect(occurrences).toBe(1);
-  });
-
-  it("returns content unchanged when title is empty and description is in content", () => {
-    const description = "תיאור שכבר קיים";
-    const content = `${description}\n\n${body}`;
-    const result = _buildContentWithPreamble(content, "", description);
-    expect(result).toBe(content);
-  });
-
-  it("handles undefined description without error", () => {
-    const result = _buildContentWithPreamble(body, "כותרת", undefined);
-    expect(result).toBe(`כותרת\n\n${body}`);
-  });
-
-  it("does not prepend description when curly-quote entities match article body (Yad Vashem Drupal og:description regression)", () => {
-    // Drupal encodes og:description with &amp;ldquo;/&amp;rdquo;; after _decodeHtmlEntities those
-    // become actual U+201C/U+201D characters — same as in the article body. The strip() comparison
-    // must recognise them as matching so the description is not prepended a second time.
-    const description = "“המחנות” היו מקום סבל ויסורים";
-    const body = "“המחנות” היו מקום סבל ויסורים\n\nפסקה נוספת עם מידע חשוב לגבי הנושא";
-    const result = _buildContentWithPreamble(body, "כותרת", description);
-    const occurrences = result.split("המחנות").length - 1;
-    expect(occurrences).toBe(1);
-  });
-
-  it("deduplicates description when apostrophe characters differ (Sport5 ז'ילואז regression)", () => {
-    // og:description uses curly apostrophe (U+2019); h2 in HTML uses plain apostrophe (U+0027)
-    const descriptionWithCurly = "הישראלי בישל את השער הראשון של סן ז’ילואז בגמר הגביע";
-    const contentWithPlain     = "הישראלי בישל את השער הראשון של סן ז'ילואז בגמר הגביע\n\n" + body;
-    const result = _buildContentWithPreamble(contentWithPlain, "כותרת", descriptionWithCurly);
-    const occurrences = result.split("ישראלי").length - 1;
-    expect(occurrences).toBe(1);
   });
 });
 
@@ -1332,6 +1294,75 @@ describe("_extractWithReadability", () => {
     expect(result).not.toBeNull();
     expect(result).not.toContain("הדף הזה עבר לכתובת חדשה");
     expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("removes elements with 'visible-False' in class before extraction (ulpan-online hidden lesson screens)", () => {
+    // ulpan-online marks non-visible elements with class="row visible-False" (lesson-completion
+    // screens, hidden audio players). Readability ignores CSS so extracts them without removal.
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+        <div class="row visible-False">
+          <h2>יופי! התקדמת! סיימת את השיעור</h2>
+          <p>תוכן שאסור שיופיע כי הוא מוסתר מהמשתמש</p>
+        </div>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).not.toContain("יופי! התקדמת");
+    expect(result).not.toContain("תוכן שאסור שיופיע");
+    expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("prepends subtitle captured from subTitleWrapper h2 when Readability excludes it (ynet regression)", () => {
+    // ynet puts the subtitle in <div class="subTitleWrapper"><h2> inside a container that
+    // Readability penalises (role="header" / "header" in class), so the subtitle disappears
+    // from extracted output. The fix captures it BEFORE any DOM removal and re-injects it.
+    //
+    // Test mechanism: subtitle is placed inside <header> (which our code removes before
+    // Readability runs). This cleanly exercises the capture-then-re-inject path: subtitle
+    // is read from the DOM, the <header> is removed, Readability only sees the article
+    // paragraphs, and the fix prepends the captured subtitle.
+    const subtitle = "נתניהו הורה לתקוף את המטרות בלבנון לאחר הסלמה";
+    const html = `
+      <html lang="he"><head><title>כתבה בדיקה</title></head><body>
+        <header>
+          <div class="subTitleWrapper"><h2><span class="subTitle">${subtitle}</span></h2></div>
+        </header>
+        <article>
+          <p>פסקה ראשונה של הכתבה עם תוכן מפורט ומעניין בנושא הלחימה בצפון הארץ.</p>
+          <p>פסקה שנייה של הכתבה מפרטת את ההחלטות שהתקבלו בדרג המדיני ואת השלכותיהן.</p>
+          <p>פסקה שלישית של הכתבה מסכמת את ההתפתחויות האחרונות ומנתחת את המשמעויות.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).toContain(subtitle);
+    expect(result).toContain("פסקה ראשונה");
+  });
+
+  it("does not duplicate subtitle when Readability already includes it", () => {
+    // When the subtitle container does NOT have role=header (or a penalising class),
+    // Readability extracts it normally. The fix must not double-prepend it.
+    const subtitle = "תת-כותרת שמופיעה בגוף המאמר";
+    const html = `
+      <html lang="he"><body>
+        <article>
+          <div class="subTitleWrapper"><h2>${subtitle}</h2></div>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    // Count occurrences — must appear exactly once
+    const occurrences = (result!.match(new RegExp(subtitle.substring(0, 15), "g")) || []).length;
+    expect(occurrences).toBe(1);
   });
 
   it("strips \\r characters so \\r\\n\\r\\n between paragraphs does not create blank paragraph slots", () => {
