@@ -474,12 +474,18 @@ export function _selectBestContent(
   return readabilityContent || articleBodyContent || "";
 }
 
+// Strip <script> elements before checking class/id attributes for paywall indicators.
+// Prevents false positives from analytics tracking scripts like id="ga4paywall" (ynet).
+function _stripScripts(html: string): string {
+  return html.replace(/<script\b[^>]*(?:\/\s*>|>[\s\S]*?<\/script\s*>)/gi, "");
+}
+
 export function _isDefinitePaywall(
   html: string,
   isAccessibleForFree?: string | boolean,
 ): boolean {
   if (isAccessibleForFree === "False" || isAccessibleForFree === false) return true;
-  if (/(?:class|id)="[^"]*paywall[^"]*"/i.test(html)) return true;
+  if (/(?:class|id)="[^"]*paywall[^"]*"/i.test(_stripScripts(html))) return true;
   return DEFINITIVE_PAYWALL_MARKERS.some((marker) => html.includes(marker));
 }
 
@@ -497,11 +503,15 @@ export function _detectPaywall(
 ): boolean {
   // Schema.org standard: isAccessibleForFree = "False" (string) or false (boolean)
   if (isAccessibleForFree === "False" || isAccessibleForFree === false) return true;
-  // Common HTML pattern: paywall element identified by class or id attribute
-  if (html && /(?:class|id)="[^"]*paywall[^"]*"/i.test(html)) return true;
-  // Text-marker fallback: paywall phrases in extracted content or raw HTML
-  // Check HTML too — the paywall UI is often stripped during extraction
-  return PAYWALL_MARKERS.some((marker) => text.includes(marker) || (html || "").includes(marker));
+  // Common HTML pattern: paywall element identified by class or id attribute.
+  // Strip <script> elements first — analytics scripts like id="ga4paywall" (ynet) are false positives.
+  if (html && /(?:class|id)="[^"]*paywall[^"]*"/i.test(_stripScripts(html))) return true;
+  // Raw HTML: only check unambiguous definitive markers. Checking all PAYWALL_MARKERS
+  // against raw HTML causes false positives — e.g. "מנויים" appears in ynet's free-article
+  // navigation ("כתבות למנויים") and triggers a spurious paywall warning.
+  if (html && DEFINITIVE_PAYWALL_MARKERS.some((marker) => html.includes(marker))) return true;
+  // Extracted text has had nav/sidebar stripped by Readability, so all markers are reliable here.
+  return PAYWALL_MARKERS.some((marker) => text.includes(marker));
 }
 
 export function _detectSpaShell(html: string): "spa" | "sparse" | null {

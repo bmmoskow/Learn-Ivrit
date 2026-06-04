@@ -662,6 +662,12 @@ describe("_isDefinitePaywall", () => {
   it("returns false for isAccessibleForFree boolean true", () => {
     expect(_isDefinitePaywall("<html></html>", true)).toBe(false);
   });
+
+  it("does not trigger on paywall id/class inside a <script> element (ynet ga4paywall regression)", () => {
+    // ynet includes <script id="ga4paywall" src="...ga4_ynet_paywall..."> for analytics.
+    // This must not be mistaken for a DOM paywall gate.
+    expect(_isDefinitePaywall('<script id="ga4paywall" src="https://example.com/ga4_ynet_paywall.js"></script><article><p>כתבה פתוחה</p></article>')).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -835,8 +841,18 @@ describe("_detectPaywall", () => {
     expect(_detectPaywall("", '<div class="subscription-box">הירשמו לקריאה של כל הכתבות</div>')).toBe(true);
   });
 
-  it("detects מנויים marker in raw HTML even when not in extracted text", () => {
-    expect(_detectPaywall("רק שתי פסקאות חופשיות", '<div>תוכן זמין למנויים בלבד</div>')).toBe(true);
+  it("does not trigger on paywall id/class inside a <script> element (ynet ga4paywall regression)", () => {
+    expect(_detectPaywall("", '<script id="ga4paywall" src="https://example.com/ga4_ynet_paywall.js"></script><article><p>כתבה פתוחה</p></article>')).toBe(false);
+  });
+
+  it("does not trigger on מנויים in raw HTML only — common in free-article nav (ynet regression)", () => {
+    // "מנויים" appears in ynet free-article sidebar/nav ("כתבות למנויים") and must not
+    // trigger a false paywall warning. Only definitive markers are checked against raw HTML.
+    expect(_detectPaywall("רק שתי פסקאות חופשיות", '<div>תוכן זמין למנויים בלבד</div>')).toBe(false);
+  });
+
+  it("still detects מנויים marker when present in extracted text", () => {
+    expect(_detectPaywall("התוכן הזה זמין למנויים בלבד")).toBe(true);
   });
 });
 
