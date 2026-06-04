@@ -307,14 +307,13 @@ export function _extractWithReadability(html: string): string | null {
     // first so we can re-inject it if Readability drops it.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const doc = document as any;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let articleSubtitle: string | null = null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const subtitleEl: any = doc.querySelector(
       '[class*="subTitleWrapper"] h2, [class*="subtitleWrapper"] h2, h2[class*="subTitle"], h2[class*="subtitle"]',
     );
     if (subtitleEl) {
-      const st = _decodeHtmlEntities(((subtitleEl as any).textContent || "").trim());
+      const st = _decodeHtmlEntities((subtitleEl.textContent || "").trim());
       if (st.length > 10) articleSubtitle = st;
     }
 
@@ -724,13 +723,9 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   const ogTitle = html.match(
     /<meta[^>]*property=["']og:title["'][^>]*content=["']([^"']+)["']/i,
   )?.[1];
-  const ogDesc = html.match(
-    /<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i,
-  )?.[1];
   const htmlTitle = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
 
   let title = _decodeHtmlEntities(ogTitle || htmlTitle || "Untitled");
-  let description: string | undefined = ogDesc ? _decodeHtmlEntities(ogDesc) : undefined;
   let content = "";
   let paywallDetected = false;
 
@@ -747,7 +742,6 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     const recipeBlock = jsonLdBlocks.find((b) => blockHasType(b, RECIPE_TYPES));
     if (recipeBlock) {
       title = _decodeHtmlEntities((recipeBlock.name as string) || "") || title;
-      description = _decodeHtmlEntities((recipeBlock.description as string) || "") || description;
       content = _extractRecipeBody(recipeBlock);
     }
   }
@@ -794,7 +788,6 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
   else {
     const articleData = _extractArticleFromJsonLd(jsonLdBlocks);
     if (articleData.title) title = _decodeHtmlEntities(articleData.title);
-    if (articleData.description) description = _decodeHtmlEntities(articleData.description);
 
     // In-page <h1> is the most accurate "on screen" title — prefer it over metadata
     const h1Title = _extractTitleFromHtml(html);
