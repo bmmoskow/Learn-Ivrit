@@ -1365,6 +1365,48 @@ describe("_extractWithReadability", () => {
     expect(occurrences).toBe(1);
   });
 
+  it("extracts intro-box content and ignores footer fine-print (kolzchut regression)", () => {
+    // kolzchut.org.il: the page has only 2 <p> tags — one real article paragraph (410 chars)
+    // inside div.intro-box-content and one legal disclaimer in <footer> (730 chars).
+    // Without footer removal, Readability's retry cascade strips class weights on Pass 3
+    // and the footer's longer <p> wins on raw character count. Removing <footer> first
+    // fixes the cascade so the intro-box content is returned.
+    const realContent = "שכירים? כאן המקום לקבל תשובות לשאלות כמו: כמה ימי מחלה עומדים לזכותי? האם מגיע לי פיצויי פיטורין? ומה עוד שכירים צריכים לדעת על זכויותיהם?";
+    const fineprint = "האתר פונה לנשים וגברים כאחד. השימוש בלשון זכר נעשה מטעמי נוחות בלבד. המידע באתר הוא מידע כללי ואינו מידע מחייב ואינו תחליף לייעוץ מקצועי.";
+    const html = `
+      <html lang="he"><head><title>תעסוקה וזכויות עובדים</title></head>
+      <body>
+        <main id="content">
+          <article id="bodyContent">
+            <div id="mw-content-text">
+              <div class="mw-parser-output">
+                <div class="article-intro clearfix">
+                  <div class="article-summary intro-box-wrapper">
+                    <div class="intro-box">
+                      <div class="intro-box-content">
+                        <p>${realContent}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <h2>מהלך תקופת העבודה</h2><ul><li><a href="/he/x">ימי מחלה</a></li><li><a href="/he/y">חופשה שנתית</a></li></ul>
+                <h2>זכויות לפי אוכלוסיות</h2><ul><li><a href="/he/z">עובדים זרים</a></li></ul>
+              </div>
+            </div>
+          </article>
+        </main>
+        <footer class="footer layout-footer">
+          <div class="footer-bottom">
+            <section id="disclaimers"><p>${fineprint}</p></section>
+          </div>
+        </footer>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).toContain("שכירים");
+    expect(result).not.toContain("לשון זכר");
+  });
+
   it("strips \\r characters so \\r\\n\\r\\n between paragraphs does not create blank paragraph slots", () => {
     // Source HTML with Windows-style CRLF line endings between elements.
     // Without \r stripping, \r\n\r\n produces non-consecutive \n chars that

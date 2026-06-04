@@ -322,7 +322,7 @@ export function _extractWithReadability(html: string): string | null {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.querySelectorAll('[class*="paywall"],[id*="paywall"]').forEach((el: any) => el.remove());
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    doc.querySelectorAll("h1,nav,header").forEach((el: any) => el.remove()); // title from metadata; nav/header are site chrome
+    doc.querySelectorAll("h1,nav,header,footer").forEach((el: any) => el.remove()); // title from metadata; nav/header/footer are site chrome
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     doc.querySelectorAll(".video-holder").forEach((el: any) => el.remove()); // image/video embed wrappers (Sport5) — captions inside pollute article text
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
