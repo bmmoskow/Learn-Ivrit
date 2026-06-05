@@ -484,7 +484,7 @@ export function _isDefinitePaywall(
   html: string,
   isAccessibleForFree?: string | boolean,
 ): boolean {
-  if (isAccessibleForFree === "False" || isAccessibleForFree === false) return true;
+  if (isAccessibleForFree === false || (typeof isAccessibleForFree === "string" && isAccessibleForFree.toLowerCase() === "false")) return true;
   if (/(?:class|id)="[^"]*paywall[^"]*"/i.test(_stripScripts(html))) return true;
   return DEFINITIVE_PAYWALL_MARKERS.some((marker) => html.includes(marker));
 }
@@ -501,8 +501,8 @@ export function _detectPaywall(
   html?: string,
   isAccessibleForFree?: string | boolean,
 ): boolean {
-  // Schema.org standard: isAccessibleForFree = "False" (string) or false (boolean)
-  if (isAccessibleForFree === "False" || isAccessibleForFree === false) return true;
+  // Schema.org standard: isAccessibleForFree = false (boolean) or any casing of "false" (string)
+  if (isAccessibleForFree === false || (typeof isAccessibleForFree === "string" && isAccessibleForFree.toLowerCase() === "false")) return true;
   // Common HTML pattern: paywall element identified by class or id attribute.
   // Strip <script> elements first — analytics scripts like id="ga4paywall" (ynet) are false positives.
   if (html && /(?:class|id)="[^"]*paywall[^"]*"/i.test(_stripScripts(html))) return true;
@@ -818,6 +818,13 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
       console.log("Quality gate failed for", contentType, "content, length:", content.length);
       content = "";
     }
+  }
+
+  // URL-pattern paywall signals: some publishers encode subscription status in the URL.
+  // Haaretz premium articles always contain /.premium/ in the path.
+  if (/\/\.premium\//i.test(urlToFetch)) {
+    paywallDetected = true;
+    console.log("Paywall detected via URL pattern (/.premium/)");
   }
 
   // Paywall detection: sites return HTTP 200 with truncated preview + subscription prompt

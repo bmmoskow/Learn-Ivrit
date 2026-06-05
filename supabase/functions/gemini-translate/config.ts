@@ -23,6 +23,8 @@ export const DEFINITIVE_PAYWALL_MARKERS = [
   "לקריאת הכתבה המלאה",
   "התחברו כמנויים",
   "הירשמו לקריאה",
+  "מוגבלת למנויים",
+  "מוגבל למנויים",
 ];
 
 export const ARTICLE_TYPES = [

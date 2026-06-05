@@ -627,8 +627,24 @@ describe("_isDefinitePaywall", () => {
     expect(_isDefinitePaywall("<html></html>", "False")).toBe(true);
   });
 
+  it("returns true for Schema.org isAccessibleForFree string 'false' (lowercase)", () => {
+    expect(_isDefinitePaywall("<html></html>", "false")).toBe(true);
+  });
+
+  it("returns true for Schema.org isAccessibleForFree string 'FALSE' (uppercase)", () => {
+    expect(_isDefinitePaywall("<html></html>", "FALSE")).toBe(true);
+  });
+
   it("returns true for Schema.org isAccessibleForFree boolean false", () => {
     expect(_isDefinitePaywall("<html></html>", false)).toBe(true);
+  });
+
+  it("returns true when מוגבלת למנויים appears in raw HTML (Haaretz pattern)", () => {
+    expect(_isDefinitePaywall('<p>כתבה זו מוגבלת למנויים</p>')).toBe(true);
+  });
+
+  it("returns true when מוגבל למנויים appears in raw HTML", () => {
+    expect(_isDefinitePaywall('<span>התוכן מוגבל למנויים בלבד</span>')).toBe(true);
   });
 
   it("returns true for HTML with paywall class attribute", () => {
@@ -799,6 +815,14 @@ describe("_detectPaywall", () => {
     expect(_detectPaywall("", undefined, "False")).toBe(true);
   });
 
+  it("returns true for isAccessibleForFree string 'false' (lowercase)", () => {
+    expect(_detectPaywall("", undefined, "false")).toBe(true);
+  });
+
+  it("returns true for isAccessibleForFree string 'FALSE' (uppercase)", () => {
+    expect(_detectPaywall("", undefined, "FALSE")).toBe(true);
+  });
+
   it("returns true for isAccessibleForFree boolean false", () => {
     expect(_detectPaywall("", undefined, false)).toBe(true);
   });
@@ -813,6 +837,14 @@ describe("_detectPaywall", () => {
 
   it("returns true via Schema.org signal even when extracted text has no markers", () => {
     expect(_detectPaywall("כתבה רגילה ללא מילות מפתח", undefined, "False")).toBe(true);
+  });
+
+  it("detects מוגבלת למנויים in raw HTML (Haaretz pattern)", () => {
+    expect(_detectPaywall("", '<p>כתבה זו מוגבלת למנויים</p>')).toBe(true);
+  });
+
+  it("detects מוגבל למנויים in raw HTML", () => {
+    expect(_detectPaywall("", '<span>התוכן מוגבל למנויים בלבד</span>')).toBe(true);
   });
 
   // HTML class/id attribute signal
