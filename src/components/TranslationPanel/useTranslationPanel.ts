@@ -219,7 +219,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       const content = await requestDeduplicator.dedupe(requestKey, async () => {
         let content = null;
 
-        if (!isGuest && user) {
+        if (!isGuest && user && !APP_CONFIG.urlCacheDisabled) {
           const { data: cachedData } = await supabase
             .from("sefaria_cache")
             .select("content, access_count")
@@ -278,7 +278,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
             throw new Error("No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.");
           }
 
-          if (!isGuest && user) {
+          if (!isGuest && user && !detectedPaywall) {
             supabase
               .from("sefaria_cache")
               .insert({

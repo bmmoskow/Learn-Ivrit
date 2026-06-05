@@ -10,9 +10,20 @@ const { mockNotifyNewTransaction, mockClearLastTransaction } = vi.hoisted(() => 
   mockClearLastTransaction: vi.fn(),
 }));
 
+const mockAuthState = vi.hoisted(() => ({
+  user: null as { id: string; email?: string; [key: string]: unknown } | null,
+  isGuest: false,
+}));
+
 vi.mock("../Admin/useLastTransaction", () => ({
   notifyNewTransaction: mockNotifyNewTransaction,
   clearLastTransaction: mockClearLastTransaction,
+}));
+
+vi.mock("../../contexts/AuthContext/AuthContext", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  AuthProvider: ({ children }: any) => children,
+  useAuth: () => ({ user: mockAuthState.user, isGuest: mockAuthState.isGuest, loading: false }),
 }));
 
 // Mock the Supabase client
@@ -85,6 +96,8 @@ describe("useTranslationPanel", () => {
     vi.clearAllMocks();
     localStorage.clear();
     requestDeduplicator.clear();
+    mockAuthState.user = null;
+    mockAuthState.isGuest = false;
     mockGetSession.mockResolvedValue({ data: { session: null }, error: null });
     mockOnAuthStateChange.mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn(), id: "test-sub", callback: vi.fn() } },
@@ -1021,6 +1034,106 @@ describe("useTranslationPanel", () => {
   });
 
   describe("loadFromUrl success", () => {
+    it("does not write to sefaria_cache when paywallDetected is true", async () => {
+      mockAuthState.user = { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" };
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      const sefariaInsertSpy = vi.fn().mockResolvedValue({ error: null });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const selectChainA: any = {};
+      selectChainA.eq = vi.fn().mockReturnValue(selectChainA);
+      selectChainA.gte = vi.fn().mockReturnValue(selectChainA);
+      selectChainA.order = vi.fn().mockResolvedValue({ data: [], error: null });
+      selectChainA.maybeSingle = vi.fn().mockResolvedValue({ data: null });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(supabase.from).mockImplementation((table: string): any => ({
+        select: vi.fn().mockReturnValue(selectChainA),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+        insert: table === "sefaria_cache" ? sefariaInsertSpy : vi.fn().mockResolvedValue({ error: null }),
+      }));
+
+      mockFetch.mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/gemini-translate/extract-url")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: "תוכן עם חסם", paywallDetected: true }) } as unknown as Response);
+        }
+        if (url.includes("/gemini-translate/translate")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ translation: "Paywalled content" }) } as unknown as Response);
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+      act(() => { result.current.setUrlInput("https://example.com/paywalled"); });
+      await act(async () => { await result.current.loadFromUrl(); });
+
+      expect(sefariaInsertSpy).not.toHaveBeenCalled();
+      expect(result.current.urlWarning).toContain("publicly accessible");
+    });
+
+    it("writes to sefaria_cache when paywallDetected is false", async () => {
+      mockAuthState.user = { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" };
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            access_token: "test-token",
+            refresh_token: "test-refresh",
+            expires_in: 3600,
+            token_type: "bearer",
+            user: { id: "test-user", email: "test@test.com", aud: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "" },
+          },
+        },
+        error: null,
+      });
+
+      const sefariaInsertSpy = vi.fn().mockResolvedValue({ error: null });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const selectChainB: any = {};
+      selectChainB.eq = vi.fn().mockReturnValue(selectChainB);
+      selectChainB.gte = vi.fn().mockReturnValue(selectChainB);
+      selectChainB.order = vi.fn().mockResolvedValue({ data: [], error: null });
+      selectChainB.maybeSingle = vi.fn().mockResolvedValue({ data: null });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(supabase.from).mockImplementation((table: string): any => ({
+        select: vi.fn().mockReturnValue(selectChainB),
+        update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+        insert: table === "sefaria_cache" ? sefariaInsertSpy : vi.fn().mockResolvedValue({ error: null }),
+      }));
+
+      mockFetch.mockImplementation((input) => {
+        const url = String(input);
+        if (url.includes("/gemini-translate/extract-url")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ content: "תוכן חופשי", paywallDetected: false }) } as unknown as Response);
+        }
+        if (url.includes("/gemini-translate/translate")) {
+          return Promise.resolve({ ok: true, json: () => Promise.resolve({ translation: "Free content" }) } as unknown as Response);
+        }
+        throw new Error(`Unexpected fetch URL: ${url}`);
+      });
+
+      const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+      act(() => { result.current.setUrlInput("https://example.com/free-article"); });
+      await act(async () => { await result.current.loadFromUrl(); });
+
+      // Verify the non-paywall path was taken (urlWarning cleared)
+      expect(result.current.urlWarning).toBe("");
+      // Verify sefaria_cache insert was called — use waitFor since it is fire-and-forget
+      await vi.waitFor(() => {
+        expect(sefariaInsertSpy).toHaveBeenCalledWith(expect.objectContaining({ reference: "https://example.com/free-article", content: "תוכן חופשי" }));
+      });
+    });
+
     it("loads content and updates state on success", async () => {
       mockGetSession.mockResolvedValue({
         data: {
