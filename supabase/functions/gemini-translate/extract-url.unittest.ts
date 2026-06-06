@@ -1517,6 +1517,38 @@ describe("_extractWithReadability", () => {
     expect(allParagraphs.every((p) => p.trim().length > 0 || p.length === 0)).toBe(true);
     expect(paragraphs.length).toBe(3);
   });
+
+  it("extracts article body from #tmp_body display:none (Yad Vashem Drupal CMS pattern)", () => {
+    // Yad Vashem's Drupal CMS stages the full article body in <div id="tmp_body" style="display:none">.
+    // JavaScript transplants it into the visible DOM at runtime. Readability respects display:none
+    // and ignores the element entirely, so only the short abstract would be extracted without this fix.
+    const abstractText = "תיאור קצר של השואה לצורך תקציר המאמר.";
+    const body1 = "השואה היא הרצח של כשישה מיליון יהודים על ידי הנאצים ועוזריהם בין השנים 1941 ל-1945.";
+    const body2 = "רדיפת היהודים על ידי הנאצים החלה עם עלייתו של היטלר לשלטון בינואר 1933 ונמשכה עד סוף המלחמה.";
+    const body3 = "בתוך שבעה חודשים בלבד, ממרץ עד ספטמבר 1942, נרצחו כשני מיליון יהודים ברחבי אירופה הכבושה.";
+    const html = `
+      <html lang="he"><body>
+        <article id="node-7441" class="node node-yv-basic-article clearfix row">
+          <div class="yv_abstract"><p dir="RTL">${abstractText}</p></div>
+        </article>
+        <div id="tmp_body" style="display:none;">
+          <div class="field field-name-field-yv-body">
+            <div class="field-items">
+              <div class="field-item even">
+                <p>${body1}</p>
+                <p>${body2}</p>
+                <p>${body3}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </body></html>`;
+    const result = _extractWithReadability(html);
+    expect(result).not.toBeNull();
+    expect(result).toContain("שישה מיליון יהודים");
+    expect(result).toContain("היטלר לשלטון");
+    expect(result).toContain("שני מיליון יהודים");
+  });
 });
 
 // ---------------------------------------------------------------------------

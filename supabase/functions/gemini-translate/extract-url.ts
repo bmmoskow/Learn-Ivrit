@@ -317,6 +317,14 @@ export function _extractWithReadability(html: string): string | null {
       if (st.length > 10) articleSubtitle = st;
     }
 
+    // Yad Vashem: the Drupal CMS stages the article body in #tmp_body with
+    // display:none, then transplants it into the visible DOM via JavaScript.
+    // Readability respects display:none and skips the element entirely, so we
+    // unhide it before Readability runs to expose the full article content.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tmpBodyEl: any = doc.querySelector("#tmp_body");
+    if (tmpBodyEl) tmpBodyEl.removeAttribute("style");
+
     // Remove elements from the DOM before Readability runs so their text
     // can't bleed into the extracted article content
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
