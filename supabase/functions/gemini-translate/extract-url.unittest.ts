@@ -21,6 +21,7 @@ import {
   _extractTextFromHtml,
   _isTlsError,
   _parseCertBundle,
+  _injectSubtitleFromDescription,
 } from "./extract-url.ts";
 
 // ---------------------------------------------------------------------------
@@ -683,6 +684,48 @@ describe("_isDefinitePaywall", () => {
     // ynet includes <script id="ga4paywall" src="...ga4_ynet_paywall..."> for analytics.
     // This must not be mistaken for a DOM paywall gate.
     expect(_isDefinitePaywall('<script id="ga4paywall" src="https://example.com/ga4_ynet_paywall.js"></script><article><p>כתבה פתוחה</p></article>')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _injectSubtitleFromDescription
+// ---------------------------------------------------------------------------
+
+describe("_injectSubtitleFromDescription", () => {
+  const body = "זוהי פסקה ראשונה של הכתבה.\n\nזוהי פסקה שנייה של הכתבה.";
+
+  it("prepends description as subtitle when not already in content (Globes pattern)", () => {
+    const description = "תת-כותרת המסבירה את הכתבה בקצרה";
+    const result = _injectSubtitleFromDescription(body, description);
+    expect(result).toBe(`${description}\n\n${body}`);
+  });
+
+  it("does not prepend when content already contains the description text", () => {
+    const description = "זוהי פסקה ראשונה של הכתבה";
+    const result = _injectSubtitleFromDescription(body, description);
+    expect(result).toBe(body);
+  });
+
+  it("does not prepend when description is too short (≤10 chars)", () => {
+    const result = _injectSubtitleFromDescription(body, "קצר");
+    expect(result).toBe(body);
+  });
+
+  it("returns content unchanged when description is undefined", () => {
+    expect(_injectSubtitleFromDescription(body, undefined)).toBe(body);
+  });
+
+  it("returns content unchanged when content is empty", () => {
+    expect(_injectSubtitleFromDescription("", "תת-כותרת חשובה")).toBe("");
+  });
+
+  it("prepends when description starts like content but its first 40 chars extend into unique text", () => {
+    // Body starts with "זוהי פסקה ראשונה של הכתבה." but the description adds
+    // "עם עוד מילים נוספות" — the extra words push the 40-char window beyond what is
+    // in the body, so the description IS treated as a subtitle and prepended.
+    const description = "זוהי פסקה ראשונה של הכתבה עם עוד מילים נוספות";
+    const result = _injectSubtitleFromDescription(body, description);
+    expect(result).toBe(`${description}\n\n${body}`);
   });
 });
 

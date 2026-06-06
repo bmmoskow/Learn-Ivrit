@@ -489,6 +489,18 @@ export function _isDefinitePaywall(
   return DEFINITIVE_PAYWALL_MARKERS.some((marker) => html.includes(marker));
 }
 
+export function _injectSubtitleFromDescription(
+  content: string,
+  description: string | undefined,
+): string {
+  if (!description || !content) return content;
+  const subtitle = _decodeHtmlEntities(description).trim();
+  if (subtitle.length <= 10) return content;
+  const strip = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, "").toLowerCase();
+  if (strip(content).includes(strip(subtitle.substring(0, 40)))) return content;
+  return subtitle + "\n\n" + content;
+}
+
 export function _buildContentWithPreamble(
   content: string,
   title: string,
@@ -810,6 +822,15 @@ export async function handleExtractUrl(req: Request): Promise<Response> {
     const readabilityCandidate = _extractWithReadability(html);
     content = _selectBestContent(readabilityCandidate, articleBodyCandidate, contentType);
     if (content) console.log("Content selected, length:", content.length);
+
+    // Inject subtitle from JSON-LD description if Readability didn't capture it.
+    // Some publishers (e.g. Globes) place the article deck/sub-headline inside a
+    // <header> element that Readability discards, but always include it in JSON-LD description.
+    const withSubtitle = _injectSubtitleFromDescription(content, articleData.description);
+    if (withSubtitle !== content) {
+      console.log("Subtitle injected from JSON-LD description");
+      content = withSubtitle;
+    }
   }
 
   // Quality gate for structured non-article types (recipe, job, faq, video)
