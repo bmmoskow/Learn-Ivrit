@@ -51,6 +51,7 @@ export interface UseTranslationPanelReturn {
   showBookmarkManager: boolean;
   showSaveBookmark: boolean;
   currentSource: string | null;
+  urlWarning: string;
   fileInputRef: React.RefObject<HTMLInputElement>;
   syncedParagraphs: SyncedParagraph[] | null;
 
@@ -105,6 +106,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
   const [showBookmarkManager, setShowBookmarkManager] = useState(false);
   const [showSaveBookmark, setShowSaveBookmark] = useState(false);
   const [currentSource, setCurrentSource] = useState<string | null>(null);
+  const [urlWarning, setUrlWarning] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Computed: derive Hebrew/English based on direction
@@ -212,11 +214,12 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     try {
       const url = normalizedUrl;
       const requestKey = createRequestKey("load-url", { url });
+      let detectedPaywall = false;
 
       const content = await requestDeduplicator.dedupe(requestKey, async () => {
         let content = null;
 
-        if (!isGuest && user) {
+        if (!isGuest && user && !APP_CONFIG.urlCacheDisabled) {
           const { data: cachedData } = await supabase
             .from("sefaria_cache")
             .select("content, access_count")
@@ -269,12 +272,13 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
 
           const data = await response.json();
           content = data.content;
+          if (data.paywallDetected) detectedPaywall = true;
 
           if (!content || (typeof content === 'string' && content.trim().length === 0)) {
             throw new Error("No text content could be extracted from this URL. The page may be empty, blocked, or require JavaScript to load.");
           }
 
-          if (!isGuest && user) {
+          if (!isGuest && user && !detectedPaywall) {
             supabase
               .from("sefaria_cache")
               .insert({
@@ -299,6 +303,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
       console.log("Hebrew text loaded, length:", extractedText.length);
 
       importHebrewContent(extractedText, { source: url });
+      setUrlWarning(detectedPaywall ? "Only the publicly accessible portion of this article was extracted. If you have full access, try pasting the article text manually." : "");
       setShowUrlInput(false);
       setUrlInput("");
     } catch (err) {
@@ -752,6 +757,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     setBibleLoaded(false);
     setCurrentBibleRef(null);
     setCurrentSource(null);
+    setUrlWarning("");
   };
 
   const triggerFileInput = () => {
@@ -784,6 +790,7 @@ export function useTranslationPanel(): UseTranslationPanelReturn {
     showBookmarkManager,
     showSaveBookmark,
     currentSource,
+    urlWarning,
     fileInputRef,
     syncedParagraphs,
 
