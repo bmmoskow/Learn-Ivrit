@@ -2,6 +2,11 @@ import "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
 
+// Minimal Deno shim so Supabase Edge Function code can run under Vitest/Node.
+// Deno.env.get() returns undefined, so config constants fall through to their defaults.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).Deno = { env: { get: () => undefined } };
+
 // Mock environment variables
 import.meta.env.VITE_SUPABASE_URL = "https://test.supabase.co";
 import.meta.env.VITE_SUPABASE_ANON_KEY = "test-anon-key";

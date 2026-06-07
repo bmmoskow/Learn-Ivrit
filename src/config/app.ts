@@ -7,4 +7,6 @@ export const APP_CONFIG = {
   translationHourlyLimit: 30,
   /** Per-article daily rate limit for translations */
   translationDailyLimit: 100,
+  /** Set to true to skip the sefaria_cache lookup and always re-fetch from the edge function */
+  urlCacheDisabled: false,
 };
