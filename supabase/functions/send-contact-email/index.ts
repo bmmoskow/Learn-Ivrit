@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { APP_NAME, RESEND_API_URL, RESEND_FROM_DEFAULT } from "../_shared/resend.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,17 +108,17 @@ ${submission.message}
 Submission ID: ${submission.id}
     `;
 
-    const resendResponse = await fetch("https://api.resend.com/emails", {
+    const resendResponse = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "TorahTutor <onboarding@resend.dev>",
+        from: RESEND_FROM_DEFAULT,
         to: [adminEmail],
         reply_to: submission.email,
-        subject: `[TorahTutor ${messageTypeLabels[submission.message_type]}] ${submission.name}`,
+        subject: `[${APP_NAME} ${messageTypeLabels[submission.message_type]}] ${submission.name}`,
         html: emailHtml,
         text: emailText,
       }),

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { TranslationPanelUI } from "./TranslationPanelUI";
 import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 import React from "react";
@@ -29,7 +30,9 @@ describe("TranslationPanelUI", () => {
     currentBibleRef: null,
     processingImage: false,
     isGuest: false,
+    urlWarning: "",
     syncedParagraphs: null,
+    currentSource: null,
     setSourceText: vi.fn(),
     setUrlInput: vi.fn(),
     setShowUrlInput: vi.fn(),
@@ -130,6 +133,58 @@ describe("TranslationPanelUI", () => {
 
       const dialog = document.body.querySelector("[role='dialog']");
       expect(dialog).toBeInTheDocument();
+    });
+  });
+
+  describe("URL extraction banners", () => {
+    const url = "https://www.example.com/article";
+
+    it("shows extracted URL line when currentSource is a URL", () => {
+      render(
+        <MemoryRouter>
+          <TranslationPanelUI {...createDefaultProps()} sourceText="שלום" currentSource={url} />
+        </MemoryRouter>
+      );
+      expect(document.body.textContent).toContain("Extracted from:");
+      const link = document.body.querySelector(`a[href="${url}"]`) as HTMLAnchorElement;
+      expect(link).toBeInTheDocument();
+      expect(link.textContent).toContain(url);
+    });
+
+    it("shows contact us links (top and bottom) when currentSource is a URL", () => {
+      render(
+        <MemoryRouter>
+          <TranslationPanelUI {...createDefaultProps()} sourceText="שלום" currentSource={url} />
+        </MemoryRouter>
+      );
+      const contactLinks = document.body.querySelectorAll("a[href='/contact']");
+      expect(contactLinks.length).toBe(2);
+    });
+
+    it("does not show URL banners when currentSource is null (paste/type)", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} sourceText="שלום" currentSource={null} />);
+      expect(document.body.textContent).not.toContain("Extracted from:");
+      expect(document.body.querySelectorAll("a[href='/contact']").length).toBe(0);
+    });
+
+    it("does not show URL banners when currentSource is a Bible reference", () => {
+      render(
+        <TranslationPanelUI
+          {...createDefaultProps()}
+          sourceText="בְּרֵאשִׁית"
+          currentSource="Genesis 1"
+          bibleLoaded={true}
+          currentBibleRef={{ book: "Genesis", chapter: 1 }}
+        />
+      );
+      expect(document.body.textContent).not.toContain("Extracted from:");
+      expect(document.body.querySelectorAll("a[href='/contact']").length).toBe(0);
+    });
+
+    it("does not show URL banners when currentSource is Image OCR", () => {
+      render(<TranslationPanelUI {...createDefaultProps()} sourceText="שלום" currentSource="Image OCR" />);
+      expect(document.body.textContent).not.toContain("Extracted from:");
+      expect(document.body.querySelectorAll("a[href='/contact']").length).toBe(0);
     });
   });
 });

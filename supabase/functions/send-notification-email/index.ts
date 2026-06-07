@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { APP_NAME, RESEND_API_URL, RESEND_FROM_ALERTS } from "../_shared/resend.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,16 +121,16 @@ Alert ID: ${alert.id}
 Please log in to your admin dashboard to take action if needed.
     `;
 
-    const resendResponse = await fetch("https://api.resend.com/emails", {
+    const resendResponse = await fetch(RESEND_API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "TorahTutor Alerts <onboarding@resend.dev>",
+        from: RESEND_FROM_ALERTS,
         to: [adminEmail],
-        subject: `[TorahTutor Alert] ${alert.title}`,
+        subject: `[${APP_NAME} Alert] ${alert.title}`,
         html: emailHtml,
         text: emailText,
       }),
