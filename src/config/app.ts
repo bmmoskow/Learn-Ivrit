@@ -1,4 +1,6 @@
 export const APP_CONFIG = {
+  // Keep appName in sync with APP_NAME in supabase/functions/_shared/app.ts
+  // (separate runtimes — they cannot share one file).
   appName: 'Learn Ivrit',
   supportEmail: 'support@yourapp.com',
   /** Max concurrent translation paragraph requests */
