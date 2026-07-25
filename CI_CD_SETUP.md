@@ -95,21 +95,18 @@ Configure these environments in GitHub Settings → Environments:
 **Secrets**:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
-- `VITE_GEMINI_API_KEY`
 
 ### test
 **Purpose**: Test database for integration and E2E tests
 **Secrets**:
 - `VITE_SUPABASE_URL` (test DB)
 - `VITE_SUPABASE_ANON_KEY` (test DB)
-- `VITE_GEMINI_API_KEY`
 
 ### production
 **Purpose**: Production database and deployment
 **Secrets**:
 - `VITE_SUPABASE_URL` (production DB)
 - `VITE_SUPABASE_ANON_KEY` (production DB)
-- `VITE_GEMINI_API_KEY`
 - `VERCEL_TOKEN` (optional, for deployment)
 - `VERCEL_ORG_ID` (optional, for deployment)
 - `VERCEL_PROJECT_ID` (optional, for deployment)
@@ -271,7 +268,6 @@ For integration and E2E tests, create `.env.test`:
 ```env
 VITE_SUPABASE_URL=https://your-test-db.supabase.co
 VITE_SUPABASE_ANON_KEY=your-test-anon-key
-VITE_GEMINI_API_KEY=your-gemini-api-key
 ```
 
 ## Cost Optimization

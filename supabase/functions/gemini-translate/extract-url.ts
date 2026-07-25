@@ -2,7 +2,8 @@ import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import { createJsonResponse, createErrorResponse } from "./shared.ts";
 import { PAYWALL_MARKERS, DEFINITIVE_PAYWALL_MARKERS, ARTICLE_TYPES } from "./config.ts";
-import { APP_NAME, RESEND_API_URL, RESEND_FROM_ALERTS } from "../_shared/resend.ts";
+import { RESEND_API_URL, RESEND_FROM_ALERTS } from "../_shared/resend.ts";
+import { APP_NAME } from "../_shared/app.ts";
 
 // TLS_EXTRA_CA_CERT: PEM bundle of intermediate certs for CAs that sites commonly omit from
 // their TLS chain. Concatenate multiple PEM certs to cover more than one CA.
