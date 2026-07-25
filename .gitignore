@@ -22,3 +22,7 @@ dist-ssr
 *.sw?
 .env*
 .claude
+
+# Supabase CLI local state
+supabase/.temp
+supabase/.branches

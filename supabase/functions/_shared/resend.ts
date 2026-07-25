@@ -1,4 +1,5 @@
-export const APP_NAME = "Learn-Ivrit";
+import { APP_NAME } from "./app.ts";
+
 export const RESEND_FROM_ADDRESS = "onboarding@resend.dev";
 
 export const RESEND_API_URL = "https://api.resend.com/emails";
