@@ -27,12 +27,12 @@ Create a `.env` file in the root directory:
 ```env
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_GEMINI_API_KEY=your_gemini_api_key
 ```
 
 Get these values from:
 - Supabase URL & Key: Your Supabase project settings
-- Gemini API Key: [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+> The Gemini API key is **not** a frontend variable — it lives server-side as the `GEMINI_API_KEY` Supabase secret, used by the edge functions. It is never bundled into the browser.
 
 4. Start the development server:
 ```bash
