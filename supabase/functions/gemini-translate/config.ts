@@ -1,9 +1,5 @@
-// Gemini API configuration
-export const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL_VERSION") || "gemini-2.5-flash";
-export const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-export const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
-
-export const GEMINI_URL = `${GEMINI_API_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+// Gemini API configuration (shared across edge functions)
+export { GEMINI_MODEL, GEMINI_API_BASE_URL, GEMINI_API_KEY, GEMINI_URL } from "../_shared/gemini.ts";
 
 // Thinking budget: 0 disables internal reasoning tokens (faster, cheaper, no quality loss for translation)
 export const THINKING_BUDGET = parseInt(Deno.env.get("GEMINI_THINKING_BUDGET") || "0", 10);

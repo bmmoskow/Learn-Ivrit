@@ -10,6 +10,7 @@
     "dev": "vite",
     "deploy:dev": "vite",
     "deploy:prod": "vite preview",
+    "deploy:functions": "supabase functions deploy",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "generate-types": "tsx scripts/generate-types.ts",
