@@ -1,0 +1,4 @@
+# Single-page app fallback: serve index.html for all routes so client-side
+# routing (deep links, refreshes) works. Cloudflare Pages equivalent of the
+# Vercel "rewrites" rule that previously lived in vercel.json.
+/*    /index.html    200
