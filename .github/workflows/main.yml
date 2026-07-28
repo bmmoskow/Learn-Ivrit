@@ -28,40 +28,7 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/security.yml
 
-#  deploy:
-#    name: Deploy to Production
-#    runs-on: ubuntu-latest
-#    needs: [ui-checks, security]
-#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-#    environment: production
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#
-#      - name: Setup Node.js
-#        uses: actions/setup-node@v4
-#        with:
-#          node-version: '20'
-#          cache: 'npm'
-#
-#      - name: Install dependencies
-#        run: npm ci
-#
-#      - name: Build for production
-#        run: npm run build
-#        env:
-#          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-#          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-#          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-#
-#      - name: Deploy to Vercel
-#        run: |
-#          echo "Add your deployment step here"
-#          echo "Example: vercel --prod --token=${{ secrets.VERCEL_TOKEN }}"
-#        # Uncomment and configure when ready:
-#        # uses: amondnet/vercel-action@v25
-#        # with:
-#        #   vercel-token: ${{ secrets.VERCEL_TOKEN }}
-#        #   vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-#        #   vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-#        #   vercel-args: '--prod'
+# Production deployment is handled by Cloudflare Pages' GitHub integration,
+# which builds and deploys automatically on push to `main` (and creates
+# preview deployments for other branches). No deploy job is needed here.
+# See docs/deployment-cloudflare.md for setup.
