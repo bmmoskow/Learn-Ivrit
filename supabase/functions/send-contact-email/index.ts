@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { RESEND_API_URL, RESEND_FROM_DEFAULT } from "../_shared/resend.ts";
+import { RESEND_API_URL, RESEND_FROM_CONTACT } from "../_shared/resend.ts";
 import { APP_NAME } from "../_shared/app.ts";
 
 const corsHeaders = {
@@ -116,7 +116,7 @@ Submission ID: ${submission.id}
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: RESEND_FROM_DEFAULT,
+        from: RESEND_FROM_CONTACT,
         to: [adminEmail],
         reply_to: submission.email,
         subject: `[${APP_NAME} ${messageTypeLabels[submission.message_type]}] ${submission.name}`,
