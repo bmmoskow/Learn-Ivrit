@@ -1,0 +1,14 @@
+# Cloudflare Pages headers. Carried over from the former vercel.json so the
+# security posture and asset caching are preserved on the new host.
+
+# Long-lived immutable caching for hashed build assets.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Security headers applied to every response.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
