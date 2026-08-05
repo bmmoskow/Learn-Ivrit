@@ -474,7 +474,7 @@ describe("TranslationPanel", () => {
       expect.objectContaining({
         isGuest: true,
       }),
-      {}
+      undefined
     );
   });
 });

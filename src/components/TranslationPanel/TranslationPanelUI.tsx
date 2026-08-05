@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import {
   Languages,
   BookPlus,
@@ -63,7 +63,7 @@ interface TranslationPanelUIProps {
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   clearAll: () => void;
   triggerFileInput: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export function TranslationPanelUI({

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { TranslationPanelUI } from "./TranslationPanelUI";
 import { TextInputDialog } from "./TextInputDialog/TextInputDialog";
 import React from "react";
@@ -52,7 +52,7 @@ describe("TranslationPanelUI", () => {
     handleFileSelect: vi.fn(),
     clearAll: vi.fn(),
     triggerFileInput: vi.fn(),
-    fileInputRef: { current: null } as React.RefObject<HTMLInputElement>,
+    fileInputRef: { current: null } as React.RefObject<HTMLInputElement | null>,
   });
 
   describe("Empty state - InputLauncher", () => {
