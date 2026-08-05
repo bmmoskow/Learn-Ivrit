@@ -93,7 +93,7 @@ describe('Settings', () => {
         showDeleteDialog: true,
         deleteConfirmation: 'DELETE',
       }),
-      {}
+      undefined
     );
   });
 });

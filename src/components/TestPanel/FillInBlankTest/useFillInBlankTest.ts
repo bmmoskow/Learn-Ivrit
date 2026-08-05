@@ -15,7 +15,7 @@ export interface UseFillInBlankTestReturn {
   showFeedback: boolean;
   isCorrect: boolean;
   isProcessing: boolean;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
 
   // Actions
   setUserInput: (value: string) => void;

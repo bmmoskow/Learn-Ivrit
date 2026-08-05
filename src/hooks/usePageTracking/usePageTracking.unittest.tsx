@@ -1,7 +1,7 @@
 import { renderHook } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { usePageTracking } from "./usePageTracking";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router";
 import { supabase } from "../../../supabase/client";
 
 // Mock the supabase client
@@ -12,8 +12,8 @@ vi.mock("../../../supabase/client", () => ({
 }));
 
 // Mock useLocation to control location changes
-vi.mock("react-router-dom", async () => {
-  const actual = await vi.importActual("react-router-dom");
+vi.mock("react-router", async () => {
+  const actual = await vi.importActual("react-router");
   return {
     ...actual,
     useLocation: vi.fn(),
