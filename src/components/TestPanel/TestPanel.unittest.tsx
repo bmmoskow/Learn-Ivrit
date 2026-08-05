@@ -98,7 +98,7 @@ describe("TestPanel", () => {
         currentQuestion: mockQuestion,
         showResults: true,
       }),
-      {}
+      undefined
     );
   });
 
@@ -134,7 +134,7 @@ describe("TestPanel", () => {
         onAnswer: mockHandlers.handleAnswer,
         onResetTest: mockHandlers.resetTest,
       }),
-      {}
+      undefined
     );
   });
 
@@ -170,7 +170,7 @@ describe("TestPanel", () => {
       expect.objectContaining({
         wordsCount: 3,
       }),
-      {}
+      undefined
     );
   });
 });

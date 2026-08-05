@@ -17,7 +17,7 @@ interface ToolbarProps {
   handleFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   clearAll: () => void;
   triggerFileInput: () => void;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 export function Toolbar({
