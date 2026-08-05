@@ -1595,6 +1595,105 @@ describe("_extractTextFromHtml", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Parser-based robustness against the malformed-HTML patterns that regex
+// stripping mishandles (the CodeQL js/incomplete-multi-character-sanitization
+// and js/bad-tag-filter alerts). These assert the DOM-parser approach yields
+// safe plain text where a regex tag-stripper could leak markup or reconstruct
+// tags.
+// ---------------------------------------------------------------------------
+
+describe("HTML parser robustness (CodeQL regex-bypass patterns)", () => {
+  describe("_stripHtmlToText", () => {
+    it("does not reconstruct a <script> tag from a spliced <scr<script>ipt> sequence", () => {
+      const result = _stripHtmlToText("<scr<script>ipt>alert(1)</script>after");
+      // A regex remover that strips <script>…</script> would leave "<scr" behind and
+      // could reassemble a tag. The parser never produces a live <script> tag.
+      expect(result.toLowerCase()).not.toContain("<script");
+      expect(result).not.toContain("<scr");
+      expect(result).toContain("after");
+    });
+
+    it("handles '>' inside an attribute value without mangling text", () => {
+      const result = _stripHtmlToText('<a title="x > y">link</a> tail');
+      expect(result).toBe("link tail");
+      expect(result).not.toContain("title");
+      expect(result).not.toContain(">");
+    });
+
+    it("drops HTML comments even when they contain '>' characters", () => {
+      const result = _stripHtmlToText("<p>a</p><!-- c > d --><p>b</p>");
+      expect(result).toBe("a\n\nb");
+      expect(result).not.toContain("-->");
+      expect(result).not.toContain("c > d");
+    });
+
+    it("recovers paragraph structure from malformed unclosed <p> tags", () => {
+      const result = _stripHtmlToText("<p>one<p>two");
+      expect(result).toBe("one\n\ntwo");
+    });
+  });
+
+  describe("_extractTextFromHtml", () => {
+    it("keeps link text when an attribute value contains '>'", () => {
+      const html =
+        '<article><p>שלום <a title="1 > 2">קישור</a> עולם עם מספיק תווים כדי לעבור את הסינון</p></article>';
+      const result = _extractTextFromHtml(html);
+      expect(result).toContain("קישור");
+      expect(result).not.toContain("title");
+      expect(result).not.toContain(">");
+    });
+  });
+
+  describe("_detectPaywall / _hasPaywallAttr", () => {
+    it("still detects a paywall class when a sibling <script> attribute contains '>'", () => {
+      // A regex <script> remover with a bad tag filter could fail to strip this script,
+      // or the '>' in the attribute could break the class matcher. The parser handles both.
+      const html =
+        '<script id="ga4paywall" data-cfg="a>b"></script><div class="premium-paywall-gate">חסום</div>';
+      expect(_detectPaywall("", html)).toBe(true);
+    });
+
+    it("does not treat a script id='ga4paywall' with '>' in an attribute as a paywall", () => {
+      const html =
+        '<script id="ga4paywall" data-cfg="a>b">x</script><article><p>כתבה פתוחה לכולם</p></article>';
+      expect(_detectPaywall("", html)).toBe(false);
+    });
+  });
+
+  describe("_extractWithReadability", () => {
+    it("drops HTML comments containing '>' without leaking '-->' artifacts", () => {
+      const html = `
+        <html lang="he"><body><article>
+          <!-- note: 3 > 2 is always true -->
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article></body></html>`;
+      const result = _extractWithReadability(html);
+      expect(result).not.toBeNull();
+      expect(result).not.toContain("-->");
+      expect(result).not.toContain("3 > 2");
+      expect(result).toContain("פסקה ראשונה");
+    });
+
+    it("does not reconstruct a <script> tag from spliced markup in the article body", () => {
+      const html = `
+        <html lang="he"><body><article>
+          <p>פסקה ראשונה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <scr<script>ipt>alert(999)</script>
+          <p>פסקה שנייה עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+          <p>פסקה שלישית עם תוכן מאמר אמיתי שנמשך לפחות ארבעים תווים כדי לעמוד בסף.</p>
+        </article></body></html>`;
+      const result = _extractWithReadability(html);
+      expect(result).not.toBeNull();
+      expect(result!.toLowerCase()).not.toContain("<script");
+      expect(result).toContain("פסקה ראשונה");
+      expect(result).toContain("פסקה שנייה");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // _isTlsError
 // ---------------------------------------------------------------------------
 
