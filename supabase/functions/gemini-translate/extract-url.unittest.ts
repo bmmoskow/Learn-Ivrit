@@ -519,6 +519,29 @@ describe("_stripHtmlToText", () => {
     expect(result).toContain("<b>");
     expect(result).toContain('"');
   });
+
+  // The DOM-to-text serializer must reproduce the exact newline structure the
+  // old regex pipeline produced: block elements (p/div/h1-6/blockquote) close
+  // with a paragraph break ("\n\n"), while <li> and <br> use a single "\n".
+  // Only <p> was pinned before; lock in each block type so a future refactor
+  // of _serializeDomNode can't silently collapse or inflate the structure.
+  describe("block vs inline newline contract", () => {
+    it("uses a single \\n between <li> items", () => {
+      expect(_stripHtmlToText("<ul><li>one</li><li>two</li></ul>")).toBe("one\ntwo");
+    });
+
+    it("uses a single \\n for <br>", () => {
+      expect(_stripHtmlToText("<p>a<br>b</p>")).toBe("a\nb");
+    });
+
+    it("uses \\n\\n after a heading", () => {
+      expect(_stripHtmlToText("<h2>title</h2><p>body</p>")).toBe("title\n\nbody");
+    });
+
+    it("uses \\n\\n after a blockquote", () => {
+      expect(_stripHtmlToText("<blockquote>q</blockquote><p>p</p>")).toBe("q\n\np");
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
