@@ -33,20 +33,15 @@ export const isHebrewText = (text: string): boolean => {
  * Remove HTML tags and decode HTML entities from text
  */
 export const stripHtml = (text: string): string => {
-  // Create a temporary div to decode HTML entities. Reading textContent strips
-  // all real HTML tags via the browser's parser.
+  // Parse the input as HTML once and read textContent: the browser's parser
+  // strips all real HTML tags and decodes entities. We intentionally do NOT
+  // re-parse the decoded text a second time — feeding DOM-derived text back
+  // into innerHTML is the js/xss-through-dom pattern. Doubly encoded markup
+  // (e.g. "&lt;b&gt;") therefore survives as harmless literal text ("<b>")
+  // rather than being stripped, which is a safe, acceptable tradeoff.
   const temp = document.createElement("div");
   temp.innerHTML = text;
-  let decoded = temp.textContent || temp.innerText || "";
-
-  // If the decoded text still contains angle brackets — e.g. from double-encoded
-  // markup like "&lt;b&gt;" — re-parse through the DOM to strip those tags too,
-  // rather than using a regex tag filter (which CodeQL flags as unreliable).
-  if (decoded.includes("<")) {
-    const temp2 = document.createElement("div");
-    temp2.innerHTML = decoded;
-    decoded = temp2.textContent || temp2.innerText || "";
-  }
+  const decoded = temp.textContent || temp.innerText || "";
 
   // Remove control characters.
   // eslint-disable-next-line no-control-regex
