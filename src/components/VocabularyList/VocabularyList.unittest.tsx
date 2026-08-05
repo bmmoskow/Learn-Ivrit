@@ -111,7 +111,7 @@ describe("VocabularyList", () => {
         totalPages: 5,
         isGuest: true,
       }),
-      {}
+      undefined
     );
   });
 
@@ -163,7 +163,7 @@ describe("VocabularyList", () => {
         onCancelEdit: mockHandlers.cancelEdit,
         onDeleteWord: mockHandlers.deleteWord,
       }),
-      {}
+      undefined
     );
   });
 });

@@ -52,7 +52,7 @@ export interface UseTranslationPanelReturn {
   showSaveBookmark: boolean;
   currentSource: string | null;
   urlWarning: string;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   syncedParagraphs: SyncedParagraph[] | null;
 
   // Setters

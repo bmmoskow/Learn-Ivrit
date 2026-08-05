@@ -12,7 +12,7 @@ interface FillInBlankTestUIProps {
   userInput: string;
   showFeedback: boolean;
   isCorrect: boolean;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
 
   // Actions
   setUserInput: (value: string) => void;
