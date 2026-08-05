@@ -14,7 +14,7 @@ const createDefaultProps = () => ({
   handleFileSelect: vi.fn(),
   clearAll: vi.fn(),
   triggerFileInput: vi.fn(),
-  fileInputRef: { current: null } as React.RefObject<HTMLInputElement>,
+  fileInputRef: { current: null } as React.RefObject<HTMLInputElement | null>,
 });
 
 describe("Toolbar", () => {

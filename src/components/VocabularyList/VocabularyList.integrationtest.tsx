@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import { VocabularyList } from './VocabularyList';
 import { supabase } from '@/lib/supabase';
 import { AuthProvider } from '@/contexts/AuthContext/AuthContext';
