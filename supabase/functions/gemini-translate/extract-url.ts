@@ -206,27 +206,73 @@ export function _extractRecipeBody(block: Record<string, unknown>): string {
   return parts.join("\n\n");
 }
 
+// ---------------------------------------------------------------------------
+// DOM-based HTML → text conversion
+//
+// HTML must never be stripped or parsed with regular expressions: regex tag
+// matching is defeated by malformed markup, `>` inside attribute values,
+// spliced tags (e.g. `<scr<script>ipt>`) and multi-line comments, and CodeQL
+// flags it (js/incomplete-multi-character-sanitization, js/bad-tag-filter).
+// Instead we parse with linkedom (a real HTML parser) and walk the DOM, which
+// gives the same plain-text output while being immune to those bypasses.
+// ---------------------------------------------------------------------------
+
+// Block-level tags whose closing boundary becomes a paragraph break ("\n\n").
+const _PARAGRAPH_BREAK_TAGS = new Set([
+  "P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "BLOCKQUOTE",
+]);
+
+// Recursively serialize a DOM subtree to text, reproducing the newline
+// structure the previous regex pipeline produced: block elements end with a
+// paragraph break, <li> with a single newline, <br> with a newline. Text nodes
+// are already entity-decoded by the parser. <script>/<style> subtrees and
+// comment nodes contribute nothing.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _serializeDomNode(node: any, parts: string[]): void {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const children: any[] = Array.from(node.childNodes || []);
+  for (const child of children) {
+    const type = child.nodeType;
+    if (type === 3) {
+      // TEXT_NODE
+      parts.push(child.nodeValue || "");
+    } else if (type === 1) {
+      // ELEMENT_NODE
+      const tag = String(child.tagName || child.nodeName || "").toUpperCase();
+      if (tag === "SCRIPT" || tag === "STYLE") continue;
+      if (tag === "BR") {
+        parts.push("\n");
+        continue;
+      }
+      _serializeDomNode(child, parts);
+      if (_PARAGRAPH_BREAK_TAGS.has(tag)) parts.push("\n\n");
+      else if (tag === "LI") parts.push("\n");
+    }
+    // COMMENT_NODE (8) and any other node types contribute no text.
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _domToStructuredText(root: any): string {
+  const parts: string[] = [];
+  _serializeDomNode(root, parts);
+  // The parser decodes &nbsp; to U+00A0; normalize it to a plain space to match
+  // the previous decoder's behaviour.
+  return parts.join("").replace(/\u00A0/g, " ");
+}
+
 export function _stripHtmlToText(html: string): string {
-  let text = html;
-  text = text.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "");
-  text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "");
-  text = text.replace(/<br\s*\/?>/gi, "\n");
-  text = text.replace(/<\/p>/gi, "\n\n");
-  text = text.replace(/<\/div>/gi, "\n\n");
-  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
-  text = text.replace(/<\/li>/gi, "\n");
-  text = text.replace(/<[^>]+>/g, "");
-  text = text
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-  text = text.replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)));
-  text = text.replace(/&#x([0-9A-Fa-f]+);/g, (_m, h) => String.fromCharCode(parseInt(h, 16)));
-  text = text.replace(/\n{3,}/g, "\n\n").trim();
-  return text;
+  try {
+    const { document } = parseHTML(`<div id="__strip_root">${html}</div>`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = document as any;
+    const root = doc.getElementById("__strip_root") || doc.body || doc.documentElement;
+    let text = _domToStructuredText(root);
+    text = text.replace(/\n{3,}/g, "\n\n").trim();
+    return text;
+  } catch {
+    return "";
+  }
 }
 
 export function _extractJobBody(block: Record<string, unknown>): string {
@@ -300,7 +346,10 @@ export function _normalizeArticleBody(articleBody: string): string {
 
 export function _extractWithReadability(html: string): string | null {
   try {
-    const { document } = parseHTML(html.replace(/<!--[\s\S]*?-->/g, ""));
+    // Parse with a real HTML parser. HTML comments become comment nodes that the
+    // DOM walk below ignores, so no regex comment-stripping (and its "-->" text
+    // artifacts) is needed.
+    const { document } = parseHTML(html);
 
     // Capture the article subtitle before any DOM removal.
     // ynet wraps the subtitle in <div class="subTitleWrapper"><h2>…</h2></div> inside a
@@ -347,40 +396,35 @@ export function _extractWithReadability(html: string): string | null {
     const article = reader.parse();
     if (!article?.content) return null;
 
-    // Remove non-article elements from Readability's cleaned HTML before stripping tags
-    let text = article.content;
-    text = text.replace(/<figure[\s\S]*?<\/figure>/gi, "");
-    text = text.replace(/<figcaption[\s\S]*?<\/figcaption>/gi, "");
+    // Re-parse Readability's cleaned HTML into a DOM so non-article nodes can be
+    // pruned and the text serialized with a real parser instead of regex.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contentDoc = (parseHTML(article.content).document) as any;
+    const contentRoot = contentDoc.querySelector("body") || contentDoc.documentElement;
 
-    // Remove <p> elements whose only content is <a> link text — related-article bullets
-    // (e.g. Globes "● <a>title</a><br/>● <a>title</a>" pattern). These cause paragraph
-    // count mismatches between source and translation in the synced display.
-    text = text.replace(/<p[^>]*>([\s\S]*?)<\/p>/gi, (match, inner) => {
-      const withoutLinks = inner.replace(/<a[\s\S]*?<\/a>/gi, "");
-      const residual = withoutLinks
-        .replace(/<[^>]+>/g, "")
-        .replace(/&[#\w]+;/g, " ") // decode HTML entities (e.g. &#32;) to spaces before checking
-        .replace(/[●•·\s]/g, "");
-      return residual.length === 0 ? "" : match;
+    // Remove figures and captions — image credits pollute the article text.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contentRoot.querySelectorAll("figure, figcaption").forEach((el: any) => el.remove());
+
+    // Remove <p>/<li> elements whose only content is <a> link text or bullet
+    // glyphs — related-article bullets (Globes "● <a>title</a>" pattern) and
+    // promotional link-lists (Sport5). These cause paragraph-count mismatches
+    // between source and translation in the synced display. We clone the element,
+    // drop its <a> descendants, and check whether any real text remains.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contentRoot.querySelectorAll("p, li").forEach((el: any) => {
+      const clone = el.cloneNode(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      clone.querySelectorAll("a").forEach((a: any) => a.remove());
+      // textContent is entity-decoded (e.g. &#32; → space) so bullet/whitespace
+      // stripping alone reveals whether any substantive text is left.
+      const residual = (clone.textContent || "").replace(/[●•·\s]/g, "");
+      if (residual.length === 0) el.remove();
     });
 
-    // Strip <li> elements whose content is entirely link text — same rationale as <p> above.
-    // Catches promotional link-lists embedded in article bodies (e.g. Sport5 World Cup promo).
-    text = text.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (match, inner) => {
-      const withoutLinks = inner.replace(/<a[\s\S]*?<\/a>/gi, "");
-      const residual = withoutLinks
-        .replace(/<[^>]+>/g, "")
-        .replace(/&[#\w]+;/g, " ")
-        .replace(/[●•·\s]/g, "");
-      return residual.length === 0 ? "" : match;
-    });
-
-    // Convert block elements to paragraph breaks, then strip remaining tags
-    text = text.replace(/<\/p>/gi, "\n\n");
-    text = text.replace(/<\/h[1-6]>/gi, "\n\n"); // headings become their own paragraph blocks
-    text = text.replace(/<\/li>/gi, "\n");
-    text = text.replace(/<br\s*\/?>/gi, "\n");
-    text = text.replace(/<[^>]+>/g, "");
+    // Serialize the pruned DOM to text (block elements → paragraph breaks).
+    let text = _domToStructuredText(contentRoot);
+    // Handle double-encoded entities (e.g. &amp;nbsp;) the parser leaves behind.
     text = _decodeHtmlEntities(text);
     text = text.replace(/\r/g, ""); // strip carriage returns — Windows \r\n in source HTML breaks \n{3,} matching
     text = text.replace(/\n{3,}/g, "\n\n").trim();
@@ -483,10 +527,29 @@ export function _selectBestContent(
   return readabilityContent || articleBodyContent || "";
 }
 
-// Strip <script> elements before checking class/id attributes for paywall indicators.
-// Prevents false positives from analytics tracking scripts like id="ga4paywall" (ynet).
-function _stripScripts(html: string): string {
-  return html.replace(/<script\b[^>]*(?:\/\s*>|>[\s\S]*?<\/script\s*>)/gi, "");
+// Detect a paywall element identified by a "paywall" class or id, using a real
+// HTML parser. <script> elements are removed first so analytics tracking scripts
+// like id="ga4paywall" (ynet) don't produce false positives. Parsing avoids the
+// regex tag-matching that CodeQL flags (js/bad-tag-filter) and correctly ignores
+// "paywall" appearing only in text content.
+function _hasPaywallAttr(html: string): boolean {
+  try {
+    const { document } = parseHTML(html);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = document as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    doc.querySelectorAll("script").forEach((el: any) => el.remove());
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const els: any[] = Array.from(doc.querySelectorAll("[class],[id]"));
+    for (const el of els) {
+      const cls = String(el.getAttribute("class") || "").toLowerCase();
+      const id = String(el.getAttribute("id") || "").toLowerCase();
+      if (cls.includes("paywall") || id.includes("paywall")) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function _isDefinitePaywall(
@@ -494,7 +557,7 @@ export function _isDefinitePaywall(
   isAccessibleForFree?: string | boolean,
 ): boolean {
   if (isAccessibleForFree === false || (typeof isAccessibleForFree === "string" && isAccessibleForFree.toLowerCase() === "false")) return true;
-  if (/(?:class|id)="[^"]*paywall[^"]*"/i.test(_stripScripts(html))) return true;
+  if (_hasPaywallAttr(html)) return true;
   return DEFINITIVE_PAYWALL_MARKERS.some((marker) => html.includes(marker));
 }
 
@@ -525,8 +588,9 @@ export function _detectPaywall(
   // Schema.org standard: isAccessibleForFree = false (boolean) or any casing of "false" (string)
   if (isAccessibleForFree === false || (typeof isAccessibleForFree === "string" && isAccessibleForFree.toLowerCase() === "false")) return true;
   // Common HTML pattern: paywall element identified by class or id attribute.
-  // Strip <script> elements first — analytics scripts like id="ga4paywall" (ynet) are false positives.
-  if (html && /(?:class|id)="[^"]*paywall[^"]*"/i.test(_stripScripts(html))) return true;
+  // _hasPaywallAttr strips <script> elements first — analytics scripts like
+  // id="ga4paywall" (ynet) are false positives.
+  if (html && _hasPaywallAttr(html)) return true;
   // Raw HTML: only check unambiguous definitive markers. Checking all PAYWALL_MARKERS
   // against raw HTML causes false positives — e.g. "מנויים" appears in ynet's free-article
   // navigation ("כתבות למנויים") and triggers a spurious paywall warning.
@@ -536,12 +600,20 @@ export function _detectPaywall(
 }
 
 export function _detectSpaShell(html: string): "spa" | "sparse" | null {
-  const visibleText = html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<style[\s\S]*?<\/style>/gi, "")
-    .replace(/<[^>]+>/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Compute the visible text with a real HTML parser: parse, drop <script>/<style>
+  // elements, then read textContent. Avoids the regex tag-stripping CodeQL flags.
+  let visibleText = "";
+  try {
+    const { document } = parseHTML(html);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = document as any;
+    const body = doc.querySelector("body") || doc.documentElement;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    body.querySelectorAll("script, style").forEach((el: any) => el.remove());
+    visibleText = String(body.textContent || "").replace(/\s+/g, " ").trim();
+  } catch {
+    visibleText = "";
+  }
 
   // Empty React/Next.js mount point — definitive SPA signal.
   // id="app" intentionally excluded — too generic, used by many SSR news sites.
@@ -562,70 +634,60 @@ export function _detectSpaShell(html: string): "spa" | "sparse" | null {
   return null;
 }
 
+// Class-name keyword lists for the heuristic caption/noise removal below.
+const _NOISE_DIV_CLASS_KEYWORDS = [
+  "caption", "credit", "photo", "image", "img", "media", "video", "gallery",
+  "sidebar", "related", "comment", "ad", "advertisement", "promo", "banner",
+  "social", "share", "tags", "breadcrumb", "navigation", "menu",
+];
+const _NOISE_INLINE_CLASS_KEYWORDS = ["caption", "credit", "photo", "image"];
+
 export function _extractTextFromHtml(html: string): string {
-  let text = html;
+  let container: unknown = null;
+  try {
+    const { document } = parseHTML(html);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = document as any;
 
-  // Try to find the main article content first
-  const contentMatch = text.match(
-    /<div[^>]*(?:class="[^"]*(?:article-body|ArticleBodyComponent|ArticleBody|post-content|entry-content|story-body)[^"]*"|id="[^"]*(?:ArticleBody|article-body|ArticleBodyComponent)[^"]*")[^>]*>([\s\S]*)<\/div>/i,
-  );
-  const articleMatch = text.match(/<article[^>]*>([\s\S]*)<\/article>/i);
-  const mainMatch = text.match(/<main[^>]*>([\s\S]*)<\/main>/i);
+    // Try to find the main article content first, then fall back to <article>,
+    // <main>, and finally the whole <body>.
+    container =
+      doc.querySelector(
+        '[class*="article-body"],[class*="ArticleBodyComponent"],[class*="ArticleBody"],' +
+          '[class*="post-content"],[class*="entry-content"],[class*="story-body"],' +
+          '[id*="ArticleBody"],[id*="article-body"],[id*="ArticleBodyComponent"]',
+      ) ||
+      doc.querySelector("article") ||
+      doc.querySelector("main") ||
+      doc.querySelector("body") ||
+      doc.documentElement;
 
-  if (contentMatch) text = contentMatch[1];
-  else if (articleMatch) text = articleMatch[1];
-  else if (mainMatch) text = mainMatch[1];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const root = container as any;
 
-  // Preserve paragraph structure from CMS editors
-  text = text.replace(/<div[^>]*class="[^"]*text_editor_paragraph[^"]*"[^>]*>/gi, "\n\n");
-  text = text.replace(/<div[^>]*data-block="true"[^>]*>/gi, "\n\n");
+    // Remove noise elements (script/style are also skipped by the serializer).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    root.querySelectorAll("script,style,nav,header,footer,aside,form,figure,figcaption,img,picture").forEach((el: any) => el.remove());
 
-  // Remove noise elements
-  text = text.replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, "");
-  text = text.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, "");
-  text = text.replace(/<nav[^>]*>([\s\S]*?)<\/nav>/gi, "");
-  text = text.replace(/<header[^>]*>([\s\S]*?)<\/header>/gi, "");
-  text = text.replace(/<footer[^>]*>([\s\S]*?)<\/footer>/gi, "");
-  text = text.replace(/<aside[^>]*>([\s\S]*?)<\/aside>/gi, "");
-  text = text.replace(/<form[^>]*>([\s\S]*?)<\/form>/gi, "");
-  text = text.replace(/<figure[^>]*>([\s\S]*?)<\/figure>/gi, "");
-  text = text.replace(/<figcaption[^>]*>([\s\S]*?)<\/figcaption>/gi, "");
-  text = text.replace(/<img[^>]*>/gi, "");
-  text = text.replace(/<picture[^>]*>([\s\S]*?)<\/picture>/gi, "");
-  text = text.replace(
-    /<div[^>]*class="[^"]*(?:caption|credit|photo|image|img|media|video|gallery|sidebar|related|comment|ad|advertisement|promo|banner|social|share|tags|breadcrumb|navigation|menu)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi,
-    "",
-  );
-  text = text.replace(
-    /<span[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
-    "",
-  );
-  text = text.replace(
-    /<p[^>]*class="[^"]*(?:caption|credit|photo|image)[^"]*"[^>]*>([\s\S]*?)<\/p>/gi,
-    "",
-  );
+    // Remove caption/credit/photo/etc. containers by class name.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    root.querySelectorAll("[class]").forEach((el: any) => {
+      const cls = String(el.getAttribute("class") || "").toLowerCase();
+      const tag = String(el.tagName || "").toUpperCase();
+      if (tag === "DIV" && _NOISE_DIV_CLASS_KEYWORDS.some((k) => cls.includes(k))) {
+        el.remove();
+      } else if (
+        (tag === "SPAN" || tag === "P") &&
+        _NOISE_INLINE_CLASS_KEYWORDS.some((k) => cls.includes(k))
+      ) {
+        el.remove();
+      }
+    });
+  } catch {
+    return "";
+  }
 
-  // Convert block elements to paragraph breaks
-  text = text.replace(/<br\s*\/?>/gi, "\n");
-  text = text.replace(/<\/p>/gi, "\n\n");
-  text = text.replace(/<\/div>/gi, "\n\n");
-  text = text.replace(/<\/h[1-6]>/gi, "\n\n");
-  text = text.replace(/<\/li>/gi, "\n");
-  text = text.replace(/<\/blockquote>/gi, "\n\n");
-  text = text.replace(/<[^>]+>/g, "");
-
-  text = text
-    .replace(/&nbsp;/g, " ")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
-  text = text.replace(/&#(\d+);/g, (_m, d) => String.fromCharCode(Number(d)));
-  text = text.replace(/&#x([0-9A-Fa-f]+);/g, (_m, h) => String.fromCharCode(parseInt(h, 16)));
-
-  text = text.replace(/^[\s\S]*?<body[^>]*>/i, "");
-  text = text.replace(/<\/body>[\s\S]*$/i, "");
+  let text = _domToStructuredText(container);
 
   // Hebrew-specific noise filters
   const lines = text.split("\n");

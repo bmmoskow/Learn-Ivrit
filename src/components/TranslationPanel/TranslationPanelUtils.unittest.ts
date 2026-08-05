@@ -86,6 +86,23 @@ describe("translationPanelUtils", () => {
     });
   });
 
+  // Real-DOM behavior (no createElement mock) for markup that only appears
+  // after HTML entities are decoded — exercises the double-parse branch added
+  // in #142 that replaced the regex tag filter CodeQL flagged.
+  describe("stripHtml — double-encoded markup (real DOM)", () => {
+    it("strips tags that surface only after entity decoding", () => {
+      // "&lt;b&gt;bold&lt;/b&gt;" decodes to "<b>bold</b>"; the second parse
+      // pass removes the now-literal tags without any regex tag filter.
+      expect(stripHtml("&lt;b&gt;bold&lt;/b&gt;")).toBe("bold");
+    });
+
+    it("keeps stray angle brackets that are not real tags", () => {
+      // Decodes to "5 < 10 and 20 > 3". The old regex filter would delete
+      // "< 10 and 20 >"; the DOM parser preserves it as plain text.
+      expect(stripHtml("5 &lt; 10 and 20 &gt; 3")).toBe("5 < 10 and 20 > 3");
+    });
+  });
+
   describe("removeTrope", () => {
     it("removes Hebrew cantillation marks from text", () => {
       // Text with cantillation marks (U+05B4 is a vowel, U+0591 is trope)
