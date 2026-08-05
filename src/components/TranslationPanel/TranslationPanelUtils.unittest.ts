@@ -87,18 +87,20 @@ describe("translationPanelUtils", () => {
   });
 
   // Real-DOM behavior (no createElement mock) for markup that only appears
-  // after HTML entities are decoded — exercises the double-parse branch added
-  // in #142 that replaced the regex tag filter CodeQL flagged.
+  // after HTML entities are decoded. stripHtml parses once and reads
+  // textContent; it intentionally does NOT re-parse the decoded text (that
+  // would be the js/xss-through-dom pattern), so doubly encoded markup is
+  // left as harmless literal text rather than stripped.
   describe("stripHtml — double-encoded markup (real DOM)", () => {
-    it("strips tags that surface only after entity decoding", () => {
-      // "&lt;b&gt;bold&lt;/b&gt;" decodes to "<b>bold</b>"; the second parse
-      // pass removes the now-literal tags without any regex tag filter.
-      expect(stripHtml("&lt;b&gt;bold&lt;/b&gt;")).toBe("bold");
+    it("leaves doubly encoded markup as literal text (no second parse)", () => {
+      // "&lt;b&gt;bold&lt;/b&gt;" decodes once to the literal text "<b>bold</b>".
+      // It is not re-parsed, so the literal tags remain as plain text.
+      expect(stripHtml("&lt;b&gt;bold&lt;/b&gt;")).toBe("<b>bold</b>");
     });
 
     it("keeps stray angle brackets that are not real tags", () => {
-      // Decodes to "5 < 10 and 20 > 3". The old regex filter would delete
-      // "< 10 and 20 >"; the DOM parser preserves it as plain text.
+      // Decodes to "5 < 10 and 20 > 3"; angle brackets that aren't real tags
+      // are preserved as plain text.
       expect(stripHtml("5 &lt; 10 and 20 &gt; 3")).toBe("5 < 10 and 20 > 3");
     });
   });
