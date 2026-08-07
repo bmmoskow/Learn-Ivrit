@@ -18,6 +18,7 @@ const Admin = lazy(() => import("./components/Admin/Admin"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService").then(m => ({ default: m.TermsOfService })));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy").then(m => ({ default: m.PrivacyPolicy })));
 const Contact = lazy(() => import("./pages/Contact"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 // Loading fallback for lazy-loaded routes
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -98,6 +99,9 @@ function AppContent() {
         <Route path="/faq" element={protectedLayout(<FAQ />)} />
         <Route path="/settings" element={protectedLayout(<Settings />)} />
         <Route path="/admin" element={protectedLayout(<Admin />)} />
+
+        {/* Catch-all: render the 404 page for any unmatched URL */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );
