@@ -2,7 +2,7 @@
 
 A Hebrew language learning application that translates Hebrew text, lets users explore word meanings, and builds adaptive vocabulary tests.
 
-🔗 **Live demo:** https://learn-ivrit.lovable.app/
+🔗 **Live demo:** https://learn-ivrit.com/
 
 ## Why I Built This
 
