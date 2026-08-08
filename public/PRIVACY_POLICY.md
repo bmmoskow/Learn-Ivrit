@@ -1,4 +1,4 @@
-**Last Updated: January 28, 2026**
+**Last Updated: August 8, 2026**
 
 This Privacy Policy describes how we collect, use, store, and protect your personal information when you use our Hebrew learning platform (the "Service").
 
@@ -75,6 +75,15 @@ We share data with third-party service providers who help us operate the Service
 - Receives Bible references you request to view
 - We cache responses to reduce external requests
 - Privacy Policy: https://www.sefaria.org/privacy-policy
+
+**Cloudflare** (Hosting, Content Delivery, DNS, and Backups)
+- Serves the application, manages DNS, and routes transactional email
+- Stores encrypted database backups for disaster recovery
+- Privacy Policy: https://www.cloudflare.com/privacypolicy/
+
+**Resend** (Transactional Email)
+- Receives your email address to send account verification, password-reset, and support/contact messages
+- Privacy Policy: https://resend.com/legal/privacy-policy
 
 ### Legal Requirements
 We may disclose your information if required to:
@@ -158,7 +167,7 @@ Despite our efforts, no security system is impenetrable. If we discover a data b
 ## 7. International Users and Data Transfers
 
 ### Data Storage Location
-Your data is stored on servers located in [SERVER LOCATION - typically US for Supabase].
+Your data is stored on servers located in the United States (via Supabase and Cloudflare).
 
 ### Cross-Border Transfers
 If you access the Service from outside the United States, your information may be transferred to, stored, and processed in countries where our service providers operate. These countries may have different data protection laws than your country.
