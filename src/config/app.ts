@@ -2,7 +2,7 @@ export const APP_CONFIG = {
   // Keep appName in sync with APP_NAME in supabase/functions/_shared/app.ts
   // (separate runtimes — they cannot share one file).
   appName: 'Learn Ivrit',
-  supportEmail: 'support@yourapp.com',
+  supportEmail: 'contact@learn-ivrit.com',
   /** Max concurrent translation paragraph requests */
   translationMaxConcurrency: 3,
   /** Per-article hourly rate limit for translations */

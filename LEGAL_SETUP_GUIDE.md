@@ -9,7 +9,7 @@ Replace the following placeholders in **BOTH** documents:
 ### In TERMS_OF_SERVICE.md and PRIVACY_POLICY.md:
 
 - `[DATE]` → Today's date (e.g., "December 27, 2024")
-- `[YOUR EMAIL]` → Your support email (e.g., "support@yourapp.com")
+- `[YOUR EMAIL]` → Your support email (e.g., "contact@learn-ivrit.com")
 - `[YOUR NAME/COMPANY NAME]` → Your legal name or business name
 - `[YOUR ADDRESS]` → Your business address (required for legal purposes)
 - `[YOUR STATE/COUNTRY]` → Your jurisdiction (e.g., "California, United States")
@@ -55,7 +55,7 @@ You need to make these documents accessible to users:
     <div className="flex justify-center space-x-6 text-sm text-gray-600">
       <a href="/terms" className="hover:text-gray-900">Terms of Service</a>
       <a href="/privacy" className="hover:text-gray-900">Privacy Policy</a>
-      <a href="mailto:support@yourapp.com">Contact</a>
+      <a href="mailto:contact@learn-ivrit.com">Contact</a>
     </div>
     <div className="text-center mt-4 text-xs text-gray-500">
       Translations powered by Google Gemini • Biblical texts provided by Sefaria.org
