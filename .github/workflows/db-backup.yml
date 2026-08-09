@@ -34,6 +34,10 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
+    # Secrets live in the "deployment" GitHub Environment; a job must declare it
+    # to read environment-scoped secrets. That env's branch policy allows only
+    # `main`, so both the schedule and a manual run must run from main.
+    environment: deployment
     timeout-minutes: 15
     steps:
       - name: Verify secrets are configured

@@ -40,8 +40,12 @@ Use the **Session pooler** string (Supavisor), which looks like:
   support `pg_dump`.
 - Substitute your real DB password into the string.
 
-### 4. Add the repository secrets
-Repo → **Settings → Secrets and variables → Actions → New repository secret**:
+### 4. Add the secrets to the `deployment` environment
+The workflow job runs in the **`deployment`** GitHub Environment, so add these as
+**environment** secrets (not repository secrets): Repo → **Settings →
+Environments → `deployment` → Add environment secret**. (Scoping the DB
+credential to this environment keeps it out of general CI/pipeline jobs. The
+environment's branch policy allows only `main`.)
 
 | Secret | Value |
 |---|---|
@@ -52,9 +56,10 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `R2_BUCKET` | bucket name (e.g. `learn-ivrit-backups`) |
 
 ### 5. Test it
-Actions → **DB Backup** → **Run workflow** (manual). Confirm it uploads an object
-to `db/YYYY/MM/...sql.gz` in the bucket. After that, the daily schedule takes over
-once the workflow is on the default branch (`main`).
+Once the workflow is on `main`: Actions → **DB Backup** → **Run workflow**, and
+select the **`main`** branch (the `deployment` environment only permits `main`,
+so a run from any other branch is blocked). Confirm it uploads an object to
+`db/YYYY/MM/...sql.gz` in the bucket. After that, the daily schedule runs on its own.
 
 ## What's in the backup (and what isn't)
 - **Included:** the `public` schema — all application data (profiles, vocabulary,
