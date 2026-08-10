@@ -9,7 +9,9 @@ name: DB Backup
 # NOTE: scheduled (cron) runs only fire when this file is on the DEFAULT branch
 # (main). Until then, test it with a manual "Run workflow" (workflow_dispatch).
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
+# Config lives in the "deployment" environment (Settings -> Environments -> deployment).
+#
+# SECRETS (Environment secrets):
 #   SUPABASE_DB_URL       Session-pooler connection string, PORT 5432.
 #                         NOT the direct URL (IPv6-only) and NOT the transaction
 #                         pooler (6543) — pg_dump needs a session connection.
@@ -17,6 +19,9 @@ name: DB Backup
 #   R2_ACCOUNT_ID         Cloudflare account ID (used to build the R2 S3 endpoint)
 #   R2_ACCESS_KEY_ID      R2 API token access key id
 #   R2_SECRET_ACCESS_KEY  R2 API token secret access key
+#
+# VARIABLE (Environment variable, NOT a secret — a bucket name is not sensitive,
+# and keeping it un-masked makes the target visible in logs):
 #   R2_BUCKET             R2 bucket name (create it in a US region, private)
 
 on:
@@ -44,7 +49,7 @@ jobs:
         id: guard
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
           if [ -z "${SUPABASE_DB_URL}" ] || [ -z "${R2_BUCKET}" ]; then
             echo "::notice::Backup secrets not configured yet — skipping. See docs/db-backup.md."
@@ -72,7 +77,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_BUCKET: ${{ vars.R2_BUCKET }}
         run: |
           set -euo pipefail
 
@@ -93,7 +98,15 @@ jobs:
             exit 1
           fi
 
+          echo "Uploading to s3://${R2_BUCKET}/${KEY}"
           aws s3 cp "${FILE}" "s3://${R2_BUCKET}/${KEY}" \
             --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
-          echo "::notice::Backup uploaded to r2://${R2_BUCKET}/${KEY}"
+          # Verify the object actually landed. aws s3 cp can exit 0 without the
+          # object reaching the intended bucket if R2_BUCKET/credentials are wrong.
+          if [ -z "$(aws s3 ls "s3://${R2_BUCKET}/${KEY}" \
+                       --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com")" ]; then
+            echo "::error::Upload reported success but object NOT found at s3://${R2_BUCKET}/${KEY} — check the R2_BUCKET variable and R2 credentials."
+            exit 1
+          fi
+          echo "::notice::Backup verified in r2://${R2_BUCKET}/${KEY}"
