@@ -1,0 +1,99 @@
+name: DB Backup
+
+# Scheduled logical backup of the production Postgres database to Cloudflare R2.
+#
+# SAFE TO MERGE BEFORE SECRETS EXIST: the first step checks for the required
+# secrets and cleanly skips (green, no-op) until they are configured, so no
+# failing scheduled runs appear in the meantime. See docs/db-backup.md.
+#
+# NOTE: scheduled (cron) runs only fire when this file is on the DEFAULT branch
+# (main). Until then, test it with a manual "Run workflow" (workflow_dispatch).
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL       Session-pooler connection string, PORT 5432.
+#                         NOT the direct URL (IPv6-only) and NOT the transaction
+#                         pooler (6543) — pg_dump needs a session connection.
+#                         See docs/db-backup.md for exactly where to copy it.
+#   R2_ACCOUNT_ID         Cloudflare account ID (used to build the R2 S3 endpoint)
+#   R2_ACCESS_KEY_ID      R2 API token access key id
+#   R2_SECRET_ACCESS_KEY  R2 API token secret access key
+#   R2_BUCKET             R2 bucket name (create it in a US region, private)
+
+on:
+  schedule:
+    - cron: "0 8 * * *"   # daily at 08:00 UTC (~01:00 PT)
+  workflow_dispatch: {}
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    # Secrets live in the "deployment" GitHub Environment; a job must declare it
+    # to read environment-scoped secrets. That env's branch policy allows only
+    # `main`, so both the schedule and a manual run must run from main.
+    environment: deployment
+    timeout-minutes: 15
+    steps:
+      - name: Verify secrets are configured
+        id: guard
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          if [ -z "${SUPABASE_DB_URL}" ] || [ -z "${R2_BUCKET}" ]; then
+            echo "::notice::Backup secrets not configured yet — skipping. See docs/db-backup.md."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install PostgreSQL 17 client
+        if: steps.guard.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor -o /usr/share/keyrings/pgdg.gpg
+          echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Dump database and upload to R2
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+
+          KEY="db/$(date -u +%Y/%m/%Y%m%d-%H%M%S).sql.gz"
+          FILE="backup.sql.gz"
+
+          # Logical dump of the application data (public schema).
+          # --no-owner / --no-privileges keep it portable across projects.
+          # pipefail ensures a pg_dump failure fails the whole pipeline.
+          /usr/lib/postgresql/17/bin/pg_dump "${SUPABASE_DB_URL}" \
+            --no-owner --no-privileges --schema=public \
+            | gzip -9 > "${FILE}"
+
+          SIZE="$(stat -c%s "${FILE}")"
+          echo "Dump size: $(du -h "${FILE}" | cut -f1) (${SIZE} bytes)"
+          if [ "${SIZE}" -lt 200 ]; then
+            echo "::error::Dump is suspiciously small (${SIZE} bytes) — aborting upload."
+            exit 1
+          fi
+
+          aws s3 cp "${FILE}" "s3://${R2_BUCKET}/${KEY}" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          echo "::notice::Backup uploaded to r2://${R2_BUCKET}/${KEY}"
