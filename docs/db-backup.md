@@ -45,21 +45,21 @@ The workflow job runs in the **`deployment`** GitHub Environment (Repo →
 **Settings → Environments → `deployment`**). Scoping to this environment keeps the
 DB credential out of general CI/pipeline jobs; its branch policy allows only `main`.
 
-Add the four sensitive values as **Environment secrets**:
+Add the three sensitive values as **Environment secrets**:
 
 | Secret | Value |
 |---|---|
 | `SUPABASE_DB_URL` | the Session-pooler connection string from step 3 |
-| `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 token access key id |
 | `R2_SECRET_ACCESS_KEY` | R2 token secret |
 
-Add the bucket name as an **Environment variable** (NOT a secret — a bucket name
-isn't sensitive, and keeping it un-masked lets the target show in the run logs,
-which makes a wrong-bucket mistake obvious):
+Add the account id and bucket name as **Environment variables** (NOT secrets —
+neither is sensitive, and keeping them un-masked lets the full S3 target show in
+the run logs, which makes a wrong-account/wrong-bucket mistake obvious):
 
 | Variable | Value |
 |---|---|
+| `R2_ACCOUNT_ID` | Cloudflare account ID (e.g. `187154f71950c20ada20f1987affbb74`) |
 | `R2_BUCKET` | bucket name (e.g. `learn-ivrit-db-backup-main`) |
 
 ### 5. Test it
