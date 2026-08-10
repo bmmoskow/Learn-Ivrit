@@ -76,14 +76,41 @@ so a run from any other branch is blocked). Confirm it uploads an object to
   more `--schema=` flags (e.g. `--schema=auth`) in the workflow — but restoring
   managed schemas is more involved, so start with `public`.
 
-## Restore (outline)
-1. Download the desired `.sql.gz` from R2.
-2. Restore into a target project via the Session-pooler URL:
+## Restore
 
-       gunzip -c backup.sql.gz | psql "postgresql://postgres.<ref>:<pw>@...pooler.supabase.com:5432/postgres"
+The dump is a **full logical dump of the `public` schema** — it contains the DDL
+(CREATE TABLE, indexes, constraints, functions, triggers, views) **and** the data
+(COPY/INSERT). Restoring it rebuilds the structure and loads the rows in one step,
+so it is self-contained for the `public` schema.
 
-3. If restoring to a fresh project, apply the schema baseline first (or the dump
-   recreates the `public` tables), then verify RLS policies and row counts.
+### Steps
+1. Download the backup you want to restore:
+
+       aws s3 cp s3://learn-ivrit-db-backup-main/db/2026/08/<file>.sql.gz ./ \
+         --endpoint-url https://<account-id>.r2.cloudflarestorage.com --profile r2
+
+2. Restore into an **empty** target `public` schema via the Session-pooler URL:
+
+       gunzip -c <file>.sql.gz | psql "postgresql://postgres.<ref>:<pw>@aws-0-<region>.pooler.supabase.com:5432/postgres"
+
+3. Verify: spot-check table row counts and that RLS policies exist.
+
+### Gotchas (important)
+- **Restore into an EMPTY `public` schema — do NOT pre-apply a schema first.** The
+  dump already contains `CREATE TABLE`, so if the target already has the tables
+  (e.g. you applied a baseline), you get "already exists" conflicts. Fresh/empty
+  `public` schema → restore → done.
+- **The dump does NOT include the `auth` schema (login accounts).** It is scoped to
+  `--schema=public`. App tables have foreign keys to `auth.users`
+  (e.g. `vocabulary_words.user_id → auth.users.id`), so restoring the public
+  **data** into a fresh project hits **FK violations** — the referenced users
+  don't exist there. For a real recovery / restore test, choose one:
+    - Restore **schema only** (skip the data) to confirm the DDL applies cleanly — quick, no FK issue.
+    - For a **full** restore, handle the auth linkage first: recreate the matching
+      `auth.users` rows, OR temporarily drop the `auth.users` foreign keys, load
+      the data, then decide whether to re-add them.
+- **A backup is only truly validated once you've restored it.** Do a practice
+  restore into the test environment before you ever need it for real.
 
 ## Notes
 - `SUPABASE_DB_URL` grants full read access to the database — treat it as
