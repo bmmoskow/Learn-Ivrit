@@ -40,12 +40,12 @@ Use the **Session pooler** string (Supavisor), which looks like:
   support `pg_dump`.
 - Substitute your real DB password into the string.
 
-### 4. Add the secrets to the `deployment` environment
-The workflow job runs in the **`deployment`** GitHub Environment, so add these as
-**environment** secrets (not repository secrets): Repo → **Settings →
-Environments → `deployment` → Add environment secret**. (Scoping the DB
-credential to this environment keeps it out of general CI/pipeline jobs. The
-environment's branch policy allows only `main`.)
+### 4. Add config to the `deployment` environment
+The workflow job runs in the **`deployment`** GitHub Environment (Repo →
+**Settings → Environments → `deployment`**). Scoping to this environment keeps the
+DB credential out of general CI/pipeline jobs; its branch policy allows only `main`.
+
+Add the four sensitive values as **Environment secrets**:
 
 | Secret | Value |
 |---|---|
@@ -53,7 +53,14 @@ environment's branch policy allows only `main`.)
 | `R2_ACCOUNT_ID` | Cloudflare account ID |
 | `R2_ACCESS_KEY_ID` | R2 token access key id |
 | `R2_SECRET_ACCESS_KEY` | R2 token secret |
-| `R2_BUCKET` | bucket name (e.g. `learn-ivrit-backups`) |
+
+Add the bucket name as an **Environment variable** (NOT a secret — a bucket name
+isn't sensitive, and keeping it un-masked lets the target show in the run logs,
+which makes a wrong-bucket mistake obvious):
+
+| Variable | Value |
+|---|---|
+| `R2_BUCKET` | bucket name (e.g. `learn-ivrit-db-backup-main`) |
 
 ### 5. Test it
 Once the workflow is on `main`: Actions → **DB Backup** → **Run workflow**, and
