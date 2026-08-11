@@ -6,6 +6,13 @@
       "headers": {
         "Authorization": "Bearer ${SUPABASE_PAT}"
       }
+    },
+    "supabase-test": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=${VITE_SUPABASE_TEST_PROJECT_ID}",
+      "headers": {
+        "Authorization": "Bearer ${SUPABASE_PAT}"
+      }
     }
   }
 }
