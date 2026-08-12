@@ -275,6 +275,7 @@ CREATE OR REPLACE FUNCTION public.calculate_monthly_spend()
  RETURNS numeric
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public'
 AS $function$
 DECLARE
   current_month DATE;
@@ -282,10 +283,18 @@ DECLARE
 BEGIN
   current_month := DATE_TRUNC('month', CURRENT_DATE)::DATE;
 
-  SELECT COALESCE(SUM(cost), 0)
+  SELECT COALESCE(SUM(
+    CASE
+      WHEN l.cache_hit OR p.id IS NULL THEN 0
+      ELSE   COALESCE(l.prompt_tokens, 0)     * p.prompt_cost_per_million     / 1000000.0
+           + COALESCE(l.candidates_tokens, 0) * p.candidates_cost_per_million / 1000000.0
+           + COALESCE(l.thinking_tokens, 0)   * p.thinking_cost_per_million   / 1000000.0
+    END
+  ), 0)
   INTO total
-  FROM api_usage_logs
-  WHERE DATE_TRUNC('month', created_at)::DATE = current_month;
+  FROM api_usage_logs l
+  LEFT JOIN api_pricing p ON p.id = l.pricing_id
+  WHERE DATE_TRUNC('month', l.created_at)::DATE = current_month;
 
   RETURN total;
 END;
@@ -943,43 +952,29 @@ ALTER TABLE public.alert_thresholds ADD CONSTRAINT alert_thresholds_severity_che
 ALTER TABLE public.alert_thresholds ADD CONSTRAINT alert_thresholds_threshold_percent_check CHECK (((threshold_percent > (0)::numeric) AND (threshold_percent <= (100)::numeric)));
 ALTER TABLE public.api_pricing ADD CONSTRAINT api_pricing_pkey PRIMARY KEY (id);
 ALTER TABLE public.api_usage_logs ADD CONSTRAINT api_usage_logs_pkey PRIMARY KEY (id);
-ALTER TABLE public.api_usage_logs ADD CONSTRAINT api_usage_logs_pricing_id_fkey FOREIGN KEY (pricing_id) REFERENCES api_pricing(id);
 ALTER TABLE public.app_config ADD CONSTRAINT app_config_pkey PRIMARY KEY (key);
 ALTER TABLE public.bookmark_folders ADD CONSTRAINT bookmark_folders_pkey PRIMARY KEY (id);
 ALTER TABLE public.bookmark_folders ADD CONSTRAINT bookmark_folders_user_id_parent_folder_id_name_key UNIQUE (user_id, parent_folder_id, name);
-ALTER TABLE public.bookmark_folders ADD CONSTRAINT bookmark_folders_parent_folder_id_fkey FOREIGN KEY (parent_folder_id) REFERENCES bookmark_folders(id) ON DELETE CASCADE;
-ALTER TABLE public.bookmark_folders ADD CONSTRAINT bookmark_folders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.bookmarks ADD CONSTRAINT bookmarks_pkey PRIMARY KEY (id);
 ALTER TABLE public.bookmarks ADD CONSTRAINT bookmarks_user_id_folder_id_name_key UNIQUE (user_id, folder_id, name);
-ALTER TABLE public.bookmarks ADD CONSTRAINT bookmarks_folder_id_fkey FOREIGN KEY (folder_id) REFERENCES bookmark_folders(id) ON DELETE CASCADE;
-ALTER TABLE public.bookmarks ADD CONSTRAINT bookmarks_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.contact_submissions ADD CONSTRAINT contact_submissions_pkey PRIMARY KEY (id);
 ALTER TABLE public.contact_submissions ADD CONSTRAINT contact_submissions_message_type_check CHECK ((message_type = ANY (ARRAY['bug'::text, 'feature'::text, 'question'::text, 'other'::text])));
 ALTER TABLE public.contact_submissions ADD CONSTRAINT contact_submissions_status_check CHECK ((status = ANY (ARRAY['new'::text, 'in_progress'::text, 'resolved'::text])));
-ALTER TABLE public.contact_submissions ADD CONSTRAINT contact_submissions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.gemini_api_rate_limits ADD CONSTRAINT gemini_api_rate_limits_pkey PRIMARY KEY (id);
 ALTER TABLE public.gemini_api_rate_limits ADD CONSTRAINT gemini_api_rate_limits_request_type_check CHECK ((request_type = ANY (ARRAY['word_definition'::text, 'passage_translation'::text])));
-ALTER TABLE public.gemini_api_rate_limits ADD CONSTRAINT gemini_api_rate_limits_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.monthly_spend_tracking ADD CONSTRAINT monthly_spend_tracking_pkey PRIMARY KEY (month);
 ALTER TABLE public.page_views_daily ADD CONSTRAINT page_views_daily_pkey PRIMARY KEY (id);
 ALTER TABLE public.page_views_daily ADD CONSTRAINT page_views_daily_page_view_date_key UNIQUE (page, view_date);
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
-ALTER TABLE public.profiles ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.sefaria_cache ADD CONSTRAINT sefaria_cache_pkey PRIMARY KEY (id);
 ALTER TABLE public.sefaria_cache ADD CONSTRAINT sefaria_cache_reference_key UNIQUE (reference);
 ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_pkey PRIMARY KEY (id);
-ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_test_id_fkey FOREIGN KEY (test_id) REFERENCES user_tests(id) ON DELETE CASCADE;
-ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_word_id_fkey FOREIGN KEY (word_id) REFERENCES vocabulary_words(id) ON DELETE CASCADE;
 ALTER TABLE public.translation_cache ADD CONSTRAINT translation_cache_pkey PRIMARY KEY (id);
 ALTER TABLE public.translation_cache ADD CONSTRAINT translation_cache_content_hash_key UNIQUE (content_hash);
 ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_pkey PRIMARY KEY (id);
 ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_user_id_role_key UNIQUE (user_id, role);
-ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.user_tests ADD CONSTRAINT user_tests_pkey PRIMARY KEY (id);
-ALTER TABLE public.user_tests ADD CONSTRAINT user_tests_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.vocabulary_words ADD CONSTRAINT vocabulary_words_pkey PRIMARY KEY (id);
-ALTER TABLE public.vocabulary_words ADD CONSTRAINT vocabulary_words_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.word_definitions ADD CONSTRAINT word_definitions_pkey PRIMARY KEY (id);
 ALTER TABLE public.word_definitions ADD CONSTRAINT word_definitions_word_key UNIQUE (word);
 ALTER TABLE public.word_statistics ADD CONSTRAINT word_statistics_pkey PRIMARY KEY (id);
@@ -989,6 +984,22 @@ ALTER TABLE public.word_statistics ADD CONSTRAINT check_consecutive_correct_non_
 ALTER TABLE public.word_statistics ADD CONSTRAINT check_correct_count_non_negative CHECK ((correct_count >= 0));
 ALTER TABLE public.word_statistics ADD CONSTRAINT check_incorrect_count_non_negative CHECK ((incorrect_count >= 0));
 ALTER TABLE public.word_statistics ADD CONSTRAINT check_total_attempts_non_negative CHECK ((total_attempts >= 0));
+
+-- Foreign keys (added after all PK/UNIQUE targets exist)
+ALTER TABLE public.api_usage_logs ADD CONSTRAINT api_usage_logs_pricing_id_fkey FOREIGN KEY (pricing_id) REFERENCES api_pricing(id);
+ALTER TABLE public.bookmark_folders ADD CONSTRAINT bookmark_folders_parent_folder_id_fkey FOREIGN KEY (parent_folder_id) REFERENCES bookmark_folders(id) ON DELETE CASCADE;
+ALTER TABLE public.bookmark_folders ADD CONSTRAINT bookmark_folders_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.bookmarks ADD CONSTRAINT bookmarks_folder_id_fkey FOREIGN KEY (folder_id) REFERENCES bookmark_folders(id) ON DELETE CASCADE;
+ALTER TABLE public.bookmarks ADD CONSTRAINT bookmarks_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.contact_submissions ADD CONSTRAINT contact_submissions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.gemini_api_rate_limits ADD CONSTRAINT gemini_api_rate_limits_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_test_id_fkey FOREIGN KEY (test_id) REFERENCES user_tests(id) ON DELETE CASCADE;
+ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.test_responses ADD CONSTRAINT test_responses_word_id_fkey FOREIGN KEY (word_id) REFERENCES vocabulary_words(id) ON DELETE CASCADE;
+ALTER TABLE public.user_roles ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.user_tests ADD CONSTRAINT user_tests_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE public.vocabulary_words ADD CONSTRAINT vocabulary_words_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.word_statistics ADD CONSTRAINT word_statistics_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE public.word_statistics ADD CONSTRAINT word_statistics_word_id_fkey FOREIGN KEY (word_id) REFERENCES vocabulary_words(id) ON DELETE CASCADE;
 
