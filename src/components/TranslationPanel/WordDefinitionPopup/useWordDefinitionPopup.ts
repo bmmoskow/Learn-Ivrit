@@ -116,7 +116,7 @@ export function useWordDefinitionPopup({
         }
 
         if (!data) {
-          const apiUrl = `https://igqupnhtbulncgokwbhe.supabase.co/functions/v1/gemini-translate/define`;
+          const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gemini-translate/define`;
 
           const {
             data: { session },

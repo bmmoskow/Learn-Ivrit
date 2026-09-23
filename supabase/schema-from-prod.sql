@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Learn Ivrit — schema cloned from PRODUCTION ("Hebrew Translate")
--- Source project: igqupnhtbulncgokwbhe
+-- Source project: production (Hebrew Translate)
 -- Extracted: 2026-08-07, introspected live from pg_catalog (NOT from
 -- the supabase/migrations files, which may have drifted).
 --

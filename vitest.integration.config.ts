@@ -45,9 +45,14 @@ if (!TEST_URL || !TEST_ANON) {
     'Integration tests need VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — in .env.test locally (see .env.test.example), or as env vars in CI.'
   );
 }
-// Guard: never let integration tests run against production.
-if (TEST_URL.includes('igqupnhtbulncgokwbhe')) {
-  throw new Error('Refusing to run integration tests against the PRODUCTION project. Point .env.test at the test project.');
+// Guard: never let integration tests run against production. We identify the
+// production target by reading .env (VITE_SUPABASE_URL) rather than hard-coding
+// a project ref. Locally .env holds the prod URL; in CI there's no .env, and the
+// test target is set explicitly via secrets.
+const prodEnv = parseEnvFile(path.resolve(process.cwd(), '.env'));
+const PROD_URL = prodEnv.VITE_SUPABASE_URL ?? '';
+if (PROD_URL && TEST_URL === PROD_URL) {
+  throw new Error('Refusing to run integration tests against the production Supabase project (it matches VITE_SUPABASE_URL in .env). Point .env.test at the test project.');
 }
 
 export default defineConfig({

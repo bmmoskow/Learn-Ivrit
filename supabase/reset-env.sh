@@ -31,7 +31,6 @@ WIPE_SQL="$SCRIPT_DIR/reset-wipe.sql"
 SCHEMA_SQL="$SCRIPT_DIR/schema-from-prod.sql"
 SEED_SQL="$SCRIPT_DIR/seed-config.sql"
 
-PROD_REF_FALLBACK="igqupnhtbulncgokwbhe"   # hard guard even if .env is missing
 LOCAL_DB_URL_DEFAULT="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -46,15 +45,17 @@ for f in "$WIPE_SQL" "$SCHEMA_SQL" "$SEED_SQL"; do
   [[ -f "$f" ]] || die "missing SQL file: $f"
 done
 
-# --- read prod ref from .env (best-effort) for the guard ------------------
-PROD_REF="$PROD_REF_FALLBACK"
+# --- determine the production ref from .env (never hard-coded) ------------
+# Fail closed: if we can't read the prod ref we can't prove we're not about to
+# reset production, so we refuse rather than guess.
+PROD_REF=""
 if [[ -f "$ENV_FILE" ]]; then
-  ENV_PROD_REF="$(grep -E '^VITE_SUPABASE_PROJECT_ID=' "$ENV_FILE" | head -1 | cut -d'"' -f2 || true)"
-  [[ -n "${ENV_PROD_REF:-}" ]] && PROD_REF="$ENV_PROD_REF"
+  PROD_REF="$(grep -E '^VITE_SUPABASE_PROJECT_ID=' "$ENV_FILE" | head -1 | cut -d'"' -f2 || true)"
 fi
+[[ -n "$PROD_REF" ]] || die "cannot read VITE_SUPABASE_PROJECT_ID from .env — refusing to run without a known production ref to guard against."
 
 # --- prod guard -----------------------------------------------------------
-if [[ "$TARGET" == "$PROD_REF" || "$TARGET" == "$PROD_REF_FALLBACK" ]]; then
+if [[ "$TARGET" == "$PROD_REF" ]]; then
   die "target '$TARGET' is the PRODUCTION project. Refusing to reset production."
 fi
 
