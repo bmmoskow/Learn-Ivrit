@@ -28,14 +28,14 @@ This will update `supabase/types.ts` with the latest schema from your database.
 You can fetch the types manually using curl:
 
 ```bash
-curl "https://api.supabase.com/v1/projects/ysmtibxbioftvczntckr/types/typescript" \
+curl "https://api.supabase.com/v1/projects/<your-project-ref>/types/typescript" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   > supabase/types.ts
 ```
 
 ## Option 3: Using Supabase Dashboard
 
-1. Go to your project dashboard: https://supabase.com/dashboard/project/ysmtibxbioftvczntckr
+1. Go to your project dashboard: https://supabase.com/dashboard/project/<your-project-ref>
 2. Navigate to the "SQL Editor" section
 3. Click on "API Docs" in the sidebar
 4. The TypeScript types are displayed in the documentation
@@ -89,11 +89,11 @@ SUPABASE_DB_URL='your_connection_string' ./scripts/export-sql-schema.sh schema-e
 ```
 
 Get your connection string from:
-https://supabase.com/dashboard/project/ysmtibxbioftvczntckr/settings/database
+https://supabase.com/dashboard/project/<your-project-ref>/settings/database
 
 ### Option 2: Using Supabase Dashboard
 
-1. Go to SQL Editor: https://supabase.com/dashboard/project/ysmtibxbioftvczntckr/sql
+1. Go to SQL Editor: https://supabase.com/dashboard/project/<your-project-ref>/sql
 2. Run this query to see table definitions:
    ```sql
    SELECT
