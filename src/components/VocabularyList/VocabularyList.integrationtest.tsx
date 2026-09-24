@@ -28,7 +28,7 @@ describe('VocabularyList Integration Tests', () => {
   afterEach(async () => {
     try {
       if (testUserId) {
-        await supabase.from('vocabulary').delete().eq('user_id', testUserId);
+        await supabase.from('vocabulary_words').delete().eq('user_id', testUserId);
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -49,25 +49,25 @@ describe('VocabularyList Integration Tests', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/Vocabulary/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /my vocabulary/i })).toBeInTheDocument();
   });
 
   it('should fetch vocabulary from Supabase', async () => {
     const testWord = {
       user_id: testUserId,
       hebrew_word: 'שָׁלוֹם',
-      translation: 'peace',
-      root: 'שלם',
+      english_translation: 'peace',
+      definition: 'A common greeting meaning peace, hello, or goodbye.',
     };
 
     const { error: insertError } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .insert(testWord);
 
     expect(insertError).toBeNull();
 
     const { data, error } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .select('*')
       .eq('user_id', testUserId);
 
@@ -81,12 +81,12 @@ describe('VocabularyList Integration Tests', () => {
     const newWord = {
       user_id: testUserId,
       hebrew_word: 'תּוֹרָה',
-      translation: 'Torah, teaching',
-      root: 'ירה',
+      english_translation: 'Torah, teaching',
+      definition: 'The Torah; instruction or teaching.',
     };
 
     const { data, error } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .insert(newWord)
       .select();
 
@@ -99,12 +99,12 @@ describe('VocabularyList Integration Tests', () => {
     const testWord = {
       user_id: testUserId,
       hebrew_word: 'אֱלֹהִים',
-      translation: 'God',
-      root: 'אלה',
+      english_translation: 'God',
+      definition: 'God; the divine.',
     };
 
     const { data: insertData, error: insertError } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .insert(testWord)
       .select();
 
@@ -112,31 +112,31 @@ describe('VocabularyList Integration Tests', () => {
     const wordId = insertData?.[0].id;
 
     const { error: updateError } = await supabase
-      .from('vocabulary')
-      .update({ translation: 'God, gods' })
+      .from('vocabulary_words')
+      .update({ english_translation: 'God, gods' })
       .eq('id', wordId);
 
     expect(updateError).toBeNull();
 
     const { data: updatedData } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .select('*')
       .eq('id', wordId)
       .single();
 
-    expect(updatedData?.translation).toBe('God, gods');
+    expect(updatedData?.english_translation).toBe('God, gods');
   });
 
   it('should delete vocabulary from Supabase', async () => {
     const testWord = {
       user_id: testUserId,
       hebrew_word: 'מֶלֶךְ',
-      translation: 'king',
-      root: 'מלך',
+      english_translation: 'king',
+      definition: 'A king or monarch.',
     };
 
     const { data: insertData, error: insertError } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .insert(testWord)
       .select();
 
@@ -144,14 +144,14 @@ describe('VocabularyList Integration Tests', () => {
     const wordId = insertData?.[0].id;
 
     const { error: deleteError } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .delete()
       .eq('id', wordId);
 
     expect(deleteError).toBeNull();
 
     const { data: deletedData } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .select('*')
       .eq('id', wordId);
 
@@ -162,7 +162,7 @@ describe('VocabularyList Integration Tests', () => {
     await supabase.auth.signOut();
 
     const { data } = await supabase
-      .from('vocabulary')
+      .from('vocabulary_words')
       .select('*');
 
     expect(data).toEqual([]);

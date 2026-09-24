@@ -1,0 +1,4 @@
+# Keep shell scripts and SQL LF-only so they run correctly regardless of
+# the OS they're checked out on (CRLF breaks a bash shebang / here-docs).
+*.sh  text eol=lf
+*.sql text eol=lf
