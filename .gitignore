@@ -21,6 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .env*
+!.env.example
+!.env.test.example
 .claude
 
 # Supabase CLI local state
