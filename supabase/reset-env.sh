@@ -18,8 +18,8 @@
 # Local  mode uses $SUPABASE_DB_URL, defaulting to the standard local stack.
 #
 # SAFETY: refuses to run against the production project ref. The prod ref
-# is taken from VITE_SUPABASE_PROJECT_ID in .env (plus a hard-coded
-# fallback) so this can never wipe production.
+# is read from SUPABASE_PROJECT_ID in .env; if it can't be read the script
+# fails closed (refuses) rather than risk wiping production.
 # =====================================================================
 set -euo pipefail
 
@@ -50,9 +50,9 @@ done
 # reset production, so we refuse rather than guess.
 PROD_REF=""
 if [[ -f "$ENV_FILE" ]]; then
-  PROD_REF="$(grep -E '^VITE_SUPABASE_PROJECT_ID=' "$ENV_FILE" | head -1 | cut -d'"' -f2 || true)"
+  PROD_REF="$(grep -E '^SUPABASE_PROJECT_ID=' "$ENV_FILE" | head -1 | cut -d'"' -f2 || true)"
 fi
-[[ -n "$PROD_REF" ]] || die "cannot read VITE_SUPABASE_PROJECT_ID from .env — refusing to run without a known production ref to guard against."
+[[ -n "$PROD_REF" ]] || die "cannot read SUPABASE_PROJECT_ID from .env — refusing to run without a known production ref to guard against."
 
 # --- prod guard -----------------------------------------------------------
 if [[ "$TARGET" == "$PROD_REF" ]]; then
