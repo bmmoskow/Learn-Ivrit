@@ -24,12 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: development-checks
     environment: pipeline
-    # Run only on a real push to the integration branch. When this workflow is
-    # re-invoked via workflow_call in the ui/main promotion chains, the ref is
-    # ui/main — which the `pipeline` environment's branch policy does NOT allow,
-    # so we skip to avoid an environment-access failure. Net effect: integration
-    # tests run once, when code lands on `integration`, gating promotion to ui.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
+    # Run on a real push to `integration` OR `ui` — both are allowed by the
+    # `pipeline` environment's branch policy. Skips on `main`: when main.yml
+    # re-invokes this via workflow_call the ref is `main`, which pipeline does
+    # NOT allow, so integration tests never run against production. Net effect:
+    # they gate both the integration->ui and ui->main promotions, but not prod.
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/integration' || github.ref == 'refs/heads/ui')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
