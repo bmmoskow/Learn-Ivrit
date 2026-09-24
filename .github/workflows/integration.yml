@@ -24,11 +24,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: development-checks
     environment: pipeline
-    # Run only on a real push to the integration branch. When this workflow is
-    # re-invoked via workflow_call in the ui/main promotion chains, the ref is
-    # ui/main — which the `pipeline` environment's branch policy does NOT allow,
-    # so we skip to avoid an environment-access failure. Net effect: integration
-    # tests run once, when code lands on `integration`, gating promotion to ui.
+    # Integration tests run ONLY on a push to the `integration` branch.
+    # The cheap base checks (lint/typecheck/unit/build) still re-run at every
+    # stage via the nested workflow_call — kept deliberately, so the pipeline
+    # stays correct if branches ever diverge (a second contributor) or a stage
+    # becomes a real deployed environment. But the integration suite is
+    # DB-dependent, and environment SECRETS don't propagate into the ui/main
+    # workflow_call chains (only variables do) — so it runs once, here, at the
+    # integration stage, which already gates promotion all the way to main.
+    # Skipped everywhere else (ref != integration), so it never hits prod.
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
     steps:
       - name: Checkout code
