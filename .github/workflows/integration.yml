@@ -47,6 +47,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply pending migrations to the test DB
+        # Push any migrations in supabase/migrations/ that the test DB doesn't
+        # yet have, so the integration tests run against the current schema.
+        # FAIL-SAFE: if SUPABASE_DB_URL isn't set on the pipeline environment we
+        # skip (rather than stall the pipeline). Setting that secret is the switch
+        # to flip AFTER the baseline squash is merged — until then this is a
+        # no-op. (Today it's a clean no-op: the baseline is already applied.)
+        # NOTE: when a real migration is pending (step 4 = the cron migration),
+        # verify `db push` doesn't block on a confirmation prompt in CI and add
+        # non-interactive handling if it does.
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL not set on the pipeline environment — skipping db push. Add the test DB connection string to enable schema promotion to the test DB."
+            exit 0
+          fi
+          supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
       - name: Run integration tests
         run: npm run test:integration
         env:
