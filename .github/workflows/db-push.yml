@@ -1,0 +1,48 @@
+name: DB push
+
+# Reusable workflow: push pending Supabase migrations to a target environment's
+# database. Called by integration.yml (test) and main.yml (prod). Because the
+# variable/secret names are environment-agnostic, this reads them directly from
+# whichever environment it's told to use — the caller only picks the environment
+# and passes `secrets: inherit`.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment to target (pipeline = test, deployment = prod).
+        required: true
+        type: string
+
+jobs:
+  push:
+    name: Push pending migrations
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Push pending migrations
+        # Build the session-pooler connection string from the environment's
+        # variables + secret. URL-encode the password so special characters are
+        # safe, and mask the encoded form (it differs from the registered secret,
+        # so it isn't auto-masked). FAIL-SAFE: skip if any value is unset.
+        env:
+          DB_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          DB_HOST: ${{ vars.SUPABASE_DB_HOST }}
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          if [ -z "$DB_REF" ] || [ -z "$DB_HOST" ] || [ -z "$DB_PASSWORD" ]; then
+            echo "::warning::db-push: missing SUPABASE_PROJECT_REF / SUPABASE_DB_HOST / SUPABASE_DB_PASSWORD in the '${{ inputs.environment }}' environment — skipping."
+            exit 0
+          fi
+          ENCODED_PASSWORD=$(jq -rn --arg p "$DB_PASSWORD" '$p|@uri')
+          echo "::add-mask::$ENCODED_PASSWORD"
+          URL="postgresql://postgres.${DB_REF}:${ENCODED_PASSWORD}@${DB_HOST}.pooler.supabase.com:5432/postgres"
+          # Never echo $URL — it contains the password.
+          supabase db push --db-url "$URL"
