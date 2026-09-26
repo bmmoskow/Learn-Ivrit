@@ -52,7 +52,7 @@ jobs:
         # Fail-safe: skips if any input is unset. No-op today (baseline applied).
         uses: ./.github/actions/db-push
         with:
-          db-ref:      ${{ vars.SUPABASE_TEST_PROJECT_REF }}
+          db-ref:      ${{ vars.SUPABASE_PROJECT_REF }}
           db-host:     ${{ vars.SUPABASE_DB_HOST }}
           db-password: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
@@ -63,7 +63,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           # PUBLIC test-project ref (a variable, not a secret). The vitest config
           # refuses to run unless the target URL contains this — the CI prod guard.
-          EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_TEST_PROJECT_REF }}
+          EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
 
   promote-to-ui:
     name: Promote to UI
