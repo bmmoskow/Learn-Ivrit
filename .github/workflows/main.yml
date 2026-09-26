@@ -46,20 +46,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+      - name: Push pending migrations to the prod DB
+        # Shared db-push action (setup CLI + encode password + push). Fail-safe:
+        # skips if any input is unset. No-op today (prod history = baseline).
+        uses: ./.github/actions/db-push
         with:
-          version: latest
-
-      - name: Apply pending migrations to the prod DB
-        run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::warning::SUPABASE_DB_URL not set on the deployment environment — skipping db push."
-            exit 0
-          fi
-          supabase db push --db-url "$SUPABASE_DB_URL"
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          db-ref:      ${{ vars.SUPABASE_PROD_PROJECT_REF }}
+          db-host:     ${{ vars.SUPABASE_DB_HOST }}
+          db-password: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates

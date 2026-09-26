@@ -1,0 +1,46 @@
+name: Supabase db push
+description: >-
+  Build the Supabase session-pooler connection string from its parts and push
+  pending migrations. URL-encodes the password (so special characters are safe)
+  and masks the encoded form in logs. Fail-safe: skips if any input is missing.
+
+inputs:
+  db-ref:
+    description: Supabase project ref — used in the pooler username `postgres.<ref>`.
+    required: false
+  db-host:
+    description: >-
+      Pooler host subdomain, e.g. `aws-0-us-west-2`. The common
+      `.pooler.supabase.com` suffix is appended here.
+    required: false
+  db-password:
+    description: Raw database password. Special characters are URL-encoded automatically.
+    required: false
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Push pending migrations
+      shell: bash
+      env:
+        DB_REF: ${{ inputs.db-ref }}
+        DB_HOST: ${{ inputs.db-host }}
+        DB_PASSWORD: ${{ inputs.db-password }}
+      run: |
+        if [ -z "$DB_REF" ] || [ -z "$DB_HOST" ] || [ -z "$DB_PASSWORD" ]; then
+          echo "::warning::db-push: missing db-ref, db-host, or db-password — skipping (nothing pushed)."
+          exit 0
+        fi
+        # URL-encode the password so special characters don't break URL parsing.
+        ENCODED_PASSWORD=$(jq -rn --arg p "$DB_PASSWORD" '$p|@uri')
+        # The encoded form differs from the registered secret, so it isn't
+        # auto-masked — mask it explicitly.
+        echo "::add-mask::$ENCODED_PASSWORD"
+        URL="postgresql://postgres.${DB_REF}:${ENCODED_PASSWORD}@${DB_HOST}.pooler.supabase.com:5432/postgres"
+        # Never echo $URL — it contains the password.
+        supabase db push --db-url "$URL"
