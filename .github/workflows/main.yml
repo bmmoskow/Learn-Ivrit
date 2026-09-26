@@ -28,6 +28,39 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/security.yml
 
+  db-migrate-prod:
+    name: Migrate Prod DB
+    runs-on: ubuntu-latest
+    needs: [ui-checks, security]
+    # Push pending schema migrations to PROD — only after ui-checks + security
+    # pass, only on a real push to `main`. NO manual-approval gate: reaching main
+    # already means the migration passed the integration tests against the test
+    # DB (same schema), so the green pipeline IS the gate. Reuses the existing
+    # `deployment` environment for the prod SUPABASE_DB_URL (branch policy: main);
+    # the nightly backup is the safety net. FAIL-SAFE: skips if SUPABASE_DB_URL is
+    # unset. No-op today (prod history = baseline). NOTE: when a real migration is
+    # pending, verify `db push` doesn't block on a confirmation prompt in CI.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: deployment
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply pending migrations to the prod DB
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::warning::SUPABASE_DB_URL not set on the deployment environment — skipping db push."
+            exit 0
+          fi
+          supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates
 # preview deployments for other branches). No deploy job is needed here.
