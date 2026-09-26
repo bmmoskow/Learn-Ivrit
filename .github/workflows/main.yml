@@ -30,30 +30,18 @@ jobs:
 
   db-migrate-prod:
     name: Migrate Prod DB
-    runs-on: ubuntu-latest
     needs: [ui-checks, security]
     # Push pending schema migrations to PROD — only after ui-checks + security
     # pass, only on a real push to `main`. NO manual-approval gate: reaching main
-    # already means the migration passed the integration tests against the test
-    # DB (same schema), so the green pipeline IS the gate. Reuses the existing
-    # `deployment` environment for the prod SUPABASE_DB_URL (branch policy: main);
-    # the nightly backup is the safety net. FAIL-SAFE: skips if SUPABASE_DB_URL is
-    # unset. No-op today (prod history = baseline). NOTE: when a real migration is
-    # pending, verify `db push` doesn't block on a confirmation prompt in CI.
+    # already means the migration passed the integration tests against the test DB
+    # (same schema), so the green pipeline IS the gate; the nightly backup is the
+    # safety net. Reusable db-push workflow targeting the `deployment` environment
+    # (`secrets: inherit` gives it the prod DB password). No-op today (baseline).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    environment: deployment
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Push pending migrations to the prod DB
-        # Shared db-push action (setup CLI + encode password + push). Fail-safe:
-        # skips if any input is unset. No-op today (prod history = baseline).
-        uses: ./.github/actions/db-push
-        with:
-          db-ref:      ${{ vars.SUPABASE_PROJECT_REF }}
-          db-host:     ${{ vars.SUPABASE_DB_HOST }}
-          db-password: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    uses: ./.github/workflows/db-push.yml
+    with:
+      environment: deployment
+    secrets: inherit
 
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates
