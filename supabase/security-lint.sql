@@ -1,8 +1,10 @@
 -- DB security lint — run against a database AFTER migrations are applied.
 --
 -- Returns one row per finding: severity | lint | object | detail
---   ERROR  a real exposure — the CI job fails on any ERROR row.
---   WARN   worth fixing but not blocking — reported, does not fail CI.
+--   ERROR  a real exposure.
+--   WARN   best-practice / lower-urgency.
+-- The CI gate (db-advisors.yml) fails on ANY finding — the baseline is zero, so
+-- severity conveys urgency in the logs, not whether it blocks.
 --
 -- This is a curated subset of Supabase's own security advisors (splinter),
 -- run over the existing DB connection so no account-wide token is needed.
