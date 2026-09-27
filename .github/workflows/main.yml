@@ -28,6 +28,21 @@ jobs:
     if: github.event_name == 'push'
     uses: ./.github/workflows/security.yml
 
+  db-migrate-prod:
+    name: Migrate Prod DB
+    needs: [ui-checks, security]
+    # Push pending schema migrations to PROD — only after ui-checks + security
+    # pass, only on a real push to `main`. NO manual-approval gate: reaching main
+    # already means the migration passed the integration tests against the test DB
+    # (same schema), so the green pipeline IS the gate; the nightly backup is the
+    # safety net. Reusable db-push workflow targeting the `deployment` environment
+    # (`secrets: inherit` gives it the prod DB password). No-op today (baseline).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/db-push.yml
+    with:
+      environment: deployment
+    secrets: inherit
+
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates
 # preview deployments for other branches). No deploy job is needed here.
