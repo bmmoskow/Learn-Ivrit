@@ -43,6 +43,21 @@ jobs:
       environment: deployment
     secrets: inherit
 
+  db-advisors-prod:
+    name: DB security advisors (prod)
+    needs: db-migrate-prod
+    # Lint the PROD DB for security problems AFTER the migrations are applied — a
+    # last gate that fails (red X on main) if any schema change reached prod with
+    # an ERROR-level exposure. Cloudflare Pages deploys the app independently on
+    # push, so this doesn't block the deploy; it's the schema safety signal, the
+    # counterpart to the integration-stage check. Reusable db-advisors workflow,
+    # `deployment` environment.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/db-advisors.yml
+    with:
+      environment: deployment
+    secrets: inherit
+
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates
 # preview deployments for other branches). No deploy job is needed here.
