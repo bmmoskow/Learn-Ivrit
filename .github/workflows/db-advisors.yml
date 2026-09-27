@@ -1,0 +1,85 @@
+name: DB security advisors
+
+# Reusable workflow: run the curated security lint (supabase/security-lint.sql)
+# against a target environment's database and FAIL on any ERROR-level finding.
+# Called by integration.yml (test DB, after migrations are pushed) and main.yml
+# (prod DB, after migrations are pushed). Reuses the same environment-agnostic
+# connection parts as db-push.yml — no account-wide token is needed.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment to target (pipeline = test, deployment = prod).
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  advise:
+    name: DB security advisors
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run security lint
+        # Build the session-pooler connection string from the environment's
+        # variables + secret (same parts as db-push). URL-encode the password so
+        # special characters are safe, and mask the encoded form (it differs from
+        # the registered secret, so it isn't auto-masked). FAIL-SAFE: skip if any
+        # value is unset, matching db-push.yml.
+        env:
+          DB_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          DB_HOST: ${{ vars.SUPABASE_DB_HOST }}
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$DB_REF" ] || [ -z "$DB_HOST" ] || [ -z "$DB_PASSWORD" ]; then
+            echo "::warning::db-advisors: missing SUPABASE_PROJECT_REF / SUPABASE_DB_HOST / SUPABASE_DB_PASSWORD in the '${{ inputs.environment }}' environment — skipping."
+            exit 0
+          fi
+
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+
+          ENCODED_PASSWORD=$(jq -rn --arg p "$DB_PASSWORD" '$p|@uri')
+          echo "::add-mask::$ENCODED_PASSWORD"
+          URL="postgresql://postgres.${DB_REF}:${ENCODED_PASSWORD}@${DB_HOST}.pooler.supabase.com:5432/postgres"
+          # Never echo $URL — it contains the password.
+
+          # One row per finding: severity|lint|object|detail
+          psql "$URL" -v ON_ERROR_STOP=1 -tA -F '|' -f supabase/security-lint.sql > findings.txt
+
+          errors=0
+          warns=0
+          {
+            echo "## DB security advisors — ${{ inputs.environment }}"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while IFS='|' read -r severity lint object detail; do
+            [ -z "${severity:-}" ] && continue
+            echo "- **$severity** \`$lint\` — \`$object\`: $detail" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$severity" = "ERROR" ]; then
+              echo "::error::[$lint] $object — $detail"
+              errors=$((errors + 1))
+            else
+              echo "::warning::[$lint] $object — $detail"
+              warns=$((warns + 1))
+            fi
+          done < findings.txt
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Result: ${errors} error(s), ${warns} warning(s)." >> "$GITHUB_STEP_SUMMARY"
+          echo "db-advisors: ${errors} error(s), ${warns} warning(s)."
+
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::db-advisors: ${errors} ERROR-level security finding(s) — failing. See the job summary."
+            exit 1
+          fi

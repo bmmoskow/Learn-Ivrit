@@ -32,6 +32,19 @@ jobs:
       environment: pipeline
     secrets: inherit
 
+  db-advisors-test:
+    name: DB security advisors (test)
+    needs: db-push-test
+    # Lint the test DB for security problems AFTER the migrations are applied, so
+    # a schema change that weakens RLS/policies is caught before it can promote.
+    # Reusable db-advisors workflow, `pipeline` environment. Only on a real push
+    # to `integration`. Fails the pipeline on any ERROR-level finding.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
+    uses: ./.github/workflows/db-advisors.yml
+    with:
+      environment: pipeline
+    secrets: inherit
+
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -67,7 +80,7 @@ jobs:
   promote-to-ui:
     name: Promote to UI
     runs-on: ubuntu-latest
-    needs: [development-checks, integration-tests]
+    needs: [development-checks, integration-tests, db-advisors-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration' && inputs.skip_promote != true
     steps:
       - name: Checkout code
