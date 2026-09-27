@@ -1,7 +1,10 @@
 name: DB security advisors
 
 # Reusable workflow: run the curated security lint (supabase/security-lint.sql)
-# against a target environment's database and FAIL on any ERROR-level finding.
+# against a target environment's database and FAIL on ANY finding. The DB
+# security baseline is zero findings, so this is a ratchet: once clean, a new
+# migration that introduces any exposure can't promote. ERROR and WARN both
+# block — severity is kept only to convey urgency in the logs/summary.
 # Called by integration.yml (test DB, after migrations are pushed) and main.yml
 # (prod DB, after migrations are pushed). Reuses the same environment-agnostic
 # connection parts as db-push.yml — no account-wide token is needed.
@@ -75,11 +78,12 @@ jobs:
             fi
           done < findings.txt
 
+          total=$((errors + warns))
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Result: ${errors} error(s), ${warns} warning(s)." >> "$GITHUB_STEP_SUMMARY"
-          echo "db-advisors: ${errors} error(s), ${warns} warning(s)."
+          echo "Result: ${total} finding(s) (${errors} error, ${warns} warn). Baseline is zero — any finding fails this gate." >> "$GITHUB_STEP_SUMMARY"
+          echo "db-advisors: ${total} finding(s) (${errors} error, ${warns} warn)."
 
-          if [ "$errors" -gt 0 ]; then
-            echo "::error::db-advisors: ${errors} ERROR-level security finding(s) — failing. See the job summary."
+          if [ "$total" -gt 0 ]; then
+            echo "::error::db-advisors: ${total} security finding(s) — failing. The DB security baseline is zero findings; see the job summary."
             exit 1
           fi
