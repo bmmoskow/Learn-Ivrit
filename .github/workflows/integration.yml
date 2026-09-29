@@ -45,6 +45,18 @@ jobs:
       environment: pipeline
     secrets: inherit
 
+  deploy-functions-test:
+    name: Deploy edge functions (test)
+    needs: db-push-test
+    # Deploy edge functions to the TEST project after the schema is pushed, so
+    # they run against the current schema. Reusable deploy-functions workflow,
+    # `pipeline` environment. Only on a real push to `integration`.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
+    uses: ./.github/workflows/deploy-functions.yml
+    with:
+      environment: pipeline
+    secrets: inherit
+
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
@@ -80,7 +92,7 @@ jobs:
   promote-to-ui:
     name: Promote to UI
     runs-on: ubuntu-latest
-    needs: [development-checks, integration-tests, db-advisors-test]
+    needs: [development-checks, integration-tests, db-advisors-test, deploy-functions-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration' && inputs.skip_promote != true
     steps:
       - name: Checkout code

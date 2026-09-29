@@ -58,6 +58,18 @@ jobs:
       environment: deployment
     secrets: inherit
 
+  deploy-functions-prod:
+    name: Deploy edge functions (prod)
+    needs: [ui-checks, security, db-migrate-prod]
+    # Deploy edge functions to PROD after checks pass and the schema migration
+    # is applied — same order as at the integration stage (schema, then
+    # functions). Reusable deploy-functions workflow, `deployment` environment.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/deploy-functions.yml
+    with:
+      environment: deployment
+    secrets: inherit
+
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates
 # preview deployments for other branches). No deploy job is needed here.
