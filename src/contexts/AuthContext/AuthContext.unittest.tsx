@@ -233,6 +233,43 @@ describe("AuthContext", () => {
       expect(result.current.loading).toBe(false);
     });
 
+    it("recovers to logged-out (never hangs on loading) when session restore rejects", async () => {
+      // A corrupt/unrefreshable stored session makes getSession reject. The app
+      // must not get stuck on the loading screen — it should clear and continue.
+      mockGetSession.mockRejectedValue(new Error("corrupt stored session"));
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.user).toBeNull();
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("recovers to logged-out when getSession returns an error payload", async () => {
+      mockGetSession.mockResolvedValue({
+        data: { session: null },
+        error: { message: "invalid refresh token" } as unknown as AuthError,
+      });
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await act(async () => {
+        await flushPromises();
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.user).toBeNull();
+
+      consoleErrorSpy.mockRestore();
+    });
+
     it("restores guest mode from localStorage", async () => {
       // Create a proper mock for localStorage
       const mockGetItem = vi.fn((key: string) => {
