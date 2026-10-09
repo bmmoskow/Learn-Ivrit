@@ -17,14 +17,36 @@ type AuthContextType = {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * Remove any persisted Supabase auth token from localStorage. Used to recover
+ * from a corrupt or unrefreshable stored session so a returning user isn't left
+ * stuck on the loading screen — the app falls back to logged-out instead.
+ */
+function clearStoredSupabaseAuth() {
+  try {
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith("sb-") && key.includes("-auth-token"))
+      .forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // storage unavailable — nothing to clear
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for guest mode in localStorage FIRST (before Supabase config check)
-    const guestMode = localStorage.getItem("guestMode");
+    // Check for guest mode in localStorage FIRST (before Supabase config check).
+    // Reading localStorage can throw (privacy mode / disabled storage); never let
+    // that wedge startup.
+    let guestMode: string | null = null;
+    try {
+      guestMode = localStorage.getItem("guestMode");
+    } catch {
+      // storage unavailable — fall through to normal auth
+    }
     if (guestMode === "true") {
       setIsGuest(true);
       setLoading(false);
@@ -74,11 +96,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })();
     });
 
-    // Get initial session after listener is set up
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Get initial session after listener is set up.
+    // A corrupt or unrefreshable stored session must NOT wedge the app on the
+    // loading screen: with no catch, a rejected getSession() leaves loading=true
+    // forever (a permanent spinner). Clear the bad token and continue logged-out.
+    supabase.auth
+      .getSession()
+      .then(({ data: { session }, error }) => {
+        if (error) throw error;
+        setUser(session?.user ?? null);
+      })
+      .catch((err) => {
+        console.error(
+          "[AuthContext] Could not restore session; clearing stored auth and continuing logged-out:",
+          err,
+        );
+        clearStoredSupabaseAuth();
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
 
     return () => subscription.unsubscribe();
   }, []);
