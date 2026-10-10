@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, processLock } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -7,7 +7,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Per-tab auth lock (same as supabase/client.ts) so a stuck/background tab can't
+// block getSession() in another tab via the default cross-tab Web Lock.
+// NOTE: this is a SECOND browser client for the same project (used by Admin /
+// Contact). Collapsing it into the single supabase/client.ts instance is the
+// right long-term cleanup, but that needs supabase/types.ts regenerated first
+// (it's currently missing tables like admin_alerts / monthly_spend_tracking).
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { lock: processLock },
+});
 
 export type Profile = {
   id: string;
