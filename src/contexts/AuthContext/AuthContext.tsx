@@ -72,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Safety net against a HANGING auth init (not just a rejecting one): if
-    // neither getSession nor the auth listener settles in time, clear the stored
-    // auth and continue logged-out so the user is never stuck on the spinner.
+    // neither getSession nor the auth listener settles in time, stop waiting so
+    // the user is never stuck on the spinner.
     let settled = false;
     const resolveAuth = () => {
       settled = true;
@@ -81,11 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     const safetyTimer = setTimeout(() => {
       if (settled) return;
+      // Last-resort guard. Do NOT clear the stored token here: a hang can occur
+      // on a perfectly valid session (e.g. the cross-tab lock contention this
+      // guards against), and nuking it would log the user out for no reason.
+      // Just stop the spinner; a reload recovers a valid session. (A token that
+      // makes restore REJECT is still cleared in the catch below.)
       console.error(
-        `[AuthContext] Auth init timed out after ${AUTH_INIT_TIMEOUT_MS}ms; clearing stored auth and continuing logged-out.`,
+        `[AuthContext] Auth init did not settle within ${AUTH_INIT_TIMEOUT_MS}ms; continuing without a restored session (stored token left intact).`,
       );
-      clearStoredSupabaseAuth();
-      setUser(null);
       resolveAuth();
     }, AUTH_INIT_TIMEOUT_MS);
 
