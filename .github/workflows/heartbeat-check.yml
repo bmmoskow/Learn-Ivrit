@@ -1,0 +1,75 @@
+name: Heartbeat check
+
+# Reusable: verify a target environment's LIVE credentials still work, so silent
+# breakage (an access token expiring, a DB password rotated) is surfaced on a
+# timer instead of discovered on the next deploy. Called by heartbeat.yml.
+#
+# Unlike the deploy workflows (which skip fail-safe when unconfigured), this
+# FAILS LOUD on any missing or invalid credential — surfacing problems is the
+# whole point.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: GitHub environment to probe (pipeline = test, deployment = prod).
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Credentials
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Supabase access token (edge-function deploy credential)
+        env:
+          REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REF:-}" ] || [ -z "${TOKEN:-}" ]; then
+            echo "::error::Missing SUPABASE_PROJECT_REF / SUPABASE_ACCESS_TOKEN in the '${{ inputs.environment }}' environment."
+            exit 1
+          fi
+          # List the project's edge functions — within the token's scope, and a
+          # real use of the exact credential the deploy uses.
+          code=$(curl -sS -o /tmp/fn.json -w '%{http_code}' --max-time 25 \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://api.supabase.com/v1/projects/${REF}/functions")
+          if [ "$code" != "200" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN for '${{ inputs.environment }}' is not working (HTTP $code) — most likely EXPIRED. Regenerate at https://supabase.com/dashboard/account/tokens and update the secret."
+            head -c 400 /tmp/fn.json || true
+            exit 1
+          fi
+          echo "Access token OK — $(jq 'length' /tmp/fn.json) function(s) visible."
+
+      - name: Install psql
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+
+      - name: Database credential (session pooler)
+        env:
+          REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          HOST: ${{ vars.SUPABASE_DB_HOST }}
+          PW: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REF:-}" ] || [ -z "${HOST:-}" ] || [ -z "${PW:-}" ]; then
+            echo "::error::Missing SUPABASE_PROJECT_REF / SUPABASE_DB_HOST / SUPABASE_DB_PASSWORD in the '${{ inputs.environment }}' environment."
+            exit 1
+          fi
+          ENC=$(jq -rn --arg p "$PW" '$p|@uri')
+          echo "::add-mask::$ENC"
+          URL="postgresql://postgres.${REF}:${ENC}@${HOST}.pooler.supabase.com:5432/postgres"
+          # Never echo $URL — it contains the password.
+          if ! psql "$URL" -tAc "select 1" >/dev/null 2>/tmp/pg.err; then
+            echo "::error::DB credential/connection failed for '${{ inputs.environment }}' — password rotated/expired, or host changed."
+            head -c 400 /tmp/pg.err || true
+            exit 1
+          fi
+          echo "DB connection OK."

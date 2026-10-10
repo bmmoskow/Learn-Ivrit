@@ -1,0 +1,53 @@
+name: Heartbeat
+
+# Scheduled health check. Surfaces SILENT breakage — an expired access token, a
+# rotated DB password, the site being down — by exercising the live dependencies
+# on a timer, instead of finding out on the next deploy. A failed scheduled run
+# emails the repo owner by default; that email IS the alert.
+#
+# SCOPE: this checks infrastructure/credentials, NOT client-side runtime bugs —
+# a curl can't catch a JavaScript hang in the browser. It covers the "a token
+# expired and nobody noticed" class of problem.
+#
+# WHY ONLY PROD + SITE: a scheduled run executes on `main`, and the `pipeline`
+# (test) environment's branch policy excludes `main`, so its secrets aren't
+# reachable here. To also probe the TEST project, add `main` to the pipeline
+# environment's deployment branch policies, then add a `test` job that calls
+# heartbeat-check.yml with `environment: pipeline`.
+#
+# NOTE: scheduled runs only fire when this file is on the DEFAULT branch (main).
+# Until then, exercise it with "Run workflow" (workflow_dispatch).
+on:
+  schedule:
+    - cron: "0 13 * * *"   # daily ~06:00 PT
+  workflow_dispatch: {}
+
+concurrency:
+  group: heartbeat
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: Live site
+    runs-on: ubuntu-latest
+    steps:
+      - name: learn-ivrit.com responds and serves its app bundle
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/index.html -w '%{http_code}' --max-time 20 https://learn-ivrit.com)
+          [ "$code" = "200" ] || { echo "::error::learn-ivrit.com returned HTTP $code"; exit 1; }
+          js=$(grep -oE '/assets/index-[^"]+\.js' /tmp/index.html | head -1)
+          [ -n "$js" ] || { echo "::error::No app bundle referenced in the served HTML (build/deploy may be broken)."; exit 1; }
+          jscode=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "https://learn-ivrit.com${js}")
+          [ "$jscode" = "200" ] || { echo "::error::App bundle ${js} returned HTTP $jscode"; exit 1; }
+          echo "Site OK (HTML 200, bundle ${js} 200)."
+
+  prod:
+    name: Prod credentials
+    uses: ./.github/workflows/heartbeat-check.yml
+    with:
+      environment: deployment
+    secrets: inherit
