@@ -17,6 +17,13 @@ type AuthContextType = {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// If Supabase auth initialization hasn't settled within this window, stop
+// waiting and continue logged-out. A HANGING restore (e.g. an invalid stored
+// token whose refresh never resolves) would otherwise leave the app spinning
+// forever — a rejecting restore is handled by the catch below, but a promise
+// that never settles slips past it.
+const AUTH_INIT_TIMEOUT_MS = 8000;
+
 /**
  * Remove any persisted Supabase auth token from localStorage. Used to recover
  * from a corrupt or unrefreshable stored session so a returning user isn't left
@@ -64,6 +71,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Safety net against a HANGING auth init (not just a rejecting one): if
+    // neither getSession nor the auth listener settles in time, clear the stored
+    // auth and continue logged-out so the user is never stuck on the spinner.
+    let settled = false;
+    const resolveAuth = () => {
+      settled = true;
+      setLoading(false);
+    };
+    const safetyTimer = setTimeout(() => {
+      if (settled) return;
+      console.error(
+        `[AuthContext] Auth init timed out after ${AUTH_INIT_TIMEOUT_MS}ms; clearing stored auth and continuing logged-out.`,
+      );
+      clearStoredSupabaseAuth();
+      setUser(null);
+      resolveAuth();
+    }, AUTH_INIT_TIMEOUT_MS);
+
     // IMPORTANT: Set up auth listener BEFORE getSession to avoid race conditions
     const {
       data: { subscription },
@@ -71,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (async () => {
         console.log("[AuthContext] onAuthStateChange - event:", event, "session:", !!session, "user:", !!session?.user);
         setUser(session?.user ?? null);
-        setLoading(false);
+        resolveAuth();
 
         // PASSWORD_RECOVERY events are handled via OTP code entry on the login screen.
         // No redirect needed.
@@ -114,9 +139,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearStoredSupabaseAuth();
         setUser(null);
       })
-      .finally(() => setLoading(false));
+      .finally(() => resolveAuth());
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(safetyTimer);
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, _fullName?: string) => {

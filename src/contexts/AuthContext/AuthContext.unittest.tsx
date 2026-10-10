@@ -270,6 +270,31 @@ describe("AuthContext", () => {
       consoleErrorSpy.mockRestore();
     });
 
+    it("recovers to logged-out when auth init HANGS (never settles)", async () => {
+      // The real bug: getSession never resolves nor rejects (e.g. a stuck token
+      // refresh), so .catch/.finally never fire. A safety timeout must still
+      // stop the spinner. onAuthStateChange also never fires its callback here.
+      vi.useFakeTimers();
+      mockGetSession.mockReturnValue(new Promise(() => {}) as ReturnType<typeof supabase.auth.getSession>);
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      // Before the timeout: still loading.
+      expect(result.current.loading).toBe(true);
+
+      // Advance past the auth-init timeout.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(8001);
+      });
+
+      expect(result.current.loading).toBe(false);
+      expect(result.current.user).toBeNull();
+
+      consoleErrorSpy.mockRestore();
+      vi.useRealTimers();
+    });
+
     it("restores guest mode from localStorage", async () => {
       // Create a proper mock for localStorage
       const mockGetItem = vi.fn((key: string) => {
