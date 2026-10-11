@@ -101,3 +101,14 @@ jobs:
     name: Prod probe (read-only)
     uses: ./.github/workflows/prod-probe.yml
     secrets: inherit
+
+  prod-advisors:
+    name: Prod DB security advisors (read-only)
+    # Re-lint the PROD schema on a timer so an out-of-band change made directly
+    # in the Supabase dashboard (RLS disabled, a permissive policy added, a view
+    # flipped) is caught even though no migration ran. Read-only; same reusable
+    # workflow the main stage uses, targeting the `deployment` environment.
+    uses: ./.github/workflows/db-advisors.yml
+    with:
+      environment: deployment
+    secrets: inherit
