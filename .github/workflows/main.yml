@@ -70,6 +70,17 @@ jobs:
       environment: deployment
     secrets: inherit
 
+  prod-probe:
+    name: Prod probe (read-only)
+    needs: [db-migrate-prod, deploy-functions-prod]
+    # After the schema migration + function deploy, verify prod is actually
+    # healthy (access token works, functions ACTIVE, DB reachable + schema
+    # intact). Read-only — never writes to prod. Same probe the scheduled
+    # heartbeat runs; here it confirms the just-deployed state.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/prod-probe.yml
+    secrets: inherit
+
 # Production deployment is handled by Cloudflare Pages' GitHub integration,
 # which builds and deploys automatically on push to `main` (and creates
 # preview deployments for other branches). No deploy job is needed here.
