@@ -1,0 +1,83 @@
+name: Prod probe
+
+# Reusable, READ-ONLY health probe of the production project. Never writes to
+# prod. Called by heartbeat.yml (on a schedule) and main.yml (after a prod
+# deploy). Targets the `deployment` environment, so it only runs from `main`
+# (both the schedule and a prod push are on main).
+#
+# Answers "is prod really working?" without the integration tests (which write):
+#   - the prod access token still works and every edge function is ACTIVE
+#   - the prod DB is reachable and its schema is intact (public table count)
+#
+# FAILS LOUD on any problem — surfacing breakage is the point.
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Read-only prod probe
+    runs-on: ubuntu-latest
+    environment: deployment
+    steps:
+      - name: Access token valid + edge functions ACTIVE
+        env:
+          REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REF:-}" ] || [ -z "${TOKEN:-}" ]; then
+            echo "::error::Missing prod SUPABASE_PROJECT_REF / SUPABASE_ACCESS_TOKEN."
+            exit 1
+          fi
+          code=$(curl -sS -o /tmp/fn.json -w '%{http_code}' --max-time 25 \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://api.supabase.com/v1/projects/${REF}/functions")
+          if [ "$code" != "200" ]; then
+            echo "::error::Prod SUPABASE_ACCESS_TOKEN not working (HTTP $code) — most likely EXPIRED. Regenerate at https://supabase.com/dashboard/account/tokens."
+            head -c 400 /tmp/fn.json || true
+            exit 1
+          fi
+          total=$(jq 'length' /tmp/fn.json)
+          inactive=$(jq '[.[] | select(.status != "ACTIVE")] | length' /tmp/fn.json)
+          echo "Access token OK — ${total} function(s), ${inactive} not ACTIVE."
+          if [ "$inactive" != "0" ]; then
+            echo "::error::${inactive} prod edge function(s) are not ACTIVE:"
+            jq -r '.[] | select(.status != "ACTIVE") | "  - \(.slug): \(.status)"' /tmp/fn.json
+            exit 1
+          fi
+
+      - name: Install psql
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y postgresql-client
+          fi
+
+      - name: Prod DB reachable + schema intact (read-only)
+        env:
+          REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          HOST: ${{ vars.SUPABASE_DB_HOST }}
+          PW: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REF:-}" ] || [ -z "${HOST:-}" ] || [ -z "${PW:-}" ]; then
+            echo "::error::Missing prod SUPABASE_PROJECT_REF / SUPABASE_DB_HOST / SUPABASE_DB_PASSWORD."
+            exit 1
+          fi
+          ENC=$(jq -rn --arg p "$PW" '$p|@uri')
+          echo "::add-mask::$ENC"
+          URL="postgresql://postgres.${REF}:${ENC}@${HOST}.pooler.supabase.com:5432/postgres"
+          # Read-only: connectivity + a schema sanity check (prod has ~21 public
+          # tables; a sudden drop signals damage). Never writes.
+          n=$(psql "$URL" -tAc "select count(*) from information_schema.tables where table_schema='public' and table_type='BASE TABLE'" 2>/tmp/pg.err) || {
+            echo "::error::Prod DB connection failed — password rotated/expired or host wrong."
+            head -c 400 /tmp/pg.err || true
+            exit 1
+          }
+          echo "Prod DB reachable — ${n} public base tables."
+          if [ "$n" -lt 15 ]; then
+            echo "::error::Prod public-table count is ${n} (expected ~21) — the schema may be damaged."
+            exit 1
+          fi
