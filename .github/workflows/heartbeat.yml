@@ -1,22 +1,22 @@
 name: Heartbeat
 
-# Scheduled health check. Surfaces SILENT breakage — an expired access token, a
-# rotated DB password, the site being down — by exercising the live dependencies
-# on a timer, instead of finding out on the next deploy. A failed scheduled run
-# emails the repo owner by default; that email IS the alert.
+# Scheduled run of the whole verification battery, to catch SILENT breakage that
+# happens between pushes — expired credentials, newly-disclosed dependency CVEs,
+# a test-DB/schema regression, prod going down. The push pipeline only runs when
+# someone pushes; this watches the clock. A failed scheduled run emails the repo
+# owner by default — that email is the alert.
 #
-# SCOPE: this checks infrastructure/credentials, NOT client-side runtime bugs —
-# a curl can't catch a JavaScript hang in the browser. It covers the "a token
-# expired and nobody noticed" class of problem.
+# It reuses the same checks the pipeline uses (development.yml, security.yml) so
+# there's no duplicated logic — only a different (scheduled) trigger — plus a
+# read-only prod probe.
 #
-# WHY ONLY PROD + SITE: a scheduled run executes on `main`, and the `pipeline`
-# (test) environment's branch policy excludes `main`, so its secrets aren't
-# reachable here. To also probe the TEST project, add `main` to the pipeline
-# environment's deployment branch policies, then add a `test` job that calls
-# heartbeat-check.yml with `environment: pipeline`.
+# Full suite runs against the TEST project (safe to exercise); PROD gets a
+# read-only probe (never written to).
 #
 # NOTE: scheduled runs only fire when this file is on the DEFAULT branch (main).
-# Until then, exercise it with "Run workflow" (workflow_dispatch).
+# Until then, exercise it with "Run workflow" (workflow_dispatch) once it's on a
+# branch. The integration job needs the repo-level TEST_SUPABASE_* values and
+# skips cleanly until TEST_SUPABASE_ANON_KEY is set.
 on:
   schedule:
     - cron: "0 13 * * *"   # daily ~06:00 PT
@@ -27,9 +27,61 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
+  actions: read
+  security-events: write
 
 jobs:
+  # --- Full check suite against the TEST project ---
+
+  code-checks:
+    name: Code checks
+    # lint / typecheck / build / unit (incl. UI component tests). skip_promote
+    # keeps it from trying to advance any branch.
+    uses: ./.github/workflows/development.yml
+    with:
+      skip_promote: true
+    secrets: inherit
+
+  security:
+    name: Security scan
+    # npm audit / CodeQL / Trivy — the scheduled run catches newly-disclosed CVEs.
+    uses: ./.github/workflows/security.yml
+
+  integration:
+    name: Integration tests (test DB)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run integration tests against the test project
+        # Uses REPO-LEVEL test values (non-secret) so this runs on main without
+        # touching the pipeline environment. The vitest config's prod guard
+        # (EXPECTED_SUPABASE_PROJECT_REF) refuses to run unless the target URL is
+        # the test project, so this can never hit prod. Skips until configured.
+        env:
+          VITE_SUPABASE_URL: ${{ vars.TEST_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.TEST_SUPABASE_REF }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ] || [ -z "$EXPECTED_SUPABASE_PROJECT_REF" ]; then
+            echo "::warning::Heartbeat integration: repo-level TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY / TEST_SUPABASE_REF not all set — skipping until configured."
+            exit 0
+          fi
+          npm run test:integration
+
+  # --- Live checks ---
+
   site:
     name: Live site
     runs-on: ubuntu-latest
@@ -45,9 +97,7 @@ jobs:
           [ "$jscode" = "200" ] || { echo "::error::App bundle ${js} returned HTTP $jscode"; exit 1; }
           echo "Site OK (HTML 200, bundle ${js} 200)."
 
-  prod:
-    name: Prod credentials
-    uses: ./.github/workflows/heartbeat-check.yml
-    with:
-      environment: deployment
+  prod-probe:
+    name: Prod probe (read-only)
+    uses: ./.github/workflows/prod-probe.yml
     secrets: inherit
