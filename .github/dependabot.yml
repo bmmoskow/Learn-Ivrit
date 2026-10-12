@@ -1,0 +1,22 @@
+# Dependabot configuration.
+#
+# target-branch sends Dependabot's PRs (both version and security updates) to
+# `development` so they flow through the pipeline (development -> integration ->
+# ui -> main) instead of landing directly on main and bypassing the checks.
+#
+# NOTE: Dependabot reads this file from the DEFAULT branch (main), so the change
+# only takes effect once this reaches main via the pipeline.
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    target-branch: "development"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "development"
+    schedule:
+      interval: "weekly"
