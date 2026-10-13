@@ -45,7 +45,7 @@ export function WordDefinitionPopupUI({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-20 z-999" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/20 z-999" onClick={onClose} />
       <div style={popupStyle} className="bg-white rounded-lg shadow-2xl border border-gray-200 w-80 overflow-hidden">
         <div className="bg-linear-to-r from-blue-600 to-blue-700 text-white p-4 flex items-start justify-between">
           <div className="flex-1">
