@@ -56,7 +56,7 @@ export function AlertBanner({ alerts, onDismiss }: AlertBannerProps) {
           }
         >
           <div className="flex items-start gap-2">
-            <div className="flex-shrink-0 mt-0.5">
+            <div className="shrink-0 mt-0.5">
               {alert.severity === "critical" ? (
                 <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
               ) : alert.severity === "warning" ? (
@@ -91,7 +91,7 @@ export function AlertBanner({ alerts, onDismiss }: AlertBannerProps) {
             <Button
               variant="ghost"
               size="icon"
-              className="flex-shrink-0 h-6 w-6"
+              className="shrink-0 h-6 w-6"
               onClick={() => handleDismiss(alert.id)}
             >
               <X className="h-4 w-4" />

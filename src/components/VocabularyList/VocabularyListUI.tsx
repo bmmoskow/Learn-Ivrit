@@ -74,7 +74,7 @@ export function VocabularyListUI({
   const pageNumbers = calculatePageNumbers(currentPage, totalPages);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 sm:p-6 overflow-hidden">
+    <div className="bg-white rounded-lg shadow-xs border border-gray-200 p-3 sm:p-6 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Vocabulary</h2>
@@ -225,13 +225,13 @@ export function VocabularyListUI({
             {!isGuest && (
               <>
                 <div
-                  className="hidden sm:block text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                  className="hidden sm:block text-center px-4 py-3 text-sm font-semibold text-gray-700 shrink-0"
                   style={{ width: "120px" }}
                 >
                   Stats
                 </div>
                 <div
-                  className="hidden sm:block text-center px-4 py-3 text-sm font-semibold text-gray-700 flex-shrink-0"
+                  className="hidden sm:block text-center px-4 py-3 text-sm font-semibold text-gray-700 shrink-0"
                   style={{ width: "140px" }}
                 >
                   Performance
@@ -239,7 +239,7 @@ export function VocabularyListUI({
               </>
             )}
             {!isGuest && (
-              <div className="text-center px-1 py-2 sm:px-4 sm:py-3 text-sm font-semibold text-gray-700 flex-shrink-0 w-14 sm:w-[120px]">
+              <div className="text-center px-1 py-2 sm:px-4 sm:py-3 text-sm font-semibold text-gray-700 shrink-0 w-14 sm:w-[120px]">
                 <span className="sm:hidden">⚙</span>
                 <span className="hidden sm:inline">Actions</span>
               </div>
@@ -287,7 +287,7 @@ export function VocabularyListUI({
                 <button
                   key={pageNum}
                   onClick={() => onCurrentPageChange(pageNum)}
-                  className={`min-w-[2.5rem] px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`min-w-10 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     currentPage === pageNum ? "bg-blue-600 text-white" : "hover:bg-gray-100 text-gray-700"
                   }`}
                 >
@@ -327,7 +327,7 @@ function EditRow({ editForm, onEditFormChange, onSaveEdit, onCancelEdit }: EditR
           type="text"
           value={editForm.hebrew_word}
           onChange={(e) => onEditFormChange({ ...editForm, hebrew_word: e.target.value })}
-          className="w-full px-2 py-1 border border-gray-300 rounded text-right text-sm"
+          className="w-full px-2 py-1 border border-gray-300 rounded-sm text-right text-sm"
           dir="rtl"
         />
       </div>
@@ -336,16 +336,16 @@ function EditRow({ editForm, onEditFormChange, onSaveEdit, onCancelEdit }: EditR
           type="text"
           value={editForm.english_translation}
           onChange={(e) => onEditFormChange({ ...editForm, english_translation: e.target.value })}
-          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+          className="w-full px-2 py-1 border border-gray-300 rounded-sm text-sm"
         />
       </div>
-      <div className="px-1 sm:px-4 py-2 sm:py-4 text-center flex-shrink-0 w-14 sm:w-[120px]">
+      <div className="px-1 sm:px-4 py-2 sm:py-4 text-center shrink-0 w-14 sm:w-[120px]">
         <div className="flex items-center justify-center gap-0 sm:gap-1">
-          <button onClick={onSaveEdit} className="p-1.5 sm:px-4 sm:py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+          <button onClick={onSaveEdit} className="p-1.5 sm:px-4 sm:py-1 bg-blue-600 text-white rounded-sm hover:bg-blue-700 text-sm">
             <span className="sm:hidden">✓</span>
             <span className="hidden sm:inline">Save</span>
           </button>
-          <button onClick={onCancelEdit} className="p-1.5 sm:px-4 sm:py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">
+          <button onClick={onCancelEdit} className="p-1.5 sm:px-4 sm:py-1 bg-gray-200 text-gray-700 rounded-sm hover:bg-gray-300 text-sm">
             <span className="sm:hidden">✕</span>
             <span className="hidden sm:inline">Cancel</span>
           </button>
@@ -376,7 +376,7 @@ function DisplayRow({ word, isGuest, onStartEdit, onDeleteWord }: DisplayRowProp
       </div>
       {!isGuest && (
         <>
-          <div className="hidden sm:block px-4 py-4 text-center flex-shrink-0" style={{ width: "120px" }}>
+          <div className="hidden sm:block px-4 py-4 text-center shrink-0" style={{ width: "120px" }}>
             {word.statistics && word.statistics.total_attempts && word.statistics.total_attempts > 0 ? (
               <div className="text-sm">
                 <div className="font-medium text-gray-900">
@@ -388,7 +388,7 @@ function DisplayRow({ word, isGuest, onStartEdit, onDeleteWord }: DisplayRowProp
               <span className="text-sm text-gray-400">Not tested</span>
             )}
           </div>
-          <div className="hidden sm:block px-4 py-4 text-center flex-shrink-0" style={{ width: "140px" }}>
+          <div className="hidden sm:block px-4 py-4 text-center shrink-0" style={{ width: "140px" }}>
             {word.statistics && word.statistics.total_attempts && word.statistics.total_attempts > 0 ? (
               <div className="flex items-center justify-center gap-2">
                 {getPerformanceIcon(word.statistics.confidence_score ?? 0)}
@@ -405,7 +405,7 @@ function DisplayRow({ word, isGuest, onStartEdit, onDeleteWord }: DisplayRowProp
         </>
       )}
       {!isGuest && (
-        <div className="px-1 sm:px-4 py-2 sm:py-4 text-center flex-shrink-0 w-14 sm:w-[120px]">
+        <div className="px-1 sm:px-4 py-2 sm:py-4 text-center shrink-0 w-14 sm:w-[120px]">
           <div className="flex items-center justify-center gap-0 sm:gap-2">
             <button
               onClick={() => onStartEdit(word)}

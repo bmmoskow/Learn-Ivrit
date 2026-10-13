@@ -130,7 +130,7 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
 
           <div className="pt-2 border-t border-border">
             <h5 className="font-medium text-xs mb-1">Formula:</h5>
-            <code className="text-xs bg-muted p-1 rounded block break-all whitespace-pre-wrap">
+            <code className="text-xs bg-muted p-1 rounded-sm block break-all whitespace-pre-wrap">
               {strategy.formula.split(';').map(line => line.trim()).filter(line => line).join(';\n')}
             </code>
           </div>
@@ -140,7 +140,7 @@ function StrategyTooltip({ strategy }: { strategy: StrategyEstimate }) {
               <h5 className="font-medium text-xs mb-1">Computation Steps:</h5>
               <ul className="text-xs space-y-1 font-mono">
                 {strategy.computedSteps.map((step, idx) => (
-                  <li key={idx} className="bg-muted p-1 rounded">
+                  <li key={idx} className="bg-muted p-1 rounded-sm">
                     <span className="text-muted-foreground">{step.equation.split('=')[0].trim()} =</span>{' '}
                     <span className="font-semibold">
                       {typeof step.result === 'number'
@@ -466,7 +466,7 @@ export function AdRevenueEstimator() {
       </div>
 
       {showConfigs && (
-        <div className="bg-card rounded-xl shadow p-5">
+        <div className="bg-card rounded-xl shadow-sm p-5">
           <h3 className="text-lg font-semibold text-card-foreground mb-3">Configuration History</h3>
           <div className="overflow-x-auto">
             <Table>
@@ -530,7 +530,7 @@ export function AdRevenueEstimator() {
       {data && (
         <>
           <div className="grid md:grid-cols-4 gap-4">
-            <div className="bg-card rounded-xl shadow p-5">
+            <div className="bg-card rounded-xl shadow-sm p-5">
               <div className="flex items-center gap-3 mb-2">
                 <Eye className="w-5 h-5 text-blue-600" />
                 <span className="text-sm text-muted-foreground">Page Views</span>
@@ -540,21 +540,21 @@ export function AdRevenueEstimator() {
                 ~{Math.round((data.engagement.totalViews / (parseInt(period) || 30)) * 30).toLocaleString()}/mo projected
               </p>
             </div>
-            <div className="bg-card rounded-xl shadow p-5">
+            <div className="bg-card rounded-xl shadow-sm p-5">
               <div className="flex items-center gap-3 mb-2">
                 <Clock className="w-5 h-5 text-green-600" />
                 <span className="text-sm text-muted-foreground">Active Minutes</span>
               </div>
               <p className="text-2xl font-bold text-card-foreground">{data.engagement.totalActiveMinutes.toLocaleString()}</p>
             </div>
-            <div className="bg-card rounded-xl shadow p-5">
+            <div className="bg-card rounded-xl shadow-sm p-5">
               <div className="flex items-center gap-3 mb-2">
                 <Timer className="w-5 h-5 text-orange-600" />
                 <span className="text-sm text-muted-foreground">Avg Session</span>
               </div>
               <p className="text-2xl font-bold text-card-foreground">{data.engagement.avgSessionSeconds}s</p>
             </div>
-            <div className="bg-card rounded-xl shadow p-5 border-l-4 border-green-500">
+            <div className="bg-card rounded-xl shadow-sm p-5 border-l-4 border-green-500">
               <div className="flex items-center gap-3 mb-2">
                 <TrendingUp className="w-5 h-5 text-green-600" />
                 <span className="text-sm text-muted-foreground">Best Strategy</span>
@@ -570,7 +570,7 @@ export function AdRevenueEstimator() {
             </div>
           </div>
 
-          <div className="bg-card rounded-xl shadow p-5">
+          <div className="bg-card rounded-xl shadow-sm p-5">
             <h3 className="text-lg font-semibold text-card-foreground mb-1">Revenue by Ad Network</h3>
             <p className="text-xs text-muted-foreground mb-3">
               Estimated revenue based on ground truth metrics and network-specific formulas. Hover over strategies for detailed parameters.

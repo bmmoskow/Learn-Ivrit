@@ -40,7 +40,7 @@ export function TextInputDialog({ open, onOpenChange, onSubmit }: TextInputDialo
           value={textInputValue}
           onChange={(e) => setTextInputValue(e.target.value)}
           placeholder="Type or paste your text here..."
-          className="w-full min-h-[200px] p-3 border border-input rounded-md bg-background text-foreground resize-y outline-none focus:ring-2 focus:ring-ring text-base"
+          className="w-full min-h-[200px] p-3 border border-input rounded-md bg-background text-foreground resize-y outline-hidden focus:ring-2 focus:ring-ring text-base"
           dir="auto"
           autoFocus
         />

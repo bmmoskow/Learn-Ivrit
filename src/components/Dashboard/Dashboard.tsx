@@ -21,7 +21,7 @@ export function Dashboard() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="bg-linear-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <BookOpen className="w-8 h-8" />
               <span className="text-3xl font-bold">{stats.totalWords}</span>
@@ -29,7 +29,7 @@ export function Dashboard() {
             <p className="text-blue-100 font-medium">Words Learned</p>
           </div>
 
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="bg-linear-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <Target className="w-8 h-8" />
               <span className="text-3xl font-bold">{stats.testsCompleted}</span>
@@ -37,7 +37,7 @@ export function Dashboard() {
             <p className="text-green-100 font-medium">Tests Completed</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="bg-linear-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <TrendingUp className="w-8 h-8" />
               <span className="text-3xl font-bold">{stats.averageScore}%</span>
@@ -45,7 +45,7 @@ export function Dashboard() {
             <p className="text-purple-100 font-medium">Average Score</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
+          <div className="bg-linear-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <Flame className="w-8 h-8" />
               <span className="text-3xl font-bold">{stats.studyStreak}</span>
