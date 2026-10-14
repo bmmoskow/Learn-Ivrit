@@ -2,14 +2,17 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react-swc';
 import fs from 'fs';
 import path from 'path';
+import { assertSafeIntegrationTarget } from './src/test/integrationTargetGuard';
 
-// Integration tests run the REAL Supabase client against the TEST project.
+// Integration tests run the REAL Supabase client against a real database —
+// either the LOCAL Docker stack (see docs/local-sandbox.md) or the remote TEST
+// project. Never production: the guard below enforces that.
 //
-// IMPORTANT: we parse .env.test DIRECTLY rather than using Vite's loadEnv,
+// IMPORTANT: we parse env files DIRECTLY rather than using Vite's loadEnv,
 // because loadEnv gives process.env precedence over .env files — and this
 // environment already exports VITE_SUPABASE_URL (pointing at PROD), which
-// would silently override .env.test and make the tests hit production.
-// Reading the file ourselves guarantees the test project is used, and the
+// would silently override the file and make the tests hit production.
+// Reading the file ourselves guarantees the intended target is used, and the
 // values are injected via `define` so the client cannot fall back.
 function parseEnvFile(file: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -33,48 +36,32 @@ function parseEnvFile(file: string): Record<string, string> {
   return out;
 }
 
-// Prefer .env.test when present (local dev — bypasses the polluted process.env
-// described above). Fall back to process.env when it isn't (CI, where the test
-// project's URL/key arrive as environment secrets, and there's no pollution).
-const fileEnv = parseEnvFile(path.resolve(process.cwd(), '.env.test'));
-const TEST_URL = fileEnv.VITE_SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? '';
-const TEST_ANON = fileEnv.VITE_SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY ?? '';
+// Target precedence:
+//   .env.local  -> the LOCAL Docker sandbox (http://127.0.0.1:54321). Mirrors
+//                  Vite's own .env.local convention, so the dev server and the
+//                  integration tests hit the same local stack.
+//   .env.test   -> the remote TEST project.
+//   process.env -> CI (the test project's URL/key arrive as env secrets).
+const localEnv = parseEnvFile(path.resolve(process.cwd(), '.env.local'));
+const testEnv = parseEnvFile(path.resolve(process.cwd(), '.env.test'));
+const pick = (k: string) => localEnv[k] || testEnv[k] || process.env[k] || '';
+const TEST_URL = pick('VITE_SUPABASE_URL');
+const TEST_ANON = pick('VITE_SUPABASE_ANON_KEY');
 
 if (!TEST_URL || !TEST_ANON) {
   throw new Error(
-    'Integration tests need VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — in .env.test locally (see .env.test.example), or as env vars in CI.'
+    'Integration tests need VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — in .env.local (local Docker stack, see docs/local-sandbox.md) or .env.test (remote test project, see .env.test.example), or as env vars in CI.'
   );
 }
-// Guard: never let integration tests run against production — without hard-coding
-// any project ref in source.
-//   - If EXPECTED_SUPABASE_PROJECT_REF is set (a PUBLIC repo/env variable, passed
-//     by CI; may also be set locally), the target URL MUST contain it — a positive
-//     allow-list. This is the primary CI guard.
-//   - In CI with no expected ref configured, we can't verify the target, so we
-//     FAIL CLOSED rather than risk hitting production.
-//   - Locally (not CI), we also refuse the prod project identified by
-//     VITE_SUPABASE_URL in .env.
-const expectedRef = (process.env.EXPECTED_SUPABASE_PROJECT_REF ?? '').trim();
-const isCI = !!process.env.CI;
-if (expectedRef) {
-  if (!TEST_URL.includes(expectedRef)) {
-    throw new Error(
-      `Refusing: integration-test target (${TEST_URL}) is not the expected project (EXPECTED_SUPABASE_PROJECT_REF=${expectedRef}).`
-    );
-  }
-} else if (isCI) {
-  throw new Error(
-    'Refusing: in CI you must set the SUPABASE_TEST_PROJECT_REF variable (passed as EXPECTED_SUPABASE_PROJECT_REF) so the integration-test target can be verified as non-production.'
-  );
-} else {
-  const prodEnv = parseEnvFile(path.resolve(process.cwd(), '.env'));
-  const PROD_URL = prodEnv.VITE_SUPABASE_URL ?? '';
-  if (PROD_URL && TEST_URL === PROD_URL) {
-    throw new Error(
-      'Refusing to run integration tests against the production Supabase project (it matches VITE_SUPABASE_URL in .env). Point .env.test at the test project.'
-    );
-  }
-}
+
+// Never let integration tests run against production — without hard-coding any
+// project ref in source. (Logic + tests: src/test/integrationTargetGuard.ts)
+assertSafeIntegrationTarget({
+  targetUrl: TEST_URL,
+  expectedRef: (process.env.EXPECTED_SUPABASE_PROJECT_REF ?? '').trim(),
+  isCI: !!process.env.CI,
+  prodUrl: parseEnvFile(path.resolve(process.cwd(), '.env')).VITE_SUPABASE_URL ?? '',
+});
 
 export default defineConfig({
   plugins: [react()],

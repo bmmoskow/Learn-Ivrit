@@ -17,6 +17,10 @@
     "test": "vitest run",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "sandbox:start": "supabase start",
+    "sandbox:reset": "supabase db reset",
+    "sandbox:stop": "supabase stop",
+    "sandbox:status": "supabase status",
     "test:watch": "vitest",
     "security:audit": "node scripts/security-audit.js",
     "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"
