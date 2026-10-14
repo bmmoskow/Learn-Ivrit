@@ -25,7 +25,7 @@ export function MultipleChoiceTestUI({
 }: MultipleChoiceTestUIProps) {
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-green-50 to-green-100">
+      <div className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-green-50 to-green-100">
         <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
       </div>
     );
@@ -34,7 +34,7 @@ export function MultipleChoiceTestUI({
   const correctAnswer = question.word.english_translation;
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-green-50 to-green-100">
+    <div className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-green-50 to-green-100">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-6">
           <span className="text-sm font-semibold text-green-600">

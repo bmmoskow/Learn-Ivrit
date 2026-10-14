@@ -84,7 +84,7 @@ export function BookmarkManagerUI({
         <div className="bg-white rounded-xl shadow-xl p-6 max-w-md mx-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Bookmarks</h2>
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+            <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-sm">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -102,7 +102,7 @@ export function BookmarkManagerUI({
 
     return (
       <div key={folder.id} style={{ marginLeft: depth * 16 }}>
-        <div className="flex items-center gap-1 py-1 px-2 hover:bg-gray-50 rounded group">
+        <div className="flex items-center gap-1 py-1 px-2 hover:bg-gray-50 rounded-sm group">
           <button onClick={() => toggleFolder(folder.id)} className="p-0.5">
             {isExpanded ? (
               <ChevronDown className="w-4 h-4 text-gray-500" />
@@ -126,18 +126,18 @@ export function BookmarkManagerUI({
                   if (e.key === "Enter") saveRename(folder.id, true);
                   if (e.key === "Escape") cancelEditing();
                 }}
-                className="flex-1 px-1 py-0.5 text-sm border rounded"
+                className="flex-1 px-1 py-0.5 text-sm border rounded-sm"
                 autoFocus
               />
               <button
                 onClick={() => saveRename(folder.id, true)}
-                className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+                className="p-0.5 text-green-600 hover:bg-green-50 rounded-sm"
               >
                 <Check className="w-4 h-4" />
               </button>
               <button
                 onClick={cancelEditing}
-                className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+                className="p-0.5 text-gray-500 hover:bg-gray-100 rounded-sm"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -153,21 +153,21 @@ export function BookmarkManagerUI({
               <div className="hidden group-hover:flex items-center gap-0.5">
                 <button
                   onClick={() => setNewFolderParent(folder.id)}
-                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-sm"
                   title="New subfolder"
                 >
                   <FolderPlus className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => startEditing(folder.id, folder.name)}
-                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-sm"
                   title="Rename"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => handleDeleteFolder(folder.id)}
-                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                  className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm"
                   title="Delete"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -194,12 +194,12 @@ export function BookmarkManagerUI({
                     }
                   }}
                   placeholder="New folder name"
-                  className="flex-1 px-1 py-0.5 text-sm border rounded"
+                  className="flex-1 px-1 py-0.5 text-sm border rounded-sm"
                   autoFocus
                 />
                 <button
                   onClick={() => handleCreateFolder(folder.id)}
-                  className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+                  className="p-0.5 text-green-600 hover:bg-green-50 rounded-sm"
                 >
                   <Check className="w-4 h-4" />
                 </button>
@@ -208,7 +208,7 @@ export function BookmarkManagerUI({
                     setNewFolderParent(undefined);
                     setNewFolderName("");
                   }}
-                  className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+                  className="p-0.5 text-gray-500 hover:bg-gray-100 rounded-sm"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -228,7 +228,7 @@ export function BookmarkManagerUI({
     return (
       <div
         key={bookmark.id}
-        className="flex items-center gap-1 py-1 px-2 hover:bg-blue-50 rounded group"
+        className="flex items-center gap-1 py-1 px-2 hover:bg-blue-50 rounded-sm group"
         style={{ marginLeft: depth * 16 + 20 }}
       >
         <Bookmark className="w-4 h-4 text-blue-500" />
@@ -243,18 +243,18 @@ export function BookmarkManagerUI({
                 if (e.key === "Enter") saveRename(bookmark.id, false);
                 if (e.key === "Escape") cancelEditing();
               }}
-              className="flex-1 px-1 py-0.5 text-sm border rounded"
+              className="flex-1 px-1 py-0.5 text-sm border rounded-sm"
               autoFocus
             />
             <button
               onClick={() => saveRename(bookmark.id, false)}
-              className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+              className="p-0.5 text-green-600 hover:bg-green-50 rounded-sm"
             >
               <Check className="w-4 h-4" />
             </button>
             <button
               onClick={cancelEditing}
-              className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+              className="p-0.5 text-gray-500 hover:bg-gray-100 rounded-sm"
             >
               <X className="w-4 h-4" />
             </button>
@@ -271,14 +271,14 @@ export function BookmarkManagerUI({
             <div className="hidden group-hover:flex items-center gap-0.5">
               <button
                 onClick={() => startEditing(bookmark.id, bookmark.name)}
-                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-sm"
                 title="Rename"
               >
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => handleDeleteBookmark(bookmark.id)}
-                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-sm"
                 title="Delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -298,7 +298,7 @@ export function BookmarkManagerUI({
             <Bookmark className="w-5 h-5 text-blue-600" />
             Bookmarks
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-sm">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -306,7 +306,7 @@ export function BookmarkManagerUI({
         {error && (
           <div className="mx-4 mt-4 p-2 bg-red-50 text-red-700 text-sm rounded-lg flex items-center justify-between">
             <span>{error}</span>
-            <button onClick={clearError} className="p-0.5 hover:bg-red-100 rounded">
+            <button onClick={clearError} className="p-0.5 hover:bg-red-100 rounded-sm">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -338,12 +338,12 @@ export function BookmarkManagerUI({
                       }
                     }}
                     placeholder="New folder name"
-                    className="flex-1 px-1 py-0.5 text-sm border rounded"
+                    className="flex-1 px-1 py-0.5 text-sm border rounded-sm"
                     autoFocus
                   />
                   <button
                     onClick={() => handleCreateFolder(null)}
-                    className="p-0.5 text-green-600 hover:bg-green-50 rounded"
+                    className="p-0.5 text-green-600 hover:bg-green-50 rounded-sm"
                   >
                     <Check className="w-4 h-4" />
                   </button>
@@ -352,7 +352,7 @@ export function BookmarkManagerUI({
                       setNewFolderParent(undefined);
                       setNewFolderName("");
                     }}
-                    className="p-0.5 text-gray-500 hover:bg-gray-100 rounded"
+                    className="p-0.5 text-gray-500 hover:bg-gray-100 rounded-sm"
                   >
                     <X className="w-4 h-4" />
                   </button>

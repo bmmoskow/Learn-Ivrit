@@ -22,7 +22,7 @@ export function FlashcardTestUI({
   handleIncorrect,
 }: FlashcardTestUIProps) {
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-blue-100">
+    <div className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-blue-50 to-blue-100">
       <div className="w-full max-w-2xl">
         <div className="text-center mb-6">
           <span className="text-sm font-semibold text-blue-600">
