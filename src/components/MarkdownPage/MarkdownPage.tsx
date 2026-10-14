@@ -115,12 +115,12 @@ export function MarkdownPage({ markdownPath, icon, title, showBackButton = true 
                     </blockquote>
                   ),
                   code: ({ children }) => (
-                    <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800">
+                    <code className="bg-gray-100 px-2 py-1 rounded-sm text-sm font-mono text-gray-800">
                       {children}
                     </code>
                   ),
                   pre: ({ children }) => (
-                    <pre className="bg-gray-100 p-4 rounded my-4 overflow-x-auto">
+                    <pre className="bg-gray-100 p-4 rounded-sm my-4 overflow-x-auto">
                       {children}
                     </pre>
                   ),

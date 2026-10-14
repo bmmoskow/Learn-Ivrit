@@ -97,7 +97,7 @@ export function SaveBookmarkDialogUI({
             <Bookmark className="w-5 h-5 text-blue-600" />
             Save Bookmark
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded">
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-sm">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -116,7 +116,7 @@ export function SaveBookmarkDialogUI({
               value={bookmarkName}
               onChange={(e) => setBookmarkName(e.target.value)}
               placeholder="Enter a name for this bookmark"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500"
               autoFocus
             />
           </div>
@@ -152,18 +152,18 @@ export function SaveBookmarkDialogUI({
                     if (e.key === "Escape") cancelNewFolder();
                   }}
                   placeholder="Folder name"
-                  className="flex-1 px-2 py-1 text-sm border rounded"
+                  className="flex-1 px-2 py-1 text-sm border rounded-sm"
                   autoFocus
                 />
                 <button
                   onClick={handleCreateFolder}
-                  className="p-1 text-green-600 hover:bg-green-50 rounded"
+                  className="p-1 text-green-600 hover:bg-green-50 rounded-sm"
                 >
                   <Check className="w-4 h-4" />
                 </button>
                 <button
                   onClick={cancelNewFolder}
-                  className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                  className="p-1 text-gray-500 hover:bg-gray-100 rounded-sm"
                 >
                   <X className="w-4 h-4" />
                 </button>

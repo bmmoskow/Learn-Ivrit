@@ -17,7 +17,7 @@ export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestRes
   const testTypeLabel = getTestTypeLabel(testType);
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-blue-50 to-purple-50">
+    <div className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-blue-50 to-purple-50">
       <div className="w-full max-w-3xl">
         <div className="bg-white rounded-2xl shadow-2xl p-12">
           <div className="text-center mb-8">
@@ -26,7 +26,7 @@ export function TestResults({ test, testType, onRetakeTest, onNewTest }: TestRes
             <p className="text-xl text-gray-600">{scoreMessage}</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-8 mb-8">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-xl p-8 mb-8">
             <div className="text-center">
               <div className={`text-6xl font-bold mb-2 ${scoreColor}`}>{scorePercentage}%</div>
               <div className="text-gray-700 text-lg">
