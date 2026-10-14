@@ -112,7 +112,7 @@ function TestSelection({
           <div className="grid md:grid-cols-3 gap-4">
             <button
               onClick={() => onStartTest("flashcard")}
-              className="bg-gradient-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              className="bg-linear-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <div className="text-4xl mb-3">🎴</div>
               <h3 className="text-xl font-bold mb-2">Flashcards</h3>
@@ -123,7 +123,7 @@ function TestSelection({
 
             <button
               onClick={() => onStartTest("multiple_choice")}
-              className="bg-gradient-to-br from-green-500 to-green-600 text-white p-6 rounded-xl hover:from-green-600 hover:to-green-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              className="bg-linear-to-br from-green-500 to-green-600 text-white p-6 rounded-xl hover:from-green-600 hover:to-green-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <div className="text-4xl mb-3">✅</div>
               <h3 className="text-xl font-bold mb-2">Multiple Choice</h3>
@@ -134,7 +134,7 @@ function TestSelection({
 
             <button
               onClick={() => onStartTest("fill_in_blank")}
-              className="bg-gradient-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl hover:from-orange-600 hover:to-orange-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+              className="bg-linear-to-br from-orange-500 to-orange-600 text-white p-6 rounded-xl hover:from-orange-600 hover:to-orange-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
             >
               <div className="text-4xl mb-3">✍️</div>
               <h3 className="text-xl font-bold mb-2">Fill in the Blank</h3>

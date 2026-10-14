@@ -136,7 +136,7 @@ export function SpendMonitor({ spendTracking, onRefresh }: SpendMonitorProps) {
 
           {projectedEndOfMonth > spendTracking.spend_cap && (
             <div className="flex items-start gap-2 p-3 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-md">
-              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
               <div className="text-xs text-orange-900 dark:text-orange-100">
                 <strong>Warning:</strong> Current pace will exceed your monthly cap. Consider optimizing API usage or the circuit breaker will activate at 95%.
               </div>

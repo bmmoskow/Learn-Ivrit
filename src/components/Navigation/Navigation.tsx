@@ -26,12 +26,12 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
   });
 
   return (
-    <nav className="bg-white border-b border-gray-200 shadow-sm">
+    <nav className="bg-white border-b border-gray-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {/* Desktop: Single row layout */}
         <div className="hidden lg:flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+            <div className="text-2xl font-bold bg-linear-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
               {APP_CONFIG.appName}
             </div>
             <div className="flex items-center gap-2">
@@ -70,7 +70,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
         <div className="hidden sm:block lg:hidden">
           {/* Row 1: App name (left) + Email (right) */}
           <div className="flex items-center justify-between h-14">
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+            <div className="text-2xl font-bold bg-linear-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
               {APP_CONFIG.appName}
             </div>
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
@@ -109,7 +109,7 @@ export function Navigation({ currentView, onViewChange }: NavigationProps) {
         <div className="sm:hidden">
           {/* Row 1: App name (left) + Sign Out (right) */}
           <div className="flex items-center justify-between h-12">
-            <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+            <div className="text-xl font-bold bg-linear-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
               {APP_CONFIG.appName}
             </div>
             <button

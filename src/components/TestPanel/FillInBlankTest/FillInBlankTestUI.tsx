@@ -33,7 +33,7 @@ export function FillInBlankTestUI({
   const progress = calculateProgress(questionNumber, totalQuestions);
 
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-gradient-to-br from-orange-50 to-white">
+    <div className="flex-1 flex items-center justify-center p-6 bg-linear-to-br from-orange-50 to-white">
       <div className="w-full max-w-2xl">
         {/* Progress bar */}
         <div className="mb-6 flex items-center justify-between">
@@ -67,7 +67,7 @@ export function FillInBlankTestUI({
                 onChange={(e) => !showFeedback && setUserInput(e.target.value)}
                 onKeyDown={(e) => showFeedback && e.preventDefault()}
                 placeholder="Type your answer..."
-                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition ${
+                className={`w-full px-6 py-4 text-2xl text-center border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-hidden transition ${
                   showFeedback ? "bg-gray-100" : ""
                 }`}
               />

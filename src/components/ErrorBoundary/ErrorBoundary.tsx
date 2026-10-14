@@ -54,14 +54,14 @@ export class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={this.handleReload}
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              className="px-4 py-2 rounded-sm bg-blue-600 text-white hover:bg-blue-700"
             >
               Reload
             </button>
             <button
               type="button"
               onClick={this.handleReset}
-              className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100"
+              className="px-4 py-2 rounded-sm border border-gray-300 text-gray-700 hover:bg-gray-100"
             >
               Reset app data &amp; reload
             </button>
