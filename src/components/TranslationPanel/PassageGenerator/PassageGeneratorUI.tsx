@@ -88,7 +88,7 @@ export function PassageGeneratorUI({
                 value={currentValue}
                 onChange={handleAgeLevelChange}
                 disabled={isGenerating}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-lg"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-lg"
               >
                 {ageOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -108,7 +108,7 @@ export function PassageGeneratorUI({
                 value={topic}
                 onChange={(e) => onTopicChange(e.target.value)}
                 placeholder="Describe what you want the passage to be about. Example: A story about a boy who loses his dog in the park and asks strangers for help finding it."
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
                 rows={4}
                 maxLength={500}
               />

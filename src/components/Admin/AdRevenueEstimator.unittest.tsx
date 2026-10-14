@@ -951,7 +951,7 @@ describe("AdRevenueEstimator", () => {
     it("positions active minutes card between page views and avg session", () => {
       const { container } = render(<AdRevenueEstimator />);
 
-      const cards = container.querySelectorAll('div[class*="bg-card rounded-xl shadow p-5"]');
+      const cards = container.querySelectorAll('div[class*="bg-card rounded-xl shadow-sm p-5"]');
       const cardTexts = Array.from(cards).map(card => card.textContent);
 
       const pageViewsIndex = cardTexts.findIndex(text => text?.includes("Page Views"));
@@ -1030,7 +1030,7 @@ describe("AdRevenueEstimator", () => {
       const activeMinutesCard = screen.getByText("Active Minutes").closest("div")?.parentElement;
       expect(activeMinutesCard?.className).toContain("bg-card");
       expect(activeMinutesCard?.className).toContain("rounded-xl");
-      expect(activeMinutesCard?.className).toContain("shadow");
+      expect(activeMinutesCard?.className).toContain("shadow-sm");
     });
 
     it("displays active minutes value in large bold font", () => {

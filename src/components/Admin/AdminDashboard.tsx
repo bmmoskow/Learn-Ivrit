@@ -72,21 +72,21 @@ export function AdminDashboard() {
 
         {/* Summary cards */}
         <div className="grid md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow p-5">
+          <div className="bg-white rounded-xl shadow-sm p-5">
             <div className="flex items-center gap-3 mb-2">
               <Activity className="w-6 h-6 text-blue-600" />
               <span className="text-sm text-gray-500">Total API Calls</span>
             </div>
             <p className="text-3xl font-bold text-gray-900">{summary.totalCalls}</p>
           </div>
-          <div className="bg-white rounded-xl shadow p-5">
+          <div className="bg-white rounded-xl shadow-sm p-5">
             <div className="flex items-center gap-3 mb-2">
               <DollarSign className="w-6 h-6 text-green-600" />
               <span className="text-sm text-gray-500">Estimated Cost</span>
             </div>
             <p className="text-3xl font-bold text-gray-900">${summary.totalCost.toFixed(4)}</p>
           </div>
-          <div className="bg-white rounded-xl shadow p-5">
+          <div className="bg-white rounded-xl shadow-sm p-5">
             <div className="flex items-center gap-3 mb-2">
               <DollarSign className="w-6 h-6 text-orange-600" />
               <span className="text-sm text-gray-500">Avg Cost / Call</span>
@@ -99,21 +99,21 @@ export function AdminDashboard() {
 
         {/* Cache savings row */}
         <div className="grid md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
+          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
             <div className="flex items-center gap-3 mb-2">
               <Zap className="w-6 h-6 text-green-600" />
               <span className="text-sm text-gray-500">Cache Hits (API Calls Saved)</span>
             </div>
             <p className="text-3xl font-bold text-gray-900">{summary.cacheHits}</p>
           </div>
-          <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
+          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
             <div className="flex items-center gap-3 mb-2">
               <DollarSign className="w-6 h-6 text-green-600" />
               <span className="text-sm text-gray-500">Est. Cost Savings</span>
             </div>
             <p className="text-3xl font-bold text-gray-900">${summary.estimatedSavedCost.toFixed(4)}</p>
           </div>
-          <div className="bg-white rounded-xl shadow p-5 border-l-4 border-green-500">
+          <div className="bg-white rounded-xl shadow-sm p-5 border-l-4 border-green-500">
             <div className="flex items-center gap-3 mb-2">
               <DollarSign className="w-6 h-6 text-green-600" />
               <span className="text-sm text-gray-500">Avg Savings / Cache Hit</span>
@@ -126,7 +126,7 @@ export function AdminDashboard() {
 
         {/* Breakdown tables side by side */}
         <div className="grid lg:grid-cols-2 gap-6 mb-6">
-          <div className="bg-white rounded-xl shadow p-5">
+          <div className="bg-white rounded-xl shadow-sm p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">By Request Type</h2>
             <Table>
               <TableHeader>
@@ -150,7 +150,7 @@ export function AdminDashboard() {
             </Table>
           </div>
 
-          <div className="bg-white rounded-xl shadow p-5">
+          <div className="bg-white rounded-xl shadow-sm p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">By User</h2>
             <Table>
               <TableHeader>
@@ -182,7 +182,7 @@ export function AdminDashboard() {
         </div>
 
         {/* Recent logs table */}
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow-sm p-5">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
             Recent Calls {loading && <span className="text-sm text-gray-400">(loading...)</span>}
           </h2>
