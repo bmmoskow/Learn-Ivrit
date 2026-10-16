@@ -162,19 +162,14 @@ describe('VocabularyList Integration Tests', () => {
   it('should verify RLS policies are enforced', async () => {
     await supabase.auth.signOut();
 
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('vocabulary_words')
       .select('*');
 
-    // Signed out, the anon role must see no vocabulary rows. On the remote test
-    // DB this returns an empty array (RLS filters the rows); a null means the read
-    // errored. Both prove anon sees nothing, so accept either — but surface the
-    // error so an unexpected failure mode (vs a plain RLS filter) is visible.
-    // DIAGNOSTIC: remove once the local null vs remote [] difference is understood.
-    if (data === null) {
-      console.warn('[RLS test] anon select returned null; error =', JSON.stringify(error));
-    }
-    expect(data ?? []).toEqual([]);
+    // Signed out (anon), RLS must expose no rows → an empty array. A null here
+    // would mean the read errored (e.g. a JWT/key mismatch returning PGRST301),
+    // which must fail the test loudly rather than be tolerated.
+    expect(data).toEqual([]);
   });
 
   it('should not expose another user\'s vocabulary (RLS isolation)', async () => {

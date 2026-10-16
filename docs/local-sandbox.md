@@ -10,7 +10,7 @@ hosted project.
 
 ## Prerequisites
 
-- **Docker** running (Docker Desktop, Colima, etc.).
+- **Docker** running (Docker Desktop, Colima, etc.)  Desktop Install: <https://www.docker.com/products/docker-desktop>
 - The **Supabase CLI** (`supabase --version`). Install: <https://supabase.com/docs/guides/cli>.
 
 ## One-time setup
@@ -19,9 +19,12 @@ hosted project.
 cp .env.local.example .env.local      # points the app + tests at the local stack
 ```
 
-`.env.local` is gitignored. Its `VITE_SUPABASE_URL=http://127.0.0.1:54321` and
-the public local anon key are all you need. (If auth ever fails, replace the
-anon key with the current one from `supabase status`.)
+`.env.local` is gitignored. Set `VITE_SUPABASE_URL=http://127.0.0.1:54321` and,
+for `VITE_SUPABASE_ANON_KEY`, paste the **Publishable** key from `supabase status`
+(Authentication Keys). Recent Supabase CLI (2.95+) gives each stack its own
+asymmetric signing keys, so there is no universal demo anon key — the old HS256
+demo JWT fails with `PGRST301` ("No suitable key or wrong key type"). Re-copy the
+publishable key whenever you re-init the stack.
 
 ## Spin it up
 
