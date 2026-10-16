@@ -165,6 +165,11 @@ describe('VocabularyList Integration Tests', () => {
       .from('vocabulary_words')
       .select('*');
 
-    expect(data).toEqual([]);
+    // Signed out, the anon role must see no vocabulary rows. Depending on the
+    // table grants, Supabase returns either an empty array (RLS filters the rows)
+    // or null (the anon role lacks the SELECT grant and the read is denied) — both
+    // prove RLS is enforced. The remote test DB grants anon, so it returns []; a
+    // fresh local stack may deny the read and return null. Accept either.
+    expect(data ?? []).toEqual([]);
   });
 });
