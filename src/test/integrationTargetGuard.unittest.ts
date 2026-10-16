@@ -1,9 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { isLocalSupabaseUrl, assertSafeIntegrationTarget } from "./integrationTargetGuard";
 
-const PROD = "https://igqupnhtbulncgokwbhe.supabase.co";
-const TESTPROJ = "https://ysmtibxbioftvczntckr.supabase.co";
-const TESTREF = "ysmtibxbioftvczntckr";
+// Fabricated placeholder refs — the guard tests exercise LOGIC (localhost
+// detection, ref matching, prod-blocking, fail-closed), so the values are
+// arbitrary. Do NOT replace these with real project refs; the only invariants
+// the tests rely on are: TESTPROJ contains TESTREF, PROD does not, and neither
+// is a localhost URL.
+const PROD = "https://prodprojectref000000.supabase.co";
+const TESTPROJ = "https://testprojectref000000.supabase.co";
+const TESTREF = "testprojectref000000";
 const LOCAL = "http://127.0.0.1:54321";
 
 describe("isLocalSupabaseUrl", () => {
