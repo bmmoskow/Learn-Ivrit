@@ -162,13 +162,15 @@ describe('VocabularyList Integration Tests', () => {
   it('should verify RLS policies are enforced', async () => {
     await supabase.auth.signOut();
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('vocabulary_words')
       .select('*');
 
-    // Signed out (anon), RLS must expose no rows → an empty array. A null here
-    // would mean the read errored (e.g. a JWT/key mismatch returning PGRST301),
-    // which must fail the test loudly rather than be tolerated.
+    // Signed out (anon), RLS must expose no rows → an empty array. Assert on the
+    // error FIRST so a read that fails (e.g. a JWT/key mismatch returning
+    // PGRST301) prints its actual error object in the test output, instead of a
+    // cryptic "expected null to equal []". Then confirm the empty result.
+    expect(error).toBeNull();
     expect(data).toEqual([]);
   });
 
