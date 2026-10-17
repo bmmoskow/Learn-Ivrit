@@ -15,16 +15,26 @@ hosted project.
 
 ## One-time setup
 
+Boot the stack, then let the setup step write `.env.local` for you:
+
 ```bash
-cp .env.local.example .env.local      # points the app + tests at the local stack
+npm run sandbox:start     # boot the Docker stack (first run pulls images)
+npm run sandbox:env       # write .env.local with THIS stack's publishable key + URL
+# — or do both at once —
+npm run sandbox:setup
 ```
 
-`.env.local` is gitignored. Set `VITE_SUPABASE_URL=http://127.0.0.1:54321` and,
-for `VITE_SUPABASE_ANON_KEY`, paste the **Publishable** key from `supabase status`
-(Authentication Keys). Recent Supabase CLI (2.95+) gives each stack its own
+`npm run sandbox:env` reads `supabase status -o env` and fills
+`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` into `.env.local` (from
+`.env.local.example` the first time; updating in place and preserving your edits
+afterward). It's safe to re-run anytime the stack's key changes.
+
+Why the step exists: recent Supabase CLI (2.95+) gives each stack its own
 asymmetric signing keys, so there is no universal demo anon key — the old HS256
-demo JWT fails with `PGRST301` ("No suitable key or wrong key type"). Re-copy the
-publishable key whenever you re-init the stack.
+demo JWT fails with `PGRST301` ("No suitable key or wrong key type"). The stack's
+key is a deterministic shared default (stable across `stop`/`start` and
+`db reset`), so you normally run `sandbox:env` once; re-run it only after a CLI
+upgrade or a JWT/`project_id` config change. `.env.local` is gitignored.
 
 ## Spin it up
 

@@ -21,6 +21,8 @@
     "sandbox:reset": "supabase db reset",
     "sandbox:stop": "supabase stop",
     "sandbox:status": "supabase status",
+    "sandbox:env": "node scripts/setup-sandbox-env.mjs",
+    "sandbox:setup": "supabase start && node scripts/setup-sandbox-env.mjs",
     "test:watch": "vitest",
     "security:audit": "node scripts/security-audit.js",
     "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"
