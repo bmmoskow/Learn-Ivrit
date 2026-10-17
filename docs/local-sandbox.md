@@ -56,8 +56,9 @@ psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/seed-
 
 ## Run the integration tests against local
 
-With `.env.local` present, the integration config automatically targets the
-local stack (it takes precedence over `.env.test`):
+With `.env.local` present, the integration config targets the local stack. Local
+runs read `.env.local` only — `.env` and `.env.test` are ignored, so a local run
+can never be pointed at a real Supabase instance:
 
 ```bash
 npm run test:integration

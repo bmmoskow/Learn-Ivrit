@@ -36,32 +36,42 @@ function parseEnvFile(file: string): Record<string, string> {
   return out;
 }
 
-// Target precedence:
-//   .env.local  -> the LOCAL Docker sandbox (http://127.0.0.1:54321). Mirrors
-//                  Vite's own .env.local convention, so the dev server and the
-//                  integration tests hit the same local stack.
-//   .env.test   -> the remote TEST project.
-//   process.env -> CI (the test project's URL/key arrive as env secrets).
-const localEnv = parseEnvFile(path.resolve(process.cwd(), '.env.local'));
-const testEnv = parseEnvFile(path.resolve(process.cwd(), '.env.test'));
-const pick = (k: string) => localEnv[k] || testEnv[k] || process.env[k] || '';
-const TEST_URL = pick('VITE_SUPABASE_URL');
-const TEST_ANON = pick('VITE_SUPABASE_ANON_KEY');
+// Target resolution — two mutually exclusive sources, nothing else:
+//   • Local (not CI): the LOCAL Docker sandbox, from .env.local ONLY. `.env`,
+//     `.env.test`, and process.env are intentionally ignored, so a local run can
+//     never be pointed at a real Supabase instance. `npm run sandbox:start`
+//     boots the stack and writes .env.local (see docs/local-sandbox.md).
+//   • CI: the remote TEST project, from env vars (VITE_SUPABASE_URL /
+//     VITE_SUPABASE_ANON_KEY + EXPECTED_SUPABASE_PROJECT_REF), verified by the
+//     positive allow-list in the guard below.
+const isCI = !!process.env.CI;
+
+let TEST_URL: string;
+let TEST_ANON: string;
+let expectedRef = '';
+
+if (isCI) {
+  TEST_URL = (process.env.VITE_SUPABASE_URL ?? '').trim();
+  TEST_ANON = (process.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
+  expectedRef = (process.env.EXPECTED_SUPABASE_PROJECT_REF ?? '').trim();
+} else {
+  const localEnv = parseEnvFile(path.resolve(process.cwd(), '.env.local'));
+  TEST_URL = localEnv.VITE_SUPABASE_URL ?? '';
+  TEST_ANON = localEnv.VITE_SUPABASE_ANON_KEY ?? '';
+}
 
 if (!TEST_URL || !TEST_ANON) {
   throw new Error(
-    'Integration tests need VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — in .env.local (local Docker stack, see docs/local-sandbox.md) or .env.test (remote test project, see .env.test.example), or as env vars in CI.'
+    isCI
+      ? 'Integration tests in CI need VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, and EXPECTED_SUPABASE_PROJECT_REF as env vars.'
+      : 'Integration tests need the local sandbox. Run `npm run sandbox:start` to boot it and write .env.local (see docs/local-sandbox.md).'
   );
 }
 
-// Never let integration tests run against production — without hard-coding any
-// project ref in source. (Logic + tests: src/test/integrationTargetGuard.ts)
-assertSafeIntegrationTarget({
-  targetUrl: TEST_URL,
-  expectedRef: (process.env.EXPECTED_SUPABASE_PROJECT_REF ?? '').trim(),
-  isCI: !!process.env.CI,
-  prodUrl: parseEnvFile(path.resolve(process.cwd(), '.env')).VITE_SUPABASE_URL ?? '',
-});
+// Never let integration tests run against production. Locally the target must be
+// the localhost sandbox; in CI it must match the allow-listed ref. (Logic +
+// tests: src/test/integrationTargetGuard.ts)
+assertSafeIntegrationTarget({ targetUrl: TEST_URL, expectedRef, isCI });
 
 export default defineConfig({
   plugins: [react()],

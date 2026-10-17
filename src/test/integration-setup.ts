@@ -3,8 +3,9 @@ import "@testing-library/jest-dom/vitest";
 
 // Setup for INTEGRATION tests (*.integrationtest.tsx). Unlike ./setup.ts, this
 // deliberately does NOT override the Supabase env vars and does NOT mock the
-// Supabase client — integration tests run against the REAL test project, with
-// VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY supplied from .env.test.
+// Supabase client — integration tests run against a REAL database: the local
+// Docker sandbox (from .env.local) when run locally, or the remote test project
+// (from CI env vars) in CI. Target resolution lives in vitest.integration.config.ts.
 
 // Minimal Deno shim so any edge-function-shared constants fall through to defaults.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

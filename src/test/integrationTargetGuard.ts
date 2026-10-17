@@ -17,32 +17,31 @@ export function isLocalSupabaseUrl(url: string): boolean {
 export interface IntegrationTargetContext {
   /** VITE_SUPABASE_URL the tests will connect to. */
   targetUrl: string;
-  /** EXPECTED_SUPABASE_PROJECT_REF — a public allow-list value (CI, optionally local). '' if unset. */
+  /** EXPECTED_SUPABASE_PROJECT_REF — the CI allow-list value. '' when running locally. */
   expectedRef: string;
   /** Whether we're running in CI (process.env.CI). */
   isCI: boolean;
-  /** VITE_SUPABASE_URL from .env (production). Used only for the local no-ref check. '' if unknown. */
-  prodUrl: string;
 }
 
 /**
  * Throws if the target could be production; returns normally if it's safe.
  *
- *   1. A localhost / 127.0.0.1 target is ALWAYS safe (the local Docker stack
- *      can't be production) — allowed regardless of ref/CI.
- *   2. Otherwise, if an expected ref is configured, the target URL MUST contain
- *      it (positive allow-list — the primary CI guard).
+ *   1. A localhost / 127.0.0.1 target is ALWAYS safe (the local Docker sandbox
+ *      can't be production) — this is the only target local runs allow.
+ *   2. In CI, an expected ref must be configured and the target URL MUST contain
+ *      it (positive allow-list — the remote TEST project).
  *   3. In CI with no expected ref, we can't verify the target, so FAIL CLOSED.
- *   4. Locally with no expected ref, refuse only if the target equals the prod
- *      URL from .env.
+ *   4. Locally, any non-localhost target is refused: local integration tests run
+ *      only against the Docker sandbox. Remote targets are a CI-only path, so no
+ *      production URL ever needs to be referenced here.
  */
 export function assertSafeIntegrationTarget(ctx: IntegrationTargetContext): void {
-  const { targetUrl, expectedRef, isCI, prodUrl } = ctx;
+  const { targetUrl, expectedRef, isCI } = ctx;
 
   // (1) Local Docker sandbox — definitionally not production.
   if (isLocalSupabaseUrl(targetUrl)) return;
 
-  // (2) Positive allow-list.
+  // (2) CI positive allow-list.
   if (expectedRef) {
     if (!targetUrl.includes(expectedRef)) {
       throw new Error(
@@ -59,10 +58,9 @@ export function assertSafeIntegrationTarget(ctx: IntegrationTargetContext): void
     );
   }
 
-  // (4) Local, no expected ref — refuse only the known prod URL.
-  if (prodUrl && targetUrl === prodUrl) {
-    throw new Error(
-      "Refusing to run integration tests against the production Supabase project (it matches VITE_SUPABASE_URL in .env). Point .env.local / .env.test at the local stack or the test project.",
-    );
-  }
+  // (4) Local with a non-localhost target — refuse. Local integration tests run
+  //     only against the Docker sandbox.
+  throw new Error(
+    `Refusing: local integration tests must target the local Docker sandbox (http://127.0.0.1:54321), but got ${targetUrl}. Run \`npm run sandbox:start\`. Remote targets are a CI-only path (set EXPECTED_SUPABASE_PROJECT_REF there).`,
+  );
 }
