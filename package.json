@@ -17,7 +17,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "sandbox:start": "supabase start && node scripts/setup-sandbox-env.mjs",
+    "sandbox:start": "node scripts/sandbox-start.mjs",
     "sandbox:reset": "supabase db reset",
     "sandbox:stop": "supabase stop",
     "sandbox:status": "supabase status",

@@ -28,6 +28,11 @@ time; updating those two values in place and preserving your edits afterward).
 It adds ~1s to startup. If you ever need to re-sync `.env.local` without a full
 restart, run `npm run sandbox:env` on its own.
 
+`sandbox:start` also **masks the stack's secret values** (Secret key, S3 keys) in
+the printout — they're local shared defaults, but the raw output looks alarming.
+The publishable key and all URLs stay visible. Run `npm run sandbox:status` for
+the unmasked table if you need those values.
+
 Why the env-fill exists: recent Supabase CLI (2.95+) gives each stack its own
 asymmetric signing keys, so there is no universal demo anon key — the old HS256
 demo JWT fails with `PGRST301` ("No suitable key or wrong key type"). The stack's
