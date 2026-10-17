@@ -13,35 +13,27 @@ hosted project.
 - **Docker** running (Docker Desktop, Colima, etc.)  Desktop Install: <https://www.docker.com/products/docker-desktop>
 - The **Supabase CLI** (`supabase --version`). Install: <https://supabase.com/docs/guides/cli>.
 
-## One-time setup
-
-Boot the stack, then let the setup step write `.env.local` for you:
-
-```bash
-npm run sandbox:start     # boot the Docker stack (first run pulls images)
-npm run sandbox:env       # write .env.local with THIS stack's publishable key + URL
-# — or do both at once —
-npm run sandbox:setup
-```
-
-`npm run sandbox:env` reads `supabase status -o env` and fills
-`VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` into `.env.local` (from
-`.env.local.example` the first time; updating in place and preserving your edits
-afterward). It's safe to re-run anytime the stack's key changes.
-
-Why the step exists: recent Supabase CLI (2.95+) gives each stack its own
-asymmetric signing keys, so there is no universal demo anon key — the old HS256
-demo JWT fails with `PGRST301` ("No suitable key or wrong key type"). The stack's
-key is a deterministic shared default (stable across `stop`/`start` and
-`db reset`), so you normally run `sandbox:env` once; re-run it only after a CLI
-upgrade or a JWT/`project_id` config change. `.env.local` is gitignored.
-
 ## Spin it up
 
 ```bash
-npm run sandbox:start     # supabase start  — boots the Docker stack (first run pulls images)
+npm run sandbox:start     # boots the Docker stack (first run pulls images) AND writes .env.local
 npm run sandbox:reset     # supabase db reset — drops, re-creates, and applies ALL migrations
 ```
+
+`sandbox:start` runs `supabase start` and then fills `.env.local` for you, so
+there is no separate setup step — just run it and go. The env-fill reads
+`supabase status -o env` and writes `VITE_SUPABASE_URL` +
+`VITE_SUPABASE_ANON_KEY` into `.env.local` (from `.env.local.example` the first
+time; updating those two values in place and preserving your edits afterward).
+It adds ~1s to startup. If you ever need to re-sync `.env.local` without a full
+restart, run `npm run sandbox:env` on its own.
+
+Why the env-fill exists: recent Supabase CLI (2.95+) gives each stack its own
+asymmetric signing keys, so there is no universal demo anon key — the old HS256
+demo JWT fails with `PGRST301` ("No suitable key or wrong key type"). The stack's
+key is a deterministic shared default (stable across `stop`/`start` and
+`db reset`), so the value in `.env.local` keeps working; it only changes after a
+CLI upgrade or a JWT/`project_id` config change. `.env.local` is gitignored.
 
 - `sandbox:start` prints the local URLs/keys (API `:54321`, DB `:54322`, Studio
   `:54323`, Inbucket email `:54324`).
