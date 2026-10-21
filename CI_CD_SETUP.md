@@ -248,10 +248,11 @@ Configure in GitHub Settings → Branches:
 # Unit tests only
 npm run test:unit
 
-# Integration tests (requires .env.test)
+# Integration tests (requires the local Docker sandbox — see docs/local-sandbox.md)
+npm run sandbox:start      # boots the local stack + writes .env.local
 npm run test:integration
 
-# E2E tests (requires .env.test + dev server)
+# E2E tests (requires a running dev server)
 npm run test:e2e
 
 # E2E tests with UI
@@ -263,12 +264,11 @@ npm run test:all
 
 ### Database Setup
 
-For integration and E2E tests, create `.env.test`:
-
-```env
-VITE_SUPABASE_URL=https://your-test-db.supabase.co
-VITE_SUPABASE_ANON_KEY=your-test-anon-key
-```
+Integration tests run against the **local Docker sandbox** — `npm run sandbox:start`
+boots it and writes `.env.local` for you (see `docs/local-sandbox.md`). Local runs
+read `.env.local` only; `.env` / `.env.test` are ignored, so they can never hit a
+real instance. In CI the integration job targets the remote TEST project via env
+vars (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `EXPECTED_SUPABASE_PROJECT_REF`).
 
 ## Cost Optimization
 
