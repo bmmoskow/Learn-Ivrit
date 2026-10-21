@@ -1,5 +1,51 @@
-project_id = "your-project-id"
+# Supabase local-dev config, used by `supabase start` / `supabase db reset` to
+# run the full stack in Docker. See docs/local-sandbox.md.
+#
+# NOTE: written to the standard config.toml schema. If your Supabase CLI version
+# rejects a key, run `supabase init` to regenerate a canonical file, then re-add
+# the [auth.email] enable_confirmations=false and the [functions.*] verify_jwt
+# entries below.
 
+project_id = "learn-ivrit"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+# Match production's Postgres major version (prod is 17.x) so the baseline
+# schema behaves identically on the local stack.
+major_version = 17
+
+[studio]
+enabled = true
+port = 54323
+
+# Local inbox that captures auth emails (confirmations, magic links) so nothing
+# leaves the machine during development.
+[inbucket]
+enabled = true
+port = 54324
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5173"
+additional_redirect_urls = ["http://127.0.0.1:5173"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+# Mirror the remote test project (mailer_autoconfirm): local test signups
+# complete without an email-confirmation step, so integration tests can create
+# users directly.
+enable_confirmations = false
+
+# Edge functions — keep the same verify_jwt settings as production.
 [functions.gemini-translate]
 verify_jwt = false
 
