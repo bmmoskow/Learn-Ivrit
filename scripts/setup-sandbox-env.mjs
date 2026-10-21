@@ -10,10 +10,13 @@
 
 import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { pinLocalProjectId, root } from './sandbox-project.mjs';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// Read status from the LOCAL stack named by config.toml, not a prod ref that
+// may be sitting in SUPABASE_PROJECT_ID / a stale link. See sandbox-project.mjs.
+pinLocalProjectId();
+
 const envPath = path.join(root, '.env.local');
 const examplePath = path.join(root, '.env.local.example');
 
