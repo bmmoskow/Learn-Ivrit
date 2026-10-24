@@ -81,7 +81,24 @@ jobs:
     uses: ./.github/workflows/prod-probe.yml
     secrets: inherit
 
-# Production deployment is handled by Cloudflare Pages' GitHub integration,
-# which builds and deploys automatically on push to `main` (and creates
-# preview deployments for other branches). No deploy job is needed here.
-# See docs/deployment-cloudflare.md for setup.
+  deploy-cloudflare:
+    name: Deploy to Cloudflare Pages
+    needs: [ui-checks, security, db-migrate-prod, deploy-functions-prod, prod-probe]
+    # Fire the Cloudflare Pages Deploy Hook to ship the production frontend, but
+    # ONLY after every gate above is green: the app checks (ui-checks, security)
+    # and the backend rollout (schema migrate, function deploy, prod probe).
+    # Cloudflare's own automatic Git deployment must be turned OFF in the Pages
+    # project settings so this hook is the single production deploy trigger
+    # (preview deployments for other branches are unaffected). The hook URL lives
+    # in the CF_DEPLOY_HOOK repo secret.
+    #
+    # NOTE: db-advisors-prod is intentionally NOT in `needs` — it stays a
+    # non-blocking schema signal, matching its own comment above. Add it here if
+    # you want an ERROR-level advisor to block the frontend deploy too.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fire Cloudflare Pages deploy hook
+        run: curl -fsS -X POST "$CF_DEPLOY_HOOK"
+        env:
+          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
