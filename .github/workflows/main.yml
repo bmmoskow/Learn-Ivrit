@@ -131,6 +131,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify build secrets are present
+        # Fail loudly if either build-time var is empty/unset, rather than
+        # shipping a bundle that can't reach Supabase (broken prod site).
+        run: |
+          : "${VITE_SUPABASE_URL:?is empty or unset — set the repo secret}"
+          : "${VITE_SUPABASE_ANON_KEY:?is empty or unset — set the repo secret}"
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Build production bundle
         run: npm run build:prod
         env:
