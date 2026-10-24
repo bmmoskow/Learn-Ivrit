@@ -95,13 +95,21 @@ jobs:
   deploy-cloudflare:
     name: Deploy to Cloudflare Pages
     needs: [ui-checks, security, db-migrate-prod, deploy-functions-prod, prod-probe]
-    # Fire the Cloudflare Pages Deploy Hook to ship the production frontend, but
-    # ONLY after every gate above is green: the app checks (ui-checks, security)
-    # and the backend rollout (schema migrate, function deploy, prod probe).
-    # Cloudflare's own automatic Git deployment must be turned OFF in the Pages
-    # project settings so this hook is the single production deploy trigger
-    # (preview deployments for other branches are unaffected). The hook URL lives
-    # in the CF_DEPLOY_HOOK repo secret.
+    # Build THIS run's checked-out commit and upload it straight to Cloudflare
+    # Pages (commit-pinned), only after the app checks (ui-checks, security) and
+    # the backend rollout (schema migrate, function deploy, prod probe) all pass.
+    #
+    # Why direct upload instead of a deploy hook: a hook rebuilds whatever is at
+    # the branch tip when it fires, so with rapid promotions an earlier run's
+    # hook can ship a later commit's frontend before that commit's backend ("tip-
+    # chasing"). This deploys the exact SHA that just passed the gate — no tip-
+    # chasing — and the job FAILS if the Cloudflare deploy fails (a hook only
+    # confirmed the trigger was accepted, not that the build succeeded).
+    #
+    # Cloudflare's own automatic PRODUCTION deployment stays PAUSED; PR preview
+    # deployments are unaffected (still served by the Git integration). Requires
+    # repo secrets: CLOUDFLARE_API_TOKEN (Pages:Edit), CLOUDFLARE_ACCOUNT_ID, and
+    # the build-time VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (public values).
     #
     # NOTE: db-advisors-prod is intentionally NOT in `needs` — it stays a
     # non-blocking schema signal, matching its own comment above. Add it here if
@@ -109,7 +117,34 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Fire Cloudflare Pages deploy hook
-        run: curl -fsS -X POST "$CF_DEPLOY_HOOK"
+      - name: Check out the gated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build:prod
         env:
-          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Cloudflare Pages (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy dist
+            --project-name=learn-ivrit
+            --branch=main
+            --commit-hash=${{ github.sha }}
+            --commit-dirty=true
