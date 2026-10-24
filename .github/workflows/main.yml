@@ -10,6 +10,17 @@ on:
         type: boolean
         default: false
 
+# Serialize Production runs: two promotions landing close together must not run
+# their prod rollouts (db-migrate-prod / deploy-functions-prod) at the same time
+# and race two migrations against the prod DB. A new run supersedes an older
+# *pending* one; an in-progress run always finishes (cancel-in-progress: false).
+# NOTE: this does NOT change what the deploy hook builds — the hook still builds
+# the branch tip, so it does not by itself remove "tip-chasing" (an earlier
+# run's hook can deploy a later commit's frontend). Commit-pinned deploys would.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   actions: read
