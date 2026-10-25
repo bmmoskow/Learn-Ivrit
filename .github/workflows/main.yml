@@ -120,6 +120,11 @@ jobs:
     # you want an ERROR-level advisor to block the frontend deploy too.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Run in the `deployment` environment so the build can read that
+    # environment's VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY secrets. Its
+    # branch policy (main only) is extra defense; CLOUDFLARE_API_TOKEN and
+    # CLOUDFLARE_ACCOUNT_ID remain readable as repo secrets.
+    environment: deployment
     steps:
       - name: Check out the gated commit
         uses: actions/checkout@v4
