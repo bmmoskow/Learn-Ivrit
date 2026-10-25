@@ -10,6 +10,17 @@ on:
         type: boolean
         default: false
 
+# Serialize Production runs: two promotions landing close together must not run
+# their prod rollouts (db-migrate-prod / deploy-functions-prod) at the same time
+# and race two migrations against the prod DB. A new run supersedes an older
+# *pending* one; an in-progress run always finishes (cancel-in-progress: false).
+# NOTE: this does NOT change what the deploy hook builds — the hook still builds
+# the branch tip, so it does not by itself remove "tip-chasing" (an earlier
+# run's hook can deploy a later commit's frontend). Commit-pinned deploys would.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   actions: read
@@ -60,10 +71,12 @@ jobs:
 
   deploy-functions-prod:
     name: Deploy edge functions (prod)
-    needs: [ui-checks, security, db-migrate-prod]
+    needs: [db-migrate-prod]
     # Deploy edge functions to PROD after checks pass and the schema migration
     # is applied — same order as at the integration stage (schema, then
-    # functions). Reusable deploy-functions workflow, `deployment` environment.
+    # functions). Only db-migrate-prod is listed: it already needs
+    # [ui-checks, security], so those are gated transitively. Reusable
+    # deploy-functions workflow, `deployment` environment.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy-functions.yml
     with:
@@ -83,22 +96,74 @@ jobs:
 
   deploy-cloudflare:
     name: Deploy to Cloudflare Pages
-    needs: [ui-checks, security, db-migrate-prod, deploy-functions-prod, prod-probe]
-    # Fire the Cloudflare Pages Deploy Hook to ship the production frontend, but
-    # ONLY after every gate above is green: the app checks (ui-checks, security)
-    # and the backend rollout (schema migrate, function deploy, prod probe).
-    # Cloudflare's own automatic Git deployment must be turned OFF in the Pages
-    # project settings so this hook is the single production deploy trigger
-    # (preview deployments for other branches are unaffected). The hook URL lives
-    # in the CF_DEPLOY_HOOK repo secret.
+    needs: [prod-probe]
+    # Build THIS run's checked-out commit and upload it straight to Cloudflare
+    # Pages (commit-pinned), only after the app checks and the backend rollout
+    # pass. Only prod-probe is listed: it transitively requires db-migrate-prod +
+    # deploy-functions-prod, which in turn require ui-checks + security, so all
+    # five are gated through this one.
+    #
+    # Why direct upload instead of a deploy hook: a hook rebuilds whatever is at
+    # the branch tip when it fires, so with rapid promotions an earlier run's
+    # hook can ship a later commit's frontend before that commit's backend ("tip-
+    # chasing"). This deploys the exact SHA that just passed the gate — no tip-
+    # chasing — and the job FAILS if the Cloudflare deploy fails (a hook only
+    # confirmed the trigger was accepted, not that the build succeeded).
+    #
+    # Cloudflare's own automatic PRODUCTION deployment stays PAUSED; PR preview
+    # deployments are unaffected (still served by the Git integration). Requires
+    # repo secrets: CLOUDFLARE_API_TOKEN (Pages:Edit), CLOUDFLARE_ACCOUNT_ID, and
+    # the build-time VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY (public values).
     #
     # NOTE: db-advisors-prod is intentionally NOT in `needs` — it stays a
     # non-blocking schema signal, matching its own comment above. Add it here if
     # you want an ERROR-level advisor to block the frontend deploy too.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Run in the `deployment` environment so the build can read that
+    # environment's VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY secrets. Its
+    # branch policy (main only) is extra defense; CLOUDFLARE_API_TOKEN and
+    # CLOUDFLARE_ACCOUNT_ID remain readable as repo secrets.
+    environment: deployment
     steps:
-      - name: Fire Cloudflare Pages deploy hook
-        run: curl -fsS -X POST "$CF_DEPLOY_HOOK"
+      - name: Check out the gated commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify build secrets are present
+        # Fail loudly if either build-time var is empty/unset, rather than
+        # shipping a bundle that can't reach Supabase (broken prod site).
+        run: |
+          : "${VITE_SUPABASE_URL:?is empty or unset — set the repo secret}"
+          : "${VITE_SUPABASE_ANON_KEY:?is empty or unset — set the repo secret}"
         env:
-          CF_DEPLOY_HOOK: ${{ secrets.CF_DEPLOY_HOOK }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Build production bundle
+        run: npm run build:prod
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Deploy to Cloudflare Pages (production)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy dist
+            --project-name=learn-ivrit
+            --branch=main
+            --commit-hash=${{ github.sha }}
+            --commit-dirty=true
