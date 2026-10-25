@@ -71,10 +71,12 @@ jobs:
 
   deploy-functions-prod:
     name: Deploy edge functions (prod)
-    needs: [ui-checks, security, db-migrate-prod]
+    needs: [db-migrate-prod]
     # Deploy edge functions to PROD after checks pass and the schema migration
     # is applied — same order as at the integration stage (schema, then
-    # functions). Reusable deploy-functions workflow, `deployment` environment.
+    # functions). Only db-migrate-prod is listed: it already needs
+    # [ui-checks, security], so those are gated transitively. Reusable
+    # deploy-functions workflow, `deployment` environment.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy-functions.yml
     with:
@@ -94,10 +96,12 @@ jobs:
 
   deploy-cloudflare:
     name: Deploy to Cloudflare Pages
-    needs: [ui-checks, security, db-migrate-prod, deploy-functions-prod, prod-probe]
+    needs: [prod-probe]
     # Build THIS run's checked-out commit and upload it straight to Cloudflare
-    # Pages (commit-pinned), only after the app checks (ui-checks, security) and
-    # the backend rollout (schema migrate, function deploy, prod probe) all pass.
+    # Pages (commit-pinned), only after the app checks and the backend rollout
+    # pass. Only prod-probe is listed: it transitively requires db-migrate-prod +
+    # deploy-functions-prod, which in turn require ui-checks + security, so all
+    # five are gated through this one.
     #
     # Why direct upload instead of a deploy hook: a hook rebuilds whatever is at
     # the branch tip when it fires, so with rapid promotions an earlier run's
