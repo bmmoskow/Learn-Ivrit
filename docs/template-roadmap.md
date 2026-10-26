@@ -118,5 +118,31 @@ the bottom). Items are grouped; order is not priority.
 
 ## Tracking
 
-Each item has a GitHub issue labeled `template`. See the project's issues filtered
-by that label; this document is the shared context those issues reference.
+Each item is tracked by a GitHub issue labeled `template` (filter the repo's
+issues by that label). This document is the shared context they reference.
+
+| Issue | Item |
+|---|---|
+| [#229](https://github.com/bmmoskow/Learn-Ivrit/issues/229) | Stripe payments & donations |
+| [#230](https://github.com/bmmoskow/Learn-Ivrit/issues/230) | Usage plans & entitlements layer |
+| [#231](https://github.com/bmmoskow/Learn-Ivrit/issues/231) | Ad serving infrastructure |
+| [#232](https://github.com/bmmoskow/Learn-Ivrit/issues/232) | Consent & cookie management (GDPR/CCPA) |
+| [#233](https://github.com/bmmoskow/Learn-Ivrit/issues/233) | Mobile apps (PWA then Capacitor) + push |
+| [#234](https://github.com/bmmoskow/Learn-Ivrit/issues/234) | Internationalization (i18n) & RTL |
+| [#235](https://github.com/bmmoskow/Learn-Ivrit/issues/235) | SEO & SPA prerendering |
+| [#236](https://github.com/bmmoskow/Learn-Ivrit/issues/236) | Error tracking (Sentry) |
+| [#237](https://github.com/bmmoskow/Learn-Ivrit/issues/237) | Product analytics & feature flags |
+| [#238](https://github.com/bmmoskow/Learn-Ivrit/issues/238) | Uptime/alerting & performance monitoring |
+| [#239](https://github.com/bmmoskow/Learn-Ivrit/issues/239) | Auth expansion: OAuth, MFA, magic links |
+| [#240](https://github.com/bmmoskow/Learn-Ivrit/issues/240) | Account lifecycle: data export & deletion |
+| [#241](https://github.com/bmmoskow/Learn-Ivrit/issues/241) | RBAC / roles & permissions |
+| [#242](https://github.com/bmmoskow/Learn-Ivrit/issues/242) | Compliance baseline: ToS acceptance, a11y, audit logging |
+| [#243](https://github.com/bmmoskow/Learn-Ivrit/issues/243) | Notifications & onboarding |
+| [#244](https://github.com/bmmoskow/Learn-Ivrit/issues/244) | CMS / content pages |
+| [#245](https://github.com/bmmoskow/Learn-Ivrit/issues/245) | File & media upload |
+| [#246](https://github.com/bmmoskow/Learn-Ivrit/issues/246) | Background jobs / queues / scheduled tasks |
+| [#247](https://github.com/bmmoskow/Learn-Ivrit/issues/247) | Abuse & bot protection |
+| [#248](https://github.com/bmmoskow/Learn-Ivrit/issues/248) | Template-ization: config-driven branding & theming |
+| [#249](https://github.com/bmmoskow/Learn-Ivrit/issues/249) | Template-ization: optional-module toggles |
+| [#250](https://github.com/bmmoskow/Learn-Ivrit/issues/250) | Template-ization: app-specific boundary |
+| [#251](https://github.com/bmmoskow/Learn-Ivrit/issues/251) | Template-ization: project scaffolding & setup docs |
