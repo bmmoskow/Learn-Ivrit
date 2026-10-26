@@ -1,0 +1,56 @@
+name: Playwright suite
+
+# Reusable workflow: runs ONE Playwright suite so the two stay separate jobs
+# without duplicating setup. Called once per suite from ui.yml:
+#   • suite: ui  -> real browser, MOCKED backend   (tests/ui, deterministic)
+#   • suite: e2e -> real browser, REAL test backend (tests/e2e)
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: 'Which suite to run: "ui" (mocked) or "e2e" (real backend)'
+        required: true
+        type: string
+      environment:
+        description: 'GitHub environment supplying the build-time VITE_* secrets'
+        required: false
+        type: string
+        default: pipeline
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ inputs.suite }} suite
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ${{ inputs.suite }} suite
+        run: npm run test:${{ inputs.suite }}
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ inputs.suite }}
+          path: playwright-report/
+          retention-days: 30
