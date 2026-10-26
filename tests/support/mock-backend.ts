@@ -8,7 +8,10 @@ import { test as base, expect } from '@playwright/test';
 // real network. Tests can add their own `page.route(...)` overrides before
 // navigating to shape specific responses.
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  // Note: the fixture's provide-callback is named `provide` (not Playwright's
+  // conventional `use`) so eslint's react-hooks rule doesn't mistake it for
+  // React's `use` hook.
+  page: async ({ page }, provide) => {
     // Auth: respond as a signed-out (guest) session.
     await page.route('**/auth/v1/**', (route) => {
       const url = route.request().url();
@@ -40,7 +43,7 @@ export const test = base.extend({
       }),
     );
 
-    await use(page);
+    await provide(page);
   },
 });
 
