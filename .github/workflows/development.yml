@@ -44,27 +44,11 @@ jobs:
 
   promote-to-integration:
     name: Promote to Integration
-    runs-on: ubuntu-latest
     needs: [base-checks, unit-tests]
     if: github.event_name == 'push' && github.ref == 'refs/heads/development' && inputs.skip_promote != true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-
-      - name: Get original merge message
-        id: get-message
-        run: |
-          ORIGINAL_MSG=$(git log -1 --format=%s HEAD)
-          echo "message=$ORIGINAL_MSG" >> $GITHUB_OUTPUT
-
-      - name: Merge to integration
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin integration:integration
-          git checkout integration
-          git merge --no-ff origin/development -m "${{ steps.get-message.outputs.message }}"
-          git push origin integration
+    uses: ./.github/workflows/promote.yml
+    with:
+      source: development
+      target: integration
+    secrets:
+      token: ${{ secrets.PAT_TOKEN }}
