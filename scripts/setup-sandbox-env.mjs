@@ -42,6 +42,10 @@ const apiUrl = vals.API_URL;
 // Prefer the new publishable key; fall back to the legacy anon JWT on older CLIs.
 const anonKey = vals.PUBLISHABLE_KEY || vals.ANON_KEY;
 const keyKind = vals.PUBLISHABLE_KEY ? 'publishable' : 'anon';
+// Service-role key (local stack only). Lets the integration test-user helper
+// fully delete test auth users during cleanup; optional, so we don't fail
+// without it. This is the LOCAL sandbox's key — not a real secret.
+const serviceRoleKey = vals.SERVICE_ROLE_KEY;
 
 if (!apiUrl || !anonKey) {
   console.error('✖ `supabase status -o env` did not include API_URL / PUBLISHABLE_KEY.');
@@ -60,9 +64,15 @@ function setVar(text, name, value) {
 }
 content = setVar(content, 'VITE_SUPABASE_URL', apiUrl);
 content = setVar(content, 'VITE_SUPABASE_ANON_KEY', anonKey);
+if (serviceRoleKey) {
+  content = setVar(content, 'SUPABASE_SERVICE_ROLE_KEY', serviceRoleKey);
+}
 
 // 4. Write.
 writeFileSync(envPath, content);
 console.log(`✔ ${base === envPath ? 'Updated' : 'Created'} .env.local from ${path.basename(base)}`);
 console.log(`    VITE_SUPABASE_URL=${apiUrl}`);
 console.log(`    VITE_SUPABASE_ANON_KEY=${anonKey.slice(0, 18)}… (${keyKind} key)`);
+if (serviceRoleKey) {
+  console.log(`    SUPABASE_SERVICE_ROLE_KEY=${serviceRoleKey.slice(0, 18)}… (local service-role key)`);
+}

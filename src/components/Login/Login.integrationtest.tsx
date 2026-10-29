@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router';
 import { Login } from './Login';
 import { supabase } from '@/lib/supabase';
 import { AuthProvider } from '@/contexts/AuthContext/AuthContext';
+import { uniqueEmail, cleanupTestUser, TEST_USER_PASSWORD } from '@/test/testUser';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router', async () => {
@@ -16,23 +17,18 @@ vi.mock('react-router', async () => {
 
 describe('Login Integration Tests', () => {
   let testEmail: string;
-  let testPassword: string;
+  const testPassword = TEST_USER_PASSWORD;
 
   beforeEach(() => {
     mockNavigate.mockClear();
-    testEmail = `test-${Date.now()}@example.com`;
-    testPassword = 'TestPassword123!';
+    // Unique (UUID-based) and never registered: the rejection test relies on it
+    // not existing, and uniqueness keeps concurrent runs from colliding.
+    testEmail = uniqueEmail('login');
   });
 
   afterEach(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.auth.signOut();
-      }
-    } catch (error) {
-      console.error('Cleanup error:', error);
-    }
+    // Login creates no persistent user; just sign out safely via the helper.
+    await cleanupTestUser(undefined);
   });
 
   it('should render login form', () => {
