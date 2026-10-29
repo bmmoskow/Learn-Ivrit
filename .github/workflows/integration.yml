@@ -91,45 +91,11 @@ jobs:
 
   promote-to-ui:
     name: Promote to UI
-    runs-on: ubuntu-latest
     needs: [development-checks, integration-tests, db-advisors-test, deploy-functions-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration' && inputs.skip_promote != true
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          token: ${{ secrets.PAT_TOKEN }}
-
-      - name: Get original merge message
-        id: get-message
-        run: |
-          ORIGINAL_MSG=$(git log -1 --format=%s HEAD)
-          echo "message=$ORIGINAL_MSG" >> $GITHUB_OUTPUT
-
-      - name: Merge to ui
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # Retry to survive a concurrent promotion pushing to ui between our
-          # fetch and push (non-fast-forward). Each attempt re-fetches the moved
-          # target and re-merges, so the other promotion is absorbed. A genuine
-          # merge conflict is NOT retried -- it fails for manual resolution.
-          MSG="${{ steps.get-message.outputs.message }}"
-          for attempt in $(seq 1 5); do
-            git fetch origin ui integration
-            git checkout -B ui origin/ui
-            if ! git merge --no-ff origin/integration -m "$MSG"; then
-              git merge --abort || true
-              echo "::error::Merge conflict promoting integration -> ui; manual resolution needed."
-              exit 1
-            fi
-            if git push origin ui; then
-              echo "Promoted to ui on attempt $attempt."
-              exit 0
-            fi
-            echo "ui advanced during promotion; refreshing and retrying (attempt $attempt)..."
-            sleep $(( attempt * 5 + RANDOM % 5 ))
-          done
-          echo "::error::Could not promote to ui after 5 attempts (it kept advancing)."
-          exit 1
+    uses: ./.github/workflows/promote.yml
+    with:
+      source: integration
+      target: ui
+    secrets:
+      token: ${{ secrets.PAT_TOKEN }}
