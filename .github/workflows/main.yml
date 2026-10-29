@@ -127,7 +127,7 @@ jobs:
     environment: deployment
     steps:
       - name: Check out the gated commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
