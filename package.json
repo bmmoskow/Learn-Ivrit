@@ -100,7 +100,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "linkedom": "^0.18.12",
-    "postcss": "^8.5.29",
+    "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
