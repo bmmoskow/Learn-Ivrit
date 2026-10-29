@@ -49,15 +49,23 @@ const isCI = !!process.env.CI;
 let TEST_URL: string;
 let TEST_ANON: string;
 let expectedRef = '';
+// Optional service-role key. When present it lets the test-user helper fully
+// delete auth users during cleanup (not just their rows); when absent, cleanup
+// falls back to row-only and leaves the uniquely-named users. Kept OUT of
+// `define`/import.meta.env so it never leaks into a client bundle — passed only
+// via test env (process.env) below.
+let TEST_SERVICE_ROLE = '';
 
 if (isCI) {
   TEST_URL = (process.env.VITE_SUPABASE_URL ?? '').trim();
   TEST_ANON = (process.env.VITE_SUPABASE_ANON_KEY ?? '').trim();
   expectedRef = (process.env.EXPECTED_SUPABASE_PROJECT_REF ?? '').trim();
+  TEST_SERVICE_ROLE = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
 } else {
   const localEnv = parseEnvFile(path.resolve(process.cwd(), '.env.local'));
   TEST_URL = localEnv.VITE_SUPABASE_URL ?? '';
   TEST_ANON = localEnv.VITE_SUPABASE_ANON_KEY ?? '';
+  TEST_SERVICE_ROLE = localEnv.SUPABASE_SERVICE_ROLE_KEY ?? '';
 }
 
 if (!TEST_URL || !TEST_ANON) {
@@ -87,7 +95,12 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     fileParallelism: false,
-    env: { VITE_SUPABASE_URL: TEST_URL, VITE_SUPABASE_ANON_KEY: TEST_ANON },
+    env: {
+      VITE_SUPABASE_URL: TEST_URL,
+      VITE_SUPABASE_ANON_KEY: TEST_ANON,
+      // Only set when configured; the helper treats absence as "row-only cleanup".
+      ...(TEST_SERVICE_ROLE ? { SUPABASE_SERVICE_ROLE_KEY: TEST_SERVICE_ROLE } : {}),
+    },
   },
   resolve: {
     alias: {
