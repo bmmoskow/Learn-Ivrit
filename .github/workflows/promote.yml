@@ -1,0 +1,71 @@
+name: Promote
+
+# Reusable promotion step shared by every pipeline stage
+# (development -> integration -> ui -> main). Fast-forwards the target branch by
+# merging the source into it, retrying when a concurrent promotion moves the
+# target between our fetch and push. Called via `uses:` with source/target.
+
+on:
+  workflow_call:
+    inputs:
+      source:
+        description: Branch being promoted FROM.
+        required: true
+        type: string
+      target:
+        description: Branch being promoted INTO.
+        required: true
+        type: string
+    secrets:
+      token:
+        description: PAT with push access to the protected target branch.
+        required: true
+
+jobs:
+  promote:
+    name: Merge ${{ inputs.source }} into ${{ inputs.target }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.token }}
+
+      - name: Get original merge message
+        id: get-message
+        run: |
+          ORIGINAL_MSG=$(git log -1 --format=%s HEAD)
+          echo "message=$ORIGINAL_MSG" >> $GITHUB_OUTPUT
+
+      - name: Merge and push
+        env:
+          # Passed via env (not inlined into the script) so a crafted commit
+          # message can't inject shell — the recommended Actions practice.
+          SOURCE: ${{ inputs.source }}
+          TARGET: ${{ inputs.target }}
+          MSG: ${{ steps.get-message.outputs.message }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Retry to survive a concurrent promotion pushing to the target between
+          # our fetch and push (non-fast-forward). Each attempt re-fetches the
+          # moved target and re-merges, so the other promotion is absorbed. A
+          # genuine merge conflict is NOT retried -- it fails for manual resolution.
+          for attempt in $(seq 1 5); do
+            git fetch origin "$TARGET" "$SOURCE"
+            git checkout -B "$TARGET" "origin/$TARGET"
+            if ! git merge --no-ff "origin/$SOURCE" -m "$MSG"; then
+              git merge --abort || true
+              echo "::error::Merge conflict promoting $SOURCE -> $TARGET; manual resolution needed."
+              exit 1
+            fi
+            if git push origin "$TARGET"; then
+              echo "Promoted $SOURCE -> $TARGET on attempt $attempt."
+              exit 0
+            fi
+            echo "$TARGET advanced during promotion; refreshing and retrying (attempt $attempt)..."
+            sleep $(( attempt * 5 + RANDOM % 5 ))
+          done
+          echo "::error::Could not promote $SOURCE -> $TARGET after 5 attempts (it kept advancing)."
+          exit 1
