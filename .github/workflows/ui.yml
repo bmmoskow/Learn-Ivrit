@@ -74,7 +74,25 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin main:main
-          git checkout main
-          git merge --no-ff origin/ui -m "${{ steps.get-message.outputs.message }}"
-          git push origin main
+          # Retry to survive a concurrent promotion pushing to main between our
+          # fetch and push (non-fast-forward). Each attempt re-fetches the moved
+          # target and re-merges, so the other promotion is absorbed. A genuine
+          # merge conflict is NOT retried -- it fails for manual resolution.
+          MSG="${{ steps.get-message.outputs.message }}"
+          for attempt in $(seq 1 5); do
+            git fetch origin main ui
+            git checkout -B main origin/main
+            if ! git merge --no-ff origin/ui -m "$MSG"; then
+              git merge --abort || true
+              echo "::error::Merge conflict promoting ui -> main; manual resolution needed."
+              exit 1
+            fi
+            if git push origin main; then
+              echo "Promoted to main on attempt $attempt."
+              exit 0
+            fi
+            echo "main advanced during promotion; refreshing and retrying (attempt $attempt)..."
+            sleep $(( attempt * 5 + RANDOM % 5 ))
+          done
+          echo "::error::Could not promote to main after 5 attempts (it kept advancing)."
+          exit 1

@@ -64,7 +64,25 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git fetch origin integration:integration
-          git checkout integration
-          git merge --no-ff origin/development -m "${{ steps.get-message.outputs.message }}"
-          git push origin integration
+          # Retry to survive a concurrent promotion pushing to integration between
+          # our fetch and push (non-fast-forward). Each attempt re-fetches the
+          # moved target and re-merges, so the other promotion is absorbed. A
+          # genuine merge conflict is NOT retried -- it fails for manual resolution.
+          MSG="${{ steps.get-message.outputs.message }}"
+          for attempt in $(seq 1 5); do
+            git fetch origin integration development
+            git checkout -B integration origin/integration
+            if ! git merge --no-ff origin/development -m "$MSG"; then
+              git merge --abort || true
+              echo "::error::Merge conflict promoting development -> integration; manual resolution needed."
+              exit 1
+            fi
+            if git push origin integration; then
+              echo "Promoted to integration on attempt $attempt."
+              exit 0
+            fi
+            echo "integration advanced during promotion; refreshing and retrying (attempt $attempt)..."
+            sleep $(( attempt * 5 + RANDOM % 5 ))
+          done
+          echo "::error::Could not promote to integration after 5 attempts (it kept advancing)."
+          exit 1
