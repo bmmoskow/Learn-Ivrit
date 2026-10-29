@@ -4,41 +4,22 @@ import { BrowserRouter } from 'react-router';
 import { VocabularyList } from './VocabularyList';
 import { supabase } from '@/lib/supabase';
 import { AuthProvider } from '@/contexts/AuthContext/AuthContext';
+import { createTestUser, cleanupTestUser, TEST_USER_PASSWORD } from '@/test/testUser';
 
 describe('VocabularyList Integration Tests', () => {
   let testUserId: string;
   let testEmail: string;
-  const testPassword = 'TestPassword123!';
 
+  // Each test gets its own uniquely-named user (UUID-based, so two runs can
+  // never collide) and is torn down afterwards, scoped to that user id.
   beforeEach(async () => {
-    testEmail = `test-vocab-${Date.now()}@example.com`;
-
-    const { data, error } = await supabase.auth.signUp({
-      email: testEmail,
-      password: testPassword,
-    });
-
-    if (error) {
-      console.error('Setup error:', error);
-      throw error;
-    }
-
-    testUserId = data.user?.id || '';
+    const user = await createTestUser('vocab');
+    testUserId = user.userId;
+    testEmail = user.email;
   });
 
   afterEach(async () => {
-    try {
-      if (testUserId) {
-        await supabase.from('vocabulary_words').delete().eq('user_id', testUserId);
-      }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.auth.signOut();
-      }
-    } catch (error) {
-      console.error('Cleanup error:', error);
-    }
+    await cleanupTestUser(testUserId);
   });
 
   it('should render vocabulary list', () => {
@@ -187,15 +168,10 @@ describe('VocabularyList Integration Tests', () => {
       .select();
 
     expect(insertError).toBeNull();
-    const wordId = inserted?.[0].id;
+    expect(inserted?.[0].id).toBeDefined();
 
-    // Switch to a brand-new user B.
-    await supabase.auth.signOut();
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: `test-vocab-b-${Date.now()}@example.com`,
-      password: testPassword,
-    });
-    expect(signUpError).toBeNull();
+    // Switch to a brand-new user B (its own unique identity; signed in as B).
+    const userB = await createTestUser('vocab-b');
 
     // As B, read WITHOUT a user_id filter — RLS alone must hide A's row. (The
     // other tests all filter by their own user_id, so they'd pass even with RLS
@@ -207,9 +183,10 @@ describe('VocabularyList Integration Tests', () => {
     expect(selectError).toBeNull();
     expect(visible).toEqual([]);
 
-    // Clean up A's row (afterEach can't: it runs as B, whom RLS blocks).
-    await supabase.auth.signOut();
-    await supabase.auth.signInWithPassword({ email: testEmail, password: testPassword });
-    await supabase.from('vocabulary_words').delete().eq('id', wordId);
+    // Tear down B, then sign back in as A so afterEach can remove A's row (and,
+    // with a service-role key, A's auth user). A's row can't be deleted while
+    // signed in as B — RLS blocks it.
+    await cleanupTestUser(userB.userId);
+    await supabase.auth.signInWithPassword({ email: testEmail, password: TEST_USER_PASSWORD });
   });
 });
