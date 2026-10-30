@@ -137,4 +137,28 @@ describe('useDashboard data-layer (real backend, account mode)', () => {
     expect(stats.weakWords).toEqual([]);
     expect(stats.recentTests).toEqual([]);
   });
+
+  it('counts ALL historical tests, not just the 5 most recent (display still caps at 5)', async () => {
+    // Six tests on six distinct days. The displayed "recent tests" list is
+    // capped at 5, but the TOTALS (testsCompleted, averageScore) must cover the
+    // full history — a .limit(5) on the query would wrongly report 5 here. This
+    // is the regression guard for that undercount bug.
+    const now = Date.now();
+    const scores = [50, 60, 70, 80, 90, 100];
+    for (let i = 0; i < scores.length; i++) {
+      await seedTest(scores[i], new Date(now - i * 24 * 60 * 60 * 1000).toISOString());
+    }
+
+    const { result } = renderHook(() => useDashboard(), { wrapper });
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+      expect(result.current.stats.testsCompleted).toBe(6);
+    });
+
+    const { stats } = result.current;
+    expect(stats.testsCompleted).toBe(6); // full count, not capped at 5
+    expect(stats.recentTests).toHaveLength(5); // display still capped
+    expect(stats.recentTests[0].score_percentage).toBe(50); // most recent (today)
+    expect(stats.averageScore).toBe(75); // round(avg 50..100) over ALL six
+  });
 });
