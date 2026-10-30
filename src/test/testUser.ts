@@ -18,7 +18,20 @@ export const TEST_USER_PASSWORD = 'TestPassword123!';
 
 // Tables keyed by user_id. Deleted explicitly in the no-service-role fallback;
 // the service-role path relies on ON DELETE CASCADE from auth.users instead.
-const USER_OWNED_TABLES = ['vocabulary_words'] as const;
+// Ordered children-first so the row-only fallback never trips a foreign-key
+// constraint: test_responses references user_tests + vocabulary_words,
+// user_tests stands alone, word_statistics references vocabulary_words, and
+// vocabulary_words is deleted last. Every table here is keyed by `user_id`, so
+// each delete is strictly self-scoped to the one test user (never a global
+// truncate). Extend this list whenever a new integration test writes rows to a
+// new user-owned table, so teardown stays complete even without a service-role
+// key.
+const USER_OWNED_TABLES = [
+  'test_responses',
+  'user_tests',
+  'word_statistics',
+  'vocabulary_words',
+] as const;
 
 export interface TestUser {
   email: string;
