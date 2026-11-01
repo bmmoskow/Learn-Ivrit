@@ -87,14 +87,18 @@ export function useDashboard(): UseDashboardReturn {
           .eq("user_id", user.id)
           .order("confidence_score", { ascending: true })
           .limit(5),
+        // Fetch ALL of the user's tests (recent-first). The totals below —
+        // testsCompleted, averageScore, studyStreak — must reflect the full
+        // history; only the DISPLAYED "recent tests" list is capped (to 5, via a
+        // slice when building stats). A .limit(5) here would undercount a user
+        // with more than five tests.
         supabase
           .from("user_tests")
           .select(
             "id, user_id, test_type, total_questions, correct_answers, score_percentage, duration_seconds, completed_at, created_at",
           )
           .eq("user_id", user.id)
-          .order("completed_at", { ascending: false })
-          .limit(5),
+          .order("completed_at", { ascending: false }),
       ]);
 
       const { data: wordsData } = wordsResult;
@@ -110,7 +114,7 @@ export function useDashboard(): UseDashboardReturn {
         testsCompleted: testsData?.length || 0,
         averageScore,
         weakWords,
-        recentTests: testsData || [],
+        recentTests: (testsData || []).slice(0, 5),
         studyStreak,
       });
     } catch (err) {
