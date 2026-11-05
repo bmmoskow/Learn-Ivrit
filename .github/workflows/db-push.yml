@@ -25,7 +25,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: 2.121.0
+          version: 3.0.0
 
       - name: Push pending migrations
         # Build the session-pooler connection string from the environment's
