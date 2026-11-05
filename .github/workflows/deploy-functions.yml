@@ -35,7 +35,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: 2.121.0
+          version: 3.0.0
 
       - name: Deploy functions
         env:
