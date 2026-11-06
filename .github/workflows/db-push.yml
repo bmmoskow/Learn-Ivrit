@@ -45,4 +45,4 @@ jobs:
           echo "::add-mask::$ENCODED_PASSWORD"
           URL="postgresql://postgres.${DB_REF}:${ENCODED_PASSWORD}@${DB_HOST}.pooler.supabase.com:5432/postgres"
           # Never echo $URL — it contains the password.
-          supabase db push --db-url "$URL"
+          supabase db push --db-url "$URL" --yes
