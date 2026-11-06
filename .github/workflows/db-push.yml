@@ -25,7 +25,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v3
         with:
-          version: 2.121.0
+          version: 3.0.0
 
       - name: Push pending migrations
         # Build the session-pooler connection string from the environment's
@@ -45,4 +45,4 @@ jobs:
           echo "::add-mask::$ENCODED_PASSWORD"
           URL="postgresql://postgres.${DB_REF}:${ENCODED_PASSWORD}@${DB_HOST}.pooler.supabase.com:5432/postgres"
           # Never echo $URL — it contains the password.
-          supabase db push --db-url "$URL"
+          supabase db push --db-url "$URL" --yes
