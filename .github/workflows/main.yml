@@ -71,11 +71,13 @@ jobs:
 
   deploy-functions-prod:
     name: Deploy edge functions (prod)
-    needs: [db-migrate-prod]
-    # Deploy edge functions to PROD after checks pass and the schema migration
-    # is applied — same order as at the integration stage (schema, then
-    # functions). Only db-migrate-prod is listed: it already needs
-    # [ui-checks, security], so those are gated transitively. Reusable
+    needs: [ui-checks, security]
+    # Deploy edge functions to PROD after checks pass. Independent of the schema
+    # migration, so it runs in PARALLEL with db-migrate-prod (matching the
+    # integration stage). prod-probe still waits for BOTH before it verifies.
+    # TRADE-OFF: this drops the previous "schema lands before new functions go
+    # live" ordering — rely on backward-compatible (expand-contract) migrations
+    # so a function never needs a migration that hasn't applied yet. Reusable
     # deploy-functions workflow, `deployment` environment.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/deploy-functions.yml
