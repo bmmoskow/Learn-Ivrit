@@ -135,7 +135,7 @@ describe("AuthContext integration — auth flow", () => {
     await user.click(await screen.findByRole("button", { name: /continue as guest/i }));
 
     // Generous timeout: the FAQ page cold-imports react-markdown here.
-    expect(await screen.findByText("Frequently Asked Questions", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText("Frequently Asked Questions")).toBeInTheDocument();
   });
 
   it("signs out from the authenticated app and returns to the Login screen", async () => {

@@ -1,6 +1,16 @@
-import "@testing-library/react";
+import { configure } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { vi } from "vitest";
+
+// Give async queries (findBy*/waitFor) a generous default timeout. A few heavy
+// in-process integration tests cold-import large deps (e.g. react-markdown for
+// the Markdown pages) and legitimately take several seconds on a loaded machine
+// (e.g. with the local Supabase Docker stack running); the Testing Library
+// default of 1000ms — and even the per-test 5000ms some tests set — flakes under
+// that load although the element does eventually appear. Kept below vitest's
+// testTimeout (15s, see vitest.unit.config.ts) so a genuinely-missing element
+// still fails as a clear "unable to find" error rather than a vitest timeout.
+configure({ asyncUtilTimeout: 10000 });
 
 // Minimal Deno shim so Supabase Edge Function code can run under Vitest/Node.
 // Deno.env.get() returns undefined, so config constants fall through to their defaults.
