@@ -91,6 +91,61 @@ jobs:
           # refuses to run unless the target URL contains this — the CI prod guard.
           EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
 
+  signup-roundtrip:
+    name: Sign-up round-trip (ephemeral local stack)
+    runs-on: ubuntu-latest
+    needs: development-checks
+    # Full sign-up → emailed-code → use → delete round-trip. Runs its OWN throwaway
+    # local Supabase stack IN THE RUNNER (with email confirmations ON) because it
+    # must read the emailed 6-digit code back from the local mailbox
+    # (Inbucket/Mailpit) — something the remote TEST project can't provide. Needs
+    # no hosted project and no new secret: the service-role key comes from the
+    # local stack via `npm run sandbox:env`.
+    #
+    # NON-BLOCKING: deliberately NOT in promote-to-ui's `needs`, so a failure here
+    # reports red without halting integration→ui promotion (same posture as the
+    # ui.yml browser suites). Only on a real push to `integration`.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          # Pinned to match db-push.yml / deploy-functions.yml. NOT `latest`:
+          # an unpinned `latest` is what silently adopted CLI 3.0.0 and broke the
+          # pipeline (see the v3 migration, PRs #273–#276).
+          version: 3.0.0
+
+      - name: Enable email confirmations (throwaway checkout only, never committed)
+        # The committed config keeps enable_confirmations = false so local dev and
+        # the other suites keep auto-confirming. Flip it ON only for this
+        # ephemeral stack, so signups email a real 6-digit code.
+        run: sed -i 's/^enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
+
+      - name: Start ephemeral local stack
+        run: supabase start
+
+      - name: Write .env.local from the running stack (incl. service-role key)
+        run: npm run sandbox:env
+
+      - name: Run sign-up round-trip suite
+        run: npm run test:signup-roundtrip:run
+
+      - name: Stop ephemeral local stack
+        if: always()
+        run: supabase stop || true
+
   promote-to-ui:
     name: Promote to UI
     needs: [integration-tests, db-advisors-test]
