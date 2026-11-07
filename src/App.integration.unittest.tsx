@@ -107,9 +107,10 @@ describe("App integration — routing & navigation wiring", () => {
 
   it("renders a public route (Terms of Service) without authentication", async () => {
     renderAppAt("/terms");
-    // Generous timeout: this is the first test to cold-import react-markdown
-    // (the MarkdownPage dependency), which dominates the wait on a fresh run.
-    expect(await screen.findByText("Terms of Service", {}, { timeout: 5000 })).toBeInTheDocument();
+    // Cold-imports react-markdown (the MarkdownPage dependency), which dominates
+    // the wait on a fresh run — covered by the generous global asyncUtilTimeout
+    // configured in src/test/setup.ts.
+    expect(await screen.findByText("Terms of Service")).toBeInTheDocument();
   });
 
   it("renders the 404 catch-all for an unmatched URL", async () => {
@@ -128,6 +129,6 @@ describe("App integration — routing & navigation wiring", () => {
   it("redirects a guest landing on / to the FAQ", async () => {
     vi.mocked(localStorage.getItem).mockImplementation((key) => (key === "guestMode" ? "true" : null));
     renderAppAt("/");
-    expect(await screen.findByText("Frequently Asked Questions", {}, { timeout: 5000 })).toBeInTheDocument();
+    expect(await screen.findByText("Frequently Asked Questions")).toBeInTheDocument();
   });
 });
