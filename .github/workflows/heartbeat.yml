@@ -80,6 +80,133 @@ jobs:
           fi
           npm run test:integration
 
+  # Browser suites + the sign-up round-trip, so the scheduled run catches silent
+  # breakage in the real UI and the auth/OTP flow too — not just unit + API.
+  # These are INLINED rather than reusing .github/workflows/playwright.yml: that
+  # reusable workflow binds to the `pipeline` environment, which is restricted to
+  # the development/integration/ui branches. The heartbeat runs on `main`, which
+  # can't access `pipeline` — the same reason the integration job above uses
+  # repo-level TEST values. The suites need only the PUBLIC URL + anon key, so
+  # running on main with repo-level values is safe. e2e retries 2x in CI
+  # automatically (playwright.config.ts).
+
+  ui-suite:
+    name: UI suite (mocked backend)
+    runs-on: ubuntu-latest
+    # Real-browser UI tests with a MOCKED backend (tests/ui). Deterministic — the
+    # mock backend stubs all Supabase traffic, so no real credentials are needed
+    # (the config falls back to local sandbox defaults, which are never contacted).
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ui suite
+        run: npm run test:ui
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-ui
+          path: playwright-report/
+          retention-days: 30
+
+  e2e-suite:
+    name: E2E suite (real test backend)
+    runs-on: ubuntu-latest
+    # Real-browser E2E against the real TEST backend (tests/e2e). Uses the repo-
+    # level TEST values (public URL + anon key) ONLY — never the pipeline or
+    # deployment environments — so it runs on main and can never reach prod.
+    # Skips cleanly until those repo values are configured.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e suite against the test project
+        env:
+          VITE_SUPABASE_URL: ${{ vars.TEST_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
+            echo "::warning::Heartbeat e2e: repo-level TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY not set — skipping until configured."
+            exit 0
+          fi
+          npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-e2e
+          path: playwright-report/
+          retention-days: 30
+
+  signup-roundtrip:
+    name: Sign-up round-trip (ephemeral local stack)
+    runs-on: ubuntu-latest
+    # The same throwaway-local-stack round-trip the integration stage runs: stands
+    # up its own Supabase stack in the runner (email confirmations ON), reads the
+    # emailed 6-digit code from the local mailbox, then uses + deletes the account.
+    # Self-contained — no hosted project or secret needed.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          # Pinned to match the rest of the pipeline (NOT `latest`).
+          version: 3.0.0
+
+      - name: Enable email confirmations (throwaway checkout only, never committed)
+        run: sed -i 's/^enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
+
+      - name: Start ephemeral local stack
+        run: supabase start
+
+      - name: Write .env.local from the running stack (incl. service-role key)
+        run: npm run sandbox:env
+
+      - name: Run sign-up round-trip suite
+        run: npm run test:signup-roundtrip:run
+
+      - name: Stop ephemeral local stack
+        if: always()
+        run: supabase stop || true
+
   # --- Live checks ---
 
   site:
