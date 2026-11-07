@@ -1,0 +1,19 @@
+<!--
+  Local-sandbox signup confirmation email.
+
+  The default Supabase confirmation template only contains a confirmation LINK
+  ({{ .ConfirmationURL }}). This one also surfaces {{ .Token }} — the 6-digit OTP
+  code — so the sign-up round-trip test (src/test/signupRoundtrip.roundtriptest.ts)
+  can read the code back out of the local mailbox (Inbucket/Mailpit) and feed it
+  to verifyOtp, exactly as the app's useLogin flow does in production.
+
+  This template is INERT during normal local development and the other test
+  suites, because the committed config keeps enable_confirmations = false, so no
+  confirmation email is ever rendered. It is only used when confirmations are
+  flipped ON for the throwaway round-trip stack (CI job / the flip-and-restore
+  wrapper). Never referenced by the hosted TEST or prod projects.
+-->
+<h2>Confirm your Learn Ivrit signup</h2>
+<p>Your verification code is:</p>
+<p><strong>{{ .Token }}</strong></p>
+<p>Enter this code to finish creating your account.</p>
