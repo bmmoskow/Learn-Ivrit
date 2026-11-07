@@ -47,6 +47,14 @@ enable_signup = true
 # users directly.
 enable_confirmations = false
 
+[auth.email.template.confirmation]
+# Surfaces the 6-digit code ({{ .Token }}) in the signup confirmation email so the
+# sign-up round-trip test can read it back from the local mailbox. INERT while
+# enable_confirmations = false above (no confirmation email is ever sent); used
+# only when the flag is flipped ON for the throwaway round-trip stack — the CI
+# job, or `npm run test:signup-roundtrip` locally. See supabase/templates/.
+content_path = "./supabase/templates/confirmation.html"
+
 # Edge functions — keep the same verify_jwt settings as production.
 [functions.gemini-translate]
 verify_jwt = false
