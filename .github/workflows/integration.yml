@@ -34,9 +34,10 @@ jobs:
 
   db-advisors-test:
     name: DB security advisors (test)
-    needs: db-push-test
+    needs: [db-push-test, deploy-functions-test]
     # Lint the test DB for security problems AFTER the migrations are applied, so
     # a schema change that weakens RLS/policies is caught before it can promote.
+    # Runs in the post-deploy phase (B), in PARALLEL with the integration tests.
     # Reusable db-advisors workflow, `pipeline` environment. Only on a real push
     # to `integration`. Fails the pipeline on any ERROR-level finding.
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
@@ -47,10 +48,11 @@ jobs:
 
   deploy-functions-test:
     name: Deploy edge functions (test)
-    needs: db-push-test
-    # Deploy edge functions to the TEST project after the schema is pushed, so
-    # they run against the current schema. Reusable deploy-functions workflow,
-    # `pipeline` environment. Only on a real push to `integration`.
+    needs: development-checks
+    # Deploy edge functions to the TEST project. Independent of the migration
+    # push, so it runs in PARALLEL with db-push-test (phase A). Reusable
+    # deploy-functions workflow, `pipeline` environment. Only on a real push to
+    # `integration`.
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
     uses: ./.github/workflows/deploy-functions.yml
     with:
@@ -60,7 +62,7 @@ jobs:
   integration-tests:
     name: Integration Tests
     runs-on: ubuntu-latest
-    needs: [development-checks, db-push-test]
+    needs: [db-push-test, deploy-functions-test]
     environment: pipeline
     # Integration tests run ONLY on a push to the `integration` branch — once,
     # here, gating promotion all the way to main. The cheap base checks still
@@ -74,7 +76,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -146,7 +148,7 @@ jobs:
 
   promote-to-ui:
     name: Promote to UI
-    needs: [development-checks, integration-tests, db-advisors-test, deploy-functions-test]
+    needs: [integration-tests, db-advisors-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration' && inputs.skip_promote != true
     uses: ./.github/workflows/promote.yml
     with:

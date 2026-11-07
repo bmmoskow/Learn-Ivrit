@@ -26,9 +26,11 @@ major_version = 17
 enabled = true
 port = 54323
 
-# Local inbox that captures auth emails (confirmations, magic links) so nothing
-# leaves the machine during development.
-[inbucket]
+# Local inbox (Mailpit) that captures auth emails (confirmations, magic links)
+# so nothing leaves the machine during development. Renamed from [inbucket] to
+# [local_smtp] for Supabase CLI v3, which rejects the old section name. Port
+# 54324 is the web UI / HTTP API the tests read the captured mail from.
+[local_smtp]
 enabled = true
 port = 54324
 
