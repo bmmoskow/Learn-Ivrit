@@ -94,7 +94,7 @@ jobs:
   signup-roundtrip:
     name: Sign-up round-trip (ephemeral local stack)
     runs-on: ubuntu-latest
-    needs: development-checks
+    needs: [db-push-test, deploy-functions-test]
     # Full sign-up → emailed-code → use → delete round-trip. Runs its OWN throwaway
     # local Supabase stack IN THE RUNNER (with email confirmations ON) because it
     # must read the emailed 6-digit code back from the local mailbox
@@ -102,9 +102,14 @@ jobs:
     # no hosted project and no new secret: the service-role key comes from the
     # local stack via `npm run sandbox:env`.
     #
-    # NON-BLOCKING: deliberately NOT in promote-to-ui's `needs`, so a failure here
-    # reports red without halting integration→ui promotion (same posture as the
-    # ui.yml browser suites). Only on a real push to `integration`.
+    # PHASE: runs in the post-deploy VERIFY phase (B), in PARALLEL with the
+    # integration tests and the DB security advisors. It stands up its own local
+    # stack, so it has no real data-dependency on the remote deploys — the
+    # `needs: [db-push-test, deploy-functions-test]` is there to place it in the
+    # same phase as the other verification jobs rather than ahead of them.
+    #
+    # GATING: listed in promote-to-ui's `needs`, so a failure here BLOCKS
+    # integration→ui promotion. Only on a real push to `integration`.
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
     steps:
       - name: Checkout code
@@ -148,7 +153,7 @@ jobs:
 
   promote-to-ui:
     name: Promote to UI
-    needs: [integration-tests, db-advisors-test]
+    needs: [integration-tests, db-advisors-test, signup-roundtrip]
     if: github.event_name == 'push' && github.ref == 'refs/heads/integration' && inputs.skip_promote != true
     uses: ./.github/workflows/promote.yml
     with:
