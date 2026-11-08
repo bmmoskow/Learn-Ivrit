@@ -70,4 +70,16 @@ try {
   }
 }
 
+// Final status LAST, so the stack-restart tables above don't bury the result.
+// Without this the run ends on a green "Started supabase…" table and a failing
+// test looks like it passed.
+console.log('\n────────────────────────────────────────────────────────');
+if (exitCode === 0) {
+  console.log('✅ UI sign-up round-trip PASSED');
+} else {
+  console.error(`❌ UI sign-up round-trip FAILED (exit ${exitCode}).`);
+  console.error('   Scroll up to the Playwright "✘"/Error output for the failing step + selector.');
+}
+console.log('────────────────────────────────────────────────────────');
+
 process.exit(exitCode);

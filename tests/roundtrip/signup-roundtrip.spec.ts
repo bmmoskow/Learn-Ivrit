@@ -40,9 +40,15 @@ function readLocalEnv(): Record<string, string> {
   return out;
 }
 
+// Prefer .env.local over process.env. This shell can export a PROD
+// VITE_SUPABASE_URL (a known gotcha here — see vitest.integration.config.ts), and
+// the app's own build reads .env.local (the running local stack) when not in CI.
+// The admin client MUST point at the SAME local stack the user was created on, or
+// the lookup below finds nothing. The runner writes .env.local via
+// `npm run sandbox:env` before this spec runs.
 const localEnv = readLocalEnv();
-const SERVICE_URL = process.env.VITE_SUPABASE_URL || localEnv.VITE_SUPABASE_URL || '';
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || localEnv.SUPABASE_SERVICE_ROLE_KEY || '';
+const SERVICE_URL = localEnv.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SERVICE_KEY = localEnv.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 const TEST_PASSWORD = 'roundtrip-ui-Pass123!';
 const uniqueEmail = () =>
@@ -96,7 +102,11 @@ test.describe('sign-up round-trip (UI + emailed OTP, local stack)', () => {
 
     // Capture the user id now (by email, as service-role) so step 10 can verify
     // deletion after the account — and its id — are gone.
-    const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    const { data: list, error: listErr } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+    expect(
+      listErr,
+      `admin.listUsers failed — is the service-role client pointed at the local stack (${SERVICE_URL})? ${listErr?.message ?? ''}`,
+    ).toBeNull();
     const userId = list.users.find((u) => u.email === email)?.id;
     expect(userId, 'signed-up user should be findable by email').toBeTruthy();
 
