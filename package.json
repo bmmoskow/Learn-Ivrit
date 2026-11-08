@@ -19,6 +19,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:signup-roundtrip": "node scripts/signup-roundtrip.mjs",
     "test:signup-roundtrip:run": "vitest run --config vitest.roundtrip.config.ts",
+    "test:signup-roundtrip-ui": "node scripts/signup-roundtrip-ui.mjs",
+    "test:signup-roundtrip-ui:run": "playwright test --project=roundtrip",
     "test:ui": "playwright test --project=ui",
     "test:e2e": "playwright test --project=e2e",
     "sandbox:start": "node scripts/sandbox-start.mjs",
