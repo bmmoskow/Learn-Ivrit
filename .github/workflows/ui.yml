@@ -50,15 +50,84 @@ jobs:
       environment: pipeline
     secrets: inherit
 
+  signup-roundtrip-ui:
+    name: UI Sign-up Round-trip (ephemeral local stack)
+    runs-on: ubuntu-latest
+    needs: integration-checks
+    # UI-driven sign-up round-trip (tests/roundtrip): drives the real browser
+    # through signup -> emailed code -> use -> delete. Runs its OWN throwaway local
+    # Supabase stack in the runner with email confirmations ON, because it must
+    # read the emailed 6-digit code from the local mailbox (Mailpit) — something
+    # the remote TEST project can't provide. So it's INLINED (not via
+    # playwright.yml, which binds to the remote-backed `pipeline` environment) and
+    # runs in PARALLEL with ui-tests / e2e-tests. GATES promotion to main (listed
+    # in promote-to-main's needs). It's browser + full stack, so the flakiest of
+    # the three; it retries 2x in CI (playwright.config.ts). If it blocks main too
+    # often, drop it from promote-to-main's needs to make it non-blocking. Only on
+    # a real push to `ui`.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/ui'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          # Pinned to match the rest of the pipeline (NOT `latest`).
+          version: 3.0.0
+
+      - name: Enable email confirmations (throwaway checkout only, never committed)
+        run: sed -i 's/^enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
+
+      - name: Start ephemeral local stack
+        run: supabase start
+
+      - name: Write .env.local and export the local stack creds to the job env
+        # sandbox:env writes .env.local (incl. the service-role key the spec reads
+        # for its step-10 deletion checks). playwright.config.ts reads VITE_* from
+        # process.env in CI (not .env.local), so also export the LOCAL stack's URL +
+        # anon key here so the app is BUILT against the local stack, not the fallback.
+        run: |
+          npm run sandbox:env
+          grep -E '^(VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' .env.local >> "$GITHUB_ENV"
+
+      - name: Run UI sign-up round-trip
+        run: npm run test:signup-roundtrip-ui:run
+
+      - name: Stop ephemeral local stack
+        if: always()
+        run: supabase stop || true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-roundtrip
+          path: playwright-report/
+          retention-days: 30
+
   promote-to-main:
     name: Promote to Main
-    needs: [integration-checks, ui-tests, e2e-tests]
-    # Promotion to main is GATED on both browser suites — ui-tests (mocked) and
-    # e2e-tests (real backend) must pass before ui promotes to main. If e2e
-    # flakiness blocks promotion too often, add a retry to the suite or drop
-    # e2e-tests from this list to make it non-blocking again. Deep SAST (CodeQL
-    # + Trivy) is NOT run here on purpose — it lives in security.yml (main stage
-    # + scheduled heartbeat), so running it at the ui stage would only duplicate it.
+    needs: [integration-checks, ui-tests, e2e-tests, signup-roundtrip-ui]
+    # Promotion to main is GATED on all three browser-based checks — ui-tests
+    # (mocked), e2e-tests (real backend), and the UI sign-up round-trip — which run
+    # in parallel; all must pass before ui promotes to main. If the real-backend
+    # ones (e2e-tests / signup-roundtrip-ui) flake and block promotion too often,
+    # drop the offender from this list to make it non-blocking again. Deep SAST
+    # (CodeQL + Trivy) is NOT run here on purpose — it lives in security.yml (main
+    # stage + scheduled heartbeat), so running it at the ui stage would only duplicate it.
     if: github.event_name == 'push' && github.ref == 'refs/heads/ui' && inputs.skip_promote != true
     uses: ./.github/workflows/promote.yml
     with:
