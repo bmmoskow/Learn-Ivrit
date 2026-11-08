@@ -83,4 +83,16 @@ try {
   }
 }
 
+// Final status LAST, so the stack-restart tables above don't bury the result.
+// Without this the run ends on a green "Started supabase…" table and a failing
+// test looks like it passed.
+console.log('\n────────────────────────────────────────────────────────');
+if (exitCode === 0) {
+  console.log('✅ Sign-up round-trip PASSED');
+} else {
+  console.error(`❌ Sign-up round-trip FAILED (exit ${exitCode}).`);
+  console.error('   Scroll up to the vitest failure output above for the failing step.');
+}
+console.log('────────────────────────────────────────────────────────');
+
 process.exit(exitCode);
