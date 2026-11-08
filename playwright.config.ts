@@ -61,6 +61,10 @@ export default defineConfig({
   projects: [
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
     { name: 'e2e', testDir: './tests/e2e', use: { ...devices['Desktop Chrome'] } },
+    // UI sign-up round-trip. LOCAL-ONLY (needs a confirmations-on stack + local
+    // mailbox) — never selected by `test:ui`/`test:e2e`; run only via
+    // `npm run test:signup-roundtrip-ui`, which boots the throwaway stack.
+    { name: 'roundtrip', testDir: './tests/roundtrip', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
     command: `npm run build:dev && npm run deploy:prod -- --port ${PORT} --strictPort`,
