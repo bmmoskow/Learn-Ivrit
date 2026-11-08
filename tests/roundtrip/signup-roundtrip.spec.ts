@@ -112,12 +112,16 @@ test.describe('sign-up round-trip (UI + emailed OTP, local stack)', () => {
 
     // 5. Create DB data via the UI: add a vocabulary word.
     await navButton(page, 'Vocabulary').click();
-    // First "Add Word" button toggles the add form open.
-    await page.getByRole('button', { name: 'Add Word' }).first().click();
+    // Open the add form. The header toggle's label is responsive — it reads "Add"
+    // (the "Add Word" span is hidden; there's no `xs` breakpoint) — so match /add/i
+    // and take the first match (the header toggle; the form's submit button only
+    // appears afterward).
+    await page.getByRole('button', { name: /add/i }).first().click();
     await page.getByPlaceholder('דבר').fill('שָׁלוֹם');
     await page.getByPlaceholder('word', { exact: true }).fill('peace');
-    // The second "Add Word" button submits the form.
-    await page.getByRole('button', { name: 'Add Word' }).last().click();
+    // Submit. The form's submit button has the exact text "Add Word"; `.last()`
+    // picks it over the header toggle if that also happens to read "Add Word".
+    await page.getByRole('button', { name: 'Add Word', exact: true }).last().click();
     await expect(page.getByText('שָׁלוֹם').first()).toBeVisible({ timeout: 15000 });
 
     // Confirm the row really landed in the DB (service-role).
