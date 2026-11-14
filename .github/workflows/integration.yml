@@ -138,8 +138,27 @@ jobs:
         # ephemeral stack, so signups email a real 6-digit code.
         run: sed -i 's/^enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
 
-      - name: Start ephemeral local stack
-        run: supabase start
+      - name: Start ephemeral local stack (retry on transient port binds)
+        # `supabase start` occasionally dies with "failed to bind host port
+        # 0.0.0.0:54322/tcp: address already in use" when a container from a racy
+        # or half-up start momentarily holds the port. On a fresh ubuntu-latest VM
+        # there's nothing to leak in across jobs, so this is a transient race — a
+        # single attempt turns a one-time hiccup into a hard failure that blocks
+        # promotion. So: tear down any partial stack first (a no-op on the clean
+        # first attempt — measure 2), then retry a few times (measure 1).
+        run: |
+          for attempt in 1 2 3; do
+            supabase stop --no-backup || true
+            docker ps -aq --filter "publish=54322" | xargs -r docker rm -f 2>/dev/null || true
+            if supabase start; then
+              echo "Supabase stack started (attempt $attempt)."
+              exit 0
+            fi
+            echo "::warning::supabase start failed on attempt $attempt; cleaning up and retrying."
+            sleep 5
+          done
+          echo "::error::supabase start failed after 3 attempts."
+          exit 1
 
       - name: Write .env.local from the running stack (incl. service-role key)
         run: npm run sandbox:env
