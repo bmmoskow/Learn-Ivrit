@@ -99,9 +99,19 @@ jobs:
         # for its step-10 deletion checks). playwright.config.ts reads VITE_* from
         # process.env in CI (not .env.local), so also export the LOCAL stack's URL +
         # anon key here so the app is BUILT against the local stack, not the fallback.
+        #
+        # setup-sandbox-env.mjs writes each value DOUBLE-QUOTED (VAR="value"), so we
+        # must strip the surrounding quotes before appending to $GITHUB_ENV: GitHub
+        # keeps the value literal (quotes and all), so a quoted URL reaches the build
+        # as `"http://127.0.0.1:54321"` and supabase-js throws "Invalid supabaseUrl"
+        # at app init — the page renders blank and the whole round-trip times out.
+        # (Local runs are unaffected: playwright.config.ts's readLocalEnv() strips
+        # the quotes itself.) The sed only rewrites fully double-quoted values and
+        # leaves unquoted lines untouched.
         run: |
           npm run sandbox:env
-          grep -E '^(VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' .env.local >> "$GITHUB_ENV"
+          grep -E '^(VITE_SUPABASE_URL|VITE_SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY)=' .env.local \
+            | sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)="(.*)"$/\1=\2/' >> "$GITHUB_ENV"
 
       - name: Run UI sign-up round-trip
         run: npm run test:signup-roundtrip-ui:run
