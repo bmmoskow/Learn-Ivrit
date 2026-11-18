@@ -284,5 +284,67 @@ describe("useVocabularyList", () => {
       // Supabase.from should not be called for guests
       expect(mockFrom).not.toHaveBeenCalled();
     });
+
+    it("guest search filters the default list by English (case-insensitive)", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+      await vi.waitFor(() => expect(result.current.loading).toBe(false));
+
+      // "ONE" should match only the number word "one" (אחת), case-insensitively.
+      act(() => {
+        result.current.setSearchQuery("ONE");
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.words.map((w) => w.english_translation)).toEqual(["one"]);
+      });
+      expect(result.current.totalCount).toBe(1);
+      // Still fully client-side — no backend call for guests.
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("guest search matches the Hebrew word too", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+      await vi.waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        result.current.setSearchQuery("אני");
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.words.map((w) => w.hebrew_word)).toEqual(["אני"]);
+      });
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("guest search with no matches yields an empty list", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+      await vi.waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        result.current.setSearchQuery("zzzznomatch");
+      });
+
+      await vi.waitFor(() => {
+        expect(result.current.words).toHaveLength(0);
+        expect(result.current.totalCount).toBe(0);
+      });
+    });
+
+    it("clearing the guest search restores the full list", async () => {
+      const { result } = renderHook(() => useVocabularyList(), { wrapper });
+      await vi.waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        result.current.setSearchQuery("one");
+      });
+      await vi.waitFor(() => expect(result.current.words).toHaveLength(1));
+
+      act(() => {
+        result.current.setSearchQuery("");
+      });
+      await vi.waitFor(() => {
+        expect(result.current.words.length).toBe(defaultVocabulary.length);
+      });
+    });
   });
 });

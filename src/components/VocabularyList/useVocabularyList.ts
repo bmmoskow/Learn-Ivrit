@@ -78,8 +78,18 @@ export function useVocabularyList(): UseVocabularyListReturn {
 
   const loadVocabulary = useCallback(async () => {
     if (isGuest) {
-      // Load default vocabulary for guests
-      const guestWords: VocabWithStats[] = defaultVocabulary.map((word, index) => createGuestVocabWord(word, index));
+      // Guests get the in-memory default vocabulary. Sorting isn't offered for
+      // guests (the list is a curated teaser), but search works client-side
+      // over the list — match either the Hebrew or the English, case-insensitive.
+      const allGuestWords: VocabWithStats[] = defaultVocabulary.map((word, index) =>
+        createGuestVocabWord(word, index),
+      );
+      const q = debouncedSearchQuery.trim().toLowerCase();
+      const guestWords = q
+        ? allGuestWords.filter(
+            (w) => w.hebrew_word.toLowerCase().includes(q) || w.english_translation.toLowerCase().includes(q),
+          )
+        : allGuestWords;
       setWords(guestWords);
       setTotalCount(guestWords.length);
       setLoading(false);
