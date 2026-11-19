@@ -138,7 +138,7 @@ describe('useTestPanel persistence (real backend)', () => {
 
     // First run: answer everything correctly so stats get written.
     await act(async () => {
-      await result.current.startTest('flashcard');
+      await result.current.startTest('multiple_choice');
     });
     const firstCount = result.current.currentTest.length;
     for (let i = 0; i < firstCount; i++) {
@@ -159,7 +159,7 @@ describe('useTestPanel persistence (real backend)', () => {
     // the persisted statistics. mapRpcWordToWordWithStats surfaces them on each
     // question's word — so the hook read the real stats we just wrote.
     await act(async () => {
-      await result.current.startTest('flashcard');
+      await result.current.startTest('multiple_choice');
     });
     expect(result.current.currentTest.length).toBe(WORDS.length);
     expect(result.current.currentTest.every((q) => q.word.statistics?.total_attempts === 1)).toBe(true);

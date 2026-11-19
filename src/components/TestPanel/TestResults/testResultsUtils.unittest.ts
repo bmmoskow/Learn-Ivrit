@@ -76,7 +76,6 @@ describe("testResultsUtils", () => {
 
   describe("getTestTypeLabel", () => {
     it("returns correct labels for test types", () => {
-      expect(getTestTypeLabel("flashcard")).toBe("Flashcard");
       expect(getTestTypeLabel("multiple_choice")).toBe("Multiple Choice");
       expect(getTestTypeLabel("fill_in_blank")).toBe("Fill in the Blank");
     });
