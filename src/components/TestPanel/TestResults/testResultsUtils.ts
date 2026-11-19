@@ -32,8 +32,6 @@ export function getScoreMessage(percentage: number): string {
 
 export function getTestTypeLabel(testType: TestType): string {
   switch (testType) {
-    case "flashcard":
-      return "Flashcard";
     case "multiple_choice":
       return "Multiple Choice";
     case "fill_in_blank":

@@ -129,7 +129,7 @@ describe("useTestPanel", () => {
 
       // With empty words, startTest should not change testType
       await act(async () => {
-        await result.current.startTest("flashcard");
+        await result.current.startTest("multiple_choice");
       });
 
       expect(result.current.testType).toBeNull();

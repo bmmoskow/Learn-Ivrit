@@ -1,7 +1,14 @@
 import type { WordWithStats } from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
-import type { Tables } from "../../../supabase/types";
 
-export type TestType = "flashcard" | "multiple_choice" | "fill_in_blank";
+// Flashcards are no longer a test type — they moved to the Vocabulary panel as a
+// no-writes practice/review mode. Objective tests are the only things that
+// update mastery.
+export type TestType = "multiple_choice" | "fill_in_blank";
+
+// Re-exported from the shared adaptive-selection helper so existing importers
+// (and their tests) keep a stable import path while the implementation lives in
+// one place, shared with the flashcard review.
+export { mapRpcWordToWordWithStats } from "../../utils/adaptiveAlgorithm/selectAdaptiveWords";
 
 export type TestQuestion = {
   word: WordWithStats;
@@ -243,14 +250,4 @@ export function hasMoreQuestions(
   totalQuestions: number
 ): boolean {
   return currentIndex < totalQuestions - 1;
-}
-
-/**
- * Maps RPC response to WordWithStats format
- */
-export function mapRpcWordToWordWithStats(word: Record<string, unknown> & { stats?: unknown }): WordWithStats {
-  return {
-    ...word,
-    statistics: word.stats as Tables<"word_statistics"> | undefined,
-  } as WordWithStats;
 }
