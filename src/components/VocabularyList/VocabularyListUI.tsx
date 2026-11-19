@@ -177,24 +177,28 @@ export function VocabularyListUI({
             className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
           />
         </div>
-        <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
-          <button
-            onClick={() => onSortByChange("date")}
-            className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
-              sortBy === "date" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Date Added
-          </button>
-          <button
-            onClick={() => onSortByChange("alphabetical")}
-            className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
-              sortBy === "alphabetical" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            Alphabetical
-          </button>
-          {!isGuest && (
+        {/* Sort controls are hidden for guests: the default list is a curated
+            teaser (pronouns → numbers 1-10 → question words) whose order is
+            meaningful, so sorting it adds no value (and alphabetical would
+            scramble the numbers). Search below still works for guests. */}
+        {!isGuest && (
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-start">
+            <button
+              onClick={() => onSortByChange("date")}
+              className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
+                sortBy === "date" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Date Added
+            </button>
+            <button
+              onClick={() => onSortByChange("alphabetical")}
+              className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
+                sortBy === "alphabetical" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Alphabetical
+            </button>
             <button
               onClick={() => onSortByChange("performance")}
               className={`px-3 sm:px-4 py-2 rounded-lg transition text-sm ${
@@ -203,8 +207,8 @@ export function VocabularyListUI({
             >
               Performance
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Word List */}
