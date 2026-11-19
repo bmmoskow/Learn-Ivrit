@@ -158,3 +158,154 @@ describe('useVocabularyList data-layer (real backend)', () => {
     expect(data).toEqual([]);
   });
 });
+
+// REAL-backend integration tests for the vocabulary SORTING and SEARCHING paths,
+// which are implemented as Supabase queries (server-side ordering + ilike), not
+// client-side logic — so only a real backend can prove them. Same isolation as
+// above: each test gets its own UUID-based user (RLS scopes every row to it, so
+// concurrent runs never collide) and is torn down afterwards (cleanupTestUser
+// removes this user's vocabulary_words AND word_statistics, scoped to the id).
+describe('useVocabularyList sorting & searching (real backend)', () => {
+  let testUserId: string;
+  let testEmail: string;
+
+  const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
+
+  beforeEach(async () => {
+    const user = await createTestUser('vocabsort');
+    testUserId = user.userId;
+    testEmail = user.email;
+    await supabase.auth.signInWithPassword({ email: testEmail, password: TEST_USER_PASSWORD });
+  });
+
+  afterEach(async () => {
+    await cleanupTestUser(testUserId);
+    await supabase.auth.signOut();
+    vi.restoreAllMocks();
+  });
+
+  // Insert one vocabulary row for this test's user. `createdAt` is set explicitly
+  // when a test needs deterministic date ordering. Scoped strictly to testUserId.
+  async function seedWord(opts: { hebrew: string; english: string; createdAt?: string }) {
+    const { data, error } = await supabase
+      .from('vocabulary_words')
+      .insert({
+        user_id: testUserId,
+        hebrew_word: opts.hebrew,
+        english_translation: opts.english,
+        definition: `${opts.english} — seeded by integration test`,
+        transliteration: null,
+        ...(opts.createdAt ? { created_at: opts.createdAt } : {}),
+      })
+      .select()
+      .single();
+    expect(error).toBeNull();
+    return data!;
+  }
+
+  // Insert a word_statistics row so the `vocabulary_with_stats` view has a
+  // confidence_score to order by. Removed by cleanupTestUser (word_statistics is
+  // one of its user-owned tables), scoped to testUserId.
+  async function seedStats(wordId: string, confidence: number) {
+    const { error } = await supabase.from('word_statistics').insert({
+      user_id: testUserId,
+      word_id: wordId,
+      correct_count: 0,
+      incorrect_count: 0,
+      total_attempts: 0,
+      consecutive_correct: 0,
+      last_tested: null,
+      confidence_score: confidence,
+    });
+    expect(error).toBeNull();
+  }
+
+  it('sorts by date added (newest first)', async () => {
+    await seedWord({ hebrew: 'אור', english: 'light', createdAt: '2020-01-01T00:00:00Z' });
+    await seedWord({ hebrew: 'בוקר', english: 'morning', createdAt: '2021-01-01T00:00:00Z' });
+    await seedWord({ hebrew: 'גשר', english: 'bridge', createdAt: '2022-01-01T00:00:00Z' });
+
+    const { result } = renderHook(() => useVocabularyList(), { wrapper });
+    // Default sort is already 'date'; wait for this user's three rows to load.
+    await waitFor(() => expect(result.current.words).toHaveLength(3));
+
+    expect(result.current.words.map((w) => w.hebrew_word)).toEqual(['גשר', 'בוקר', 'אור']);
+  });
+
+  it('sorts alphabetically by Hebrew word (ascending)', async () => {
+    await seedWord({ hebrew: 'גשר', english: 'bridge' });
+    await seedWord({ hebrew: 'אור', english: 'light' });
+    await seedWord({ hebrew: 'בוקר', english: 'morning' });
+
+    const { result } = renderHook(() => useVocabularyList(), { wrapper });
+    await waitFor(() => expect(result.current.words).toHaveLength(3));
+
+    act(() => {
+      result.current.setSortBy('alphabetical');
+    });
+
+    await waitFor(() => {
+      expect(result.current.sortBy).toBe('alphabetical');
+      // alef (אור) < bet (בוקר) < gimel (גשר)
+      expect(result.current.words.map((w) => w.hebrew_word)).toEqual(['אור', 'בוקר', 'גשר']);
+    });
+  });
+
+  it('sorts by performance (confidence ascending) via the stats view', async () => {
+    const low = await seedWord({ hebrew: 'אחד', english: 'alpha' });
+    const mid = await seedWord({ hebrew: 'שתיים', english: 'beta' });
+    const high = await seedWord({ hebrew: 'שלוש', english: 'gamma' });
+    await seedStats(low.id, 10);
+    await seedStats(mid.id, 50);
+    await seedStats(high.id, 90);
+
+    const { result } = renderHook(() => useVocabularyList(), { wrapper });
+    await waitFor(() => expect(result.current.words).toHaveLength(3));
+
+    act(() => {
+      result.current.setSortBy('performance');
+    });
+
+    await waitFor(() => {
+      expect(result.current.sortBy).toBe('performance');
+      // ascending confidence: 10 → 50 → 90
+      expect(result.current.words.map((w) => w.id)).toEqual([low.id, mid.id, high.id]);
+    });
+  });
+
+  it('searches by English substring (ilike), scoped to a run-unique token', async () => {
+    // A run-unique token guarantees these ilike matches can never pick up a
+    // concurrent run's rows (on top of the already user-scoped RLS).
+    const token = `zq${crypto.randomUUID().slice(0, 8)}`;
+    const a = await seedWord({ hebrew: 'תפוח', english: `${token}-apple` });
+    const b = await seedWord({ hebrew: 'בננה', english: `${token}-banana` });
+    await seedWord({ hebrew: 'מכונית', english: 'car' }); // does NOT contain the token
+
+    const { result } = renderHook(() => useVocabularyList(), { wrapper });
+    await waitFor(() => expect(result.current.words).toHaveLength(3));
+
+    act(() => {
+      result.current.setSearchQuery(token);
+    });
+
+    await waitFor(() => {
+      expect(result.current.words.map((w) => w.id).sort()).toEqual([a.id, b.id].sort());
+    });
+  });
+
+  it('searches by Hebrew substring (ilike)', async () => {
+    const soup = await seedWord({ hebrew: 'מרק', english: 'soup' });
+    await seedWord({ hebrew: 'תפוח', english: 'apple' }); // no 'מרק'
+
+    const { result } = renderHook(() => useVocabularyList(), { wrapper });
+    await waitFor(() => expect(result.current.words).toHaveLength(2));
+
+    act(() => {
+      result.current.setSearchQuery('מרק');
+    });
+
+    await waitFor(() => {
+      expect(result.current.words.map((w) => w.id)).toEqual([soup.id]);
+    });
+  });
+});
