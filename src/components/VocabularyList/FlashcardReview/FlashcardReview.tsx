@@ -15,6 +15,7 @@ export function FlashcardReview({ onExit }: FlashcardReviewProps) {
       hasNext={hook.hasNext}
       hasPrevious={hook.hasPrevious}
       onReveal={hook.revealAnswer}
+      onHide={hook.hideAnswer}
       onNext={hook.goToNext}
       onPrevious={hook.goToPrevious}
       onExit={onExit}

@@ -64,6 +64,21 @@ describe("useFlashcardReview", () => {
     expect(result.current.currentIndex).toBe(0);
   });
 
+  it("hides the answer again without advancing (toggle)", async () => {
+    const { result } = renderHook(() => useFlashcardReview());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.revealAnswer();
+    });
+    act(() => {
+      result.current.hideAnswer();
+    });
+
+    expect(result.current.showAnswer).toBe(false);
+    expect(result.current.currentIndex).toBe(0);
+  });
+
   it("advances to the next card and re-hides the answer", async () => {
     const { result } = renderHook(() => useFlashcardReview());
     await waitFor(() => expect(result.current.loading).toBe(false));

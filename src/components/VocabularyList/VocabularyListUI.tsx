@@ -85,11 +85,10 @@ export function VocabularyListUI({
               guests too — review is read-only practice, so it never writes. */}
           <button
             onClick={onStartReview}
-            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm sm:text-base"
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-lg shadow-sm hover:from-indigo-700 hover:to-violet-700 transition text-sm sm:text-base"
           >
             <Layers className="w-4 h-4" />
-            <span className="hidden xs:inline">Study</span>
-            <span className="xs:hidden">Study</span>
+            <span>Flashcards</span>
           </button>
           {!isGuest && (
             <button

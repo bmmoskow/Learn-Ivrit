@@ -27,6 +27,7 @@ export interface UseFlashcardReviewReturn {
 
   // Actions
   revealAnswer: () => void;
+  hideAnswer: () => void;
   goToNext: () => void;
   goToPrevious: () => void;
 }
@@ -118,6 +119,12 @@ export function useFlashcardReview(): UseFlashcardReviewReturn {
     setShowAnswer(true);
   }, []);
 
+  // Lets the single toggle button re-hide the translation, so a learner can
+  // self-quiz on the same card without advancing.
+  const hideAnswer = useCallback(() => {
+    setShowAnswer(false);
+  }, []);
+
   const goToNext = useCallback(() => {
     setCurrentIndex((index) => getNextIndex(index, words.length));
     setShowAnswer(false);
@@ -144,6 +151,7 @@ export function useFlashcardReview(): UseFlashcardReviewReturn {
 
     // Actions
     revealAnswer,
+    hideAnswer,
     goToNext,
     goToPrevious,
   };

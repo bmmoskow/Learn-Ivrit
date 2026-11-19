@@ -1,4 +1,4 @@
-import { Eye, ChevronLeft, ChevronRight, X, Loader2, Info } from "lucide-react";
+import { Eye, EyeOff, ChevronLeft, ChevronRight, X, Loader2, Info } from "lucide-react";
 import type { WordWithStats } from "../../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
 import { getProgressBarStatus, getRevealText } from "./flashcardReviewUtils";
 
@@ -11,6 +11,7 @@ interface FlashcardReviewUIProps {
   hasNext: boolean;
   hasPrevious: boolean;
   onReveal: () => void;
+  onHide: () => void;
   onNext: () => void;
   onPrevious: () => void;
   onExit: () => void;
@@ -53,6 +54,7 @@ export function FlashcardReviewUI({
   hasNext,
   hasPrevious,
   onReveal,
+  onHide,
   onNext,
   onPrevious,
   onExit,
@@ -88,12 +90,12 @@ export function FlashcardReviewUI({
               </div>
 
               <div className="bg-white rounded-2xl shadow-2xl p-8 sm:p-12 min-h-[320px] sm:min-h-[400px] flex flex-col items-center justify-center">
-                <div className="text-5xl sm:text-6xl font-bold text-gray-900 mb-8" dir="rtl">
+                <div className="text-5xl sm:text-6xl font-bold text-gray-900" dir="rtl">
                   {currentWord.hebrew_word}
                 </div>
 
                 {showAnswer ? (
-                  <div className="text-center">
+                  <div className="text-center mt-8">
                     <div className="text-2xl sm:text-3xl text-blue-600 font-semibold">
                       {getRevealText(currentWord)}
                     </div>
@@ -110,18 +112,15 @@ export function FlashcardReviewUI({
                       )}
                   </div>
                 ) : (
-                  <button
-                    onClick={onReveal}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-8 py-4 rounded-xl hover:bg-blue-700 transition text-lg font-semibold shadow-lg"
-                  >
-                    <Eye className="w-6 h-6" />
-                    Show Translation
-                  </button>
+                  <div className="mt-8 text-sm text-gray-400">Tap &ldquo;Show Translation&rdquo; to reveal</div>
                 )}
               </div>
 
-              {/* Navigation */}
-              <div className="mt-6 flex items-center justify-between gap-4">
+              {/* Controls grouped on one row — Previous / Show-Hide / Next — so
+                  there's minimal pointer travel between revealing and advancing.
+                  The reveal toggle is the primary (blue) action; stepping is
+                  neutral. Wraps gracefully if the row is too narrow. */}
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={onPrevious}
                   disabled={!hasPrevious}
@@ -130,10 +129,27 @@ export function FlashcardReviewUI({
                   <ChevronLeft className="w-5 h-5" />
                   Previous
                 </button>
+                {showAnswer ? (
+                  <button
+                    onClick={onHide}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition font-semibold"
+                  >
+                    <EyeOff className="w-5 h-5" />
+                    Hide Translation
+                  </button>
+                ) : (
+                  <button
+                    onClick={onReveal}
+                    className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition font-semibold"
+                  >
+                    <Eye className="w-5 h-5" />
+                    Show Translation
+                  </button>
+                )}
                 <button
                   onClick={onNext}
                   disabled={!hasNext}
-                  className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition disabled:opacity-40 disabled:cursor-not-allowed font-semibold"
+                  className="flex items-center gap-2 px-5 py-3 bg-white text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 transition disabled:opacity-40 disabled:cursor-not-allowed font-semibold"
                 >
                   Next
                   <ChevronRight className="w-5 h-5" />
