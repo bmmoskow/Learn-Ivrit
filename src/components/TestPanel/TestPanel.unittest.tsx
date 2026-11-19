@@ -66,7 +66,7 @@ describe("TestPanel", () => {
     const mockHook = {
       words: [mockWord],
       loading: true,
-      testType: "flashcard" as const,
+      testType: "fill_in_blank" as const,
       questionCount: 15,
       currentTest: mockTest,
       currentQuestionIndex: 0,
@@ -89,7 +89,7 @@ describe("TestPanel", () => {
       expect.objectContaining({
         loading: true,
         wordsCount: 1,
-        testType: "flashcard",
+        testType: "fill_in_blank",
         questionCount: 15,
         minQuestionCount: 10,
         maxQuestionCount: 25,
