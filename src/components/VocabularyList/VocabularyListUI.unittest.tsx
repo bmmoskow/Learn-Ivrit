@@ -99,21 +99,30 @@ describe("VocabularyListUI - Guest Message", () => {
     expect(addWordButton).toBeInTheDocument();
   });
 
-  it("should hide Performance sort option for guest users", () => {
+  it("should hide ALL sort controls for guest users", () => {
+    // The default list is a curated teaser; sorting it adds no value, so guests
+    // get no sort buttons at all (Date Added / Alphabetical / Performance).
     render(<VocabularyListUI {...defaultProps} isGuest={true} />);
 
+    expect(screen.queryByText("Date Added")).not.toBeInTheDocument();
+    expect(screen.queryByText("Alphabetical")).not.toBeInTheDocument();
     expect(screen.queryByText("Performance")).not.toBeInTheDocument();
-    expect(screen.getByText("Date Added")).toBeInTheDocument();
-    expect(screen.getByText("Alphabetical")).toBeInTheDocument();
   });
 
-  it("should show Performance sort option for authenticated users", () => {
+  it("should show all sort controls for authenticated users", () => {
     render(<VocabularyListUI {...defaultProps} isGuest={false} />);
 
-    const performanceButtons = screen.getAllByText("Performance");
-    expect(performanceButtons.length).toBeGreaterThan(0);
     expect(screen.getByText("Date Added")).toBeInTheDocument();
     expect(screen.getByText("Alphabetical")).toBeInTheDocument();
+    // "Performance" appears as both a sort button and a stats column header.
+    expect(screen.getAllByText("Performance").length).toBeGreaterThan(0);
+  });
+
+  it("should keep the search box visible for guest users", () => {
+    // Sort is removed for guests, but search still works (filtered client-side).
+    render(<VocabularyListUI {...defaultProps} isGuest={true} />);
+
+    expect(screen.getByPlaceholderText("Search...")).toBeInTheDocument();
   });
 
   it("should hide action buttons (Edit/Delete) for guest users", () => {
