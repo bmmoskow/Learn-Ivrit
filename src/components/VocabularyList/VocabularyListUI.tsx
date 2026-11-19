@@ -1,4 +1,4 @@
-import { Edit2, Trash2, Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Edit2, Trash2, Plus, Search, ChevronLeft, ChevronRight, Layers } from "lucide-react";
 import {
   VocabWithStats,
   SortBy,
@@ -35,6 +35,7 @@ interface VocabularyListUIProps {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onDeleteWord: (id: string) => void;
+  onStartReview: () => void;
 }
 
 export function VocabularyListUI({
@@ -61,6 +62,7 @@ export function VocabularyListUI({
   onSaveEdit,
   onCancelEdit,
   onDeleteWord,
+  onStartReview,
 }: VocabularyListUIProps) {
   if (loading) {
     return (
@@ -78,16 +80,27 @@ export function VocabularyListUI({
       {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Vocabulary</h2>
-        {!isGuest && (
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Study launches the focused flashcard review overlay. Available to
+              guests too — review is read-only practice, so it never writes. */}
           <button
-            onClick={() => onShowAddFormChange(!showAddForm)}
-            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base"
+            onClick={onStartReview}
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-linear-to-r from-indigo-600 to-violet-600 text-white rounded-lg shadow-sm hover:from-indigo-700 hover:to-violet-700 transition text-sm sm:text-base"
           >
-            <Plus className="w-4 h-4" />
-            <span className="hidden xs:inline">Add Word</span>
-            <span className="xs:hidden">Add</span>
+            <Layers className="w-4 h-4" />
+            <span>Flashcards</span>
           </button>
-        )}
+          {!isGuest && (
+            <button
+              onClick={() => onShowAddFormChange(!showAddForm)}
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm sm:text-base"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden xs:inline">Add Word</span>
+              <span className="xs:hidden">Add</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Guest Message */}

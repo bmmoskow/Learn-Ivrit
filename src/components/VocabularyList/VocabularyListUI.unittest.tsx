@@ -63,6 +63,7 @@ const defaultProps = {
   onSaveEdit: () => {},
   onCancelEdit: () => {},
   onDeleteWord: () => {},
+  onStartReview: () => {},
 };
 
 describe("VocabularyListUI - Guest Message", () => {
