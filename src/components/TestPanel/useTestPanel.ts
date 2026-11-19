@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext/AuthContext";
 import { supabase } from "../../../supabase/client";
 import {
-  selectTestWords,
   calculateConfidenceScore,
-  shuffleArray,
   WordWithStats,
 } from "../../utils/adaptiveAlgorithm/adaptiveAlgorithmUtils";
+import { selectAdaptiveWords } from "../../utils/adaptiveAlgorithm/selectAdaptiveWords";
 import { defaultVocabulary } from "../../data/defaultVocabulary";
 import {
   TestType,
@@ -25,7 +24,6 @@ import {
   calculateResponseTime,
   updateQuestionWithAnswer,
   hasMoreQuestions,
-  mapRpcWordToWordWithStats,
 } from "./testPanelUtils";
 
 export interface UseTestPanelReturn {
@@ -112,38 +110,22 @@ export function useTestPanel(): UseTestPanelReturn {
       if (words.length === 0) return;
 
       const count = calculateEffectiveQuestionCount(questionCount, words.length);
+
+      if (!isGuest && !user) return;
+
       let selectedWords: WordWithStats[];
-
-      if (isGuest) {
-        selectedWords = selectTestWords(words, count);
-      } else {
-        if (!user) return;
-
-        try {
-          const { data: vocabData, error } = await supabase.rpc(
-            "select_test_words",
-            {
-              p_user_id: user.id,
-              p_limit: count,
-            }
-          );
-
-          if (error) {
-            console.error("Error fetching test words:", error);
-            selectedWords = selectTestWords(
-              words.filter((w) => w !== null),
-              count
-            );
-          } else {
-            const lowConfidenceWords = (vocabData as Array<Record<string, unknown> & { stats?: unknown }>).map((word) =>
-              mapRpcWordToWordWithStats(word)
-            );
-            selectedWords = shuffleArray([...lowConfidenceWords]);
-          }
-        } catch (err) {
-          console.error("Error in startTest:", err);
-          return;
-        }
+      try {
+        // Same adaptive selection the flashcard review uses: RPC for authed
+        // users, pure client-side weighting for guests.
+        selectedWords = await selectAdaptiveWords({
+          isGuest,
+          userId: user?.id ?? null,
+          words,
+          count,
+        });
+      } catch (err) {
+        console.error("Error in startTest:", err);
+        return;
       }
 
       const questions = createTestQuestions(selectedWords);

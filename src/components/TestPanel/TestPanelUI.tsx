@@ -3,9 +3,6 @@ import { TestResults } from "./TestResults/TestResults";
 import { BookOpen, Loader2 } from "lucide-react";
 import type { TestType, TestQuestion } from "./testPanelUtils";
 
-const FlashcardTest = lazy(() =>
-  import("./FlashcardTest/FlashcardTest").then((m) => ({ default: m.FlashcardTest }))
-);
 const MultipleChoiceTest = lazy(() =>
   import("./MultipleChoiceTest/MultipleChoiceTest").then((m) => ({
     default: m.MultipleChoiceTest,
@@ -109,18 +106,7 @@ function TestSelection({
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
-            <button
-              onClick={() => onStartTest("flashcard")}
-              className="bg-linear-to-br from-blue-500 to-blue-600 text-white p-6 rounded-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-            >
-              <div className="text-4xl mb-3">🎴</div>
-              <h3 className="text-xl font-bold mb-2">Flashcards</h3>
-              <p className="text-blue-100 text-sm">
-                See Hebrew words and guess the English translation
-              </p>
-            </button>
-
+          <div className="grid md:grid-cols-2 gap-4">
             <button
               onClick={() => onStartTest("multiple_choice")}
               className="bg-linear-to-br from-green-500 to-green-600 text-white p-6 rounded-xl hover:from-green-600 hover:to-green-700 transition shadow-lg hover:shadow-xl transform hover:-translate-y-1"
@@ -173,15 +159,6 @@ function ActiveTest({
 }: ActiveTestProps) {
   return (
     <Suspense fallback={<LoadingSpinner />}>
-      {testType === "flashcard" && (
-        <FlashcardTest
-          question={currentQuestion}
-          questionNumber={currentQuestionIndex + 1}
-          totalQuestions={totalQuestions}
-          onAnswer={onAnswer}
-        />
-      )}
-
       {testType === "multiple_choice" && (
         <MultipleChoiceTest
           question={currentQuestion}
