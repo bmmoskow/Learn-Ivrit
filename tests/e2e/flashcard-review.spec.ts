@@ -49,16 +49,23 @@ test.describe('Flashcard review (guest)', () => {
 test.describe('Flashcard review (authenticated)', () => {
   test.use({ storageState: 'playwright/.auth/user.json' });
 
-  // fill-in-later: needs a seeded test user + auth storageState in the sandbox /
-  // test project. The hook then drills the user's own adaptively-selected words
-  // via select_test_words — assert the real deck loads and that reviewing writes
-  // nothing to user_tests / word_statistics (the integration test proves the
-  // no-write contract at the hook level today).
-  test.fixme('authenticated user drills their adaptively-selected words', async ({ page }) => {
+  // Backed by the auth storageState fixture (playwright/.auth/user.json) and the
+  // vocabulary the setup project seeds for the fixture user. The hook drills the
+  // user's own adaptively-selected deck via select_test_words; the no-write
+  // contract (review persists nothing) is pinned at the hook level by
+  // useFlashcardReview.integrationtest.tsx.
+  test('authenticated user drills their adaptively-selected words', async ({ page }) => {
     await page.goto('/');
     await navButton(page, 'Vocabulary').click();
     await page.getByRole('button', { name: 'Flashcards', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Flashcard Review' })).toBeVisible({ timeout: 15000 });
+    // The deck is the fixture user's own seeded words (not the guest example list).
     await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
+
+    // Drill the real review loop: reveal the first card, then advance to the next.
+    await page.getByRole('button', { name: 'Show Translation', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Hide Translation', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+    await expect(page.getByText(/Card 2 of \d+/)).toBeVisible();
   });
 });

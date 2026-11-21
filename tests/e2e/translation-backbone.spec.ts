@@ -136,6 +136,51 @@ async function pasteHebrew(page: Page) {
   await dialog.getByRole('button', { name: 'Translate' }).click();
 }
 
+/**
+ * Authenticated variant of the stub: intercept ONLY the paid third party
+ * (gemini-translate) and the two client-side cache reads, so translate/define are
+ * deterministic — but leave auth and the vocabulary_words REST writes/reads hitting
+ * the REAL backend, so the save-to-vocabulary round-trip is genuinely exercised
+ * under RLS as the signed-in fixture user.
+ */
+async function stubGeminiOnly(page: Page) {
+  await page.route('**/rest/v1/word_definitions*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  );
+  await page.route('**/rest/v1/translation_cache*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  );
+  await page.route('**/functions/v1/gemini-translate/**', (route: Route) => {
+    let body: Record<string, unknown> = {};
+    try {
+      body = JSON.parse(route.request().postData() || '{}');
+    } catch {
+      /* non-JSON — fall through to define */
+    }
+    if (typeof body.text === 'string') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ translation: TRANSLATED_TEXT }),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        wordWithVowels: DEFINE_WORD_WITH_VOWELS,
+        definition: DEFINE_DEFINITION,
+        transliteration: DEFINE_TRANSLITERATION,
+        examples: [],
+        notes: '',
+        forms: [
+          { hebrew: 'שָׁלֵם', transliteration: 'shalem', relationship: 'adjective: complete, whole' },
+        ],
+      }),
+    });
+  });
+}
+
 test.describe('Translation backbone (guest)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
@@ -207,25 +252,26 @@ test.describe('Translation backbone (guest)', () => {
 test.describe('Translation backbone (authenticated)', () => {
   test.use({ storageState: 'playwright/.auth/user.json' });
 
-  // fill-in-later: needs a seeded test user + auth storageState in the sandbox /
-  // test project (playwright/.auth/user.json). A faked localStorage JWT would
-  // not pass real RLS, so the save-to-vocabulary insert can't be meaningfully
-  // exercised until that fixture exists — same convention as vocabulary.spec.ts
-  // and flashcard-review.spec.ts. Sketch of the loop to fill in:
-  //   paste Hebrew -> stubbed translate renders -> click a word ->
-  //   "Add to Vocabulary" (enabled for authed users) -> navigate to Vocabulary
-  //   -> the saved word is present in the real list.
-  test.fixme('authenticated user can save a translated word to their vocabulary', async ({ page }) => {
+  // Backed by the auth storageState fixture (playwright/.auth/user.json). Gemini
+  // (translate + define) is stubbed so the text is deterministic, but auth and the
+  // vocabulary_words write/read are REAL — so this genuinely exercises the
+  // save-to-vocabulary insert under RLS as the signed-in user, then confirms the
+  // saved word appears in the user's real vocabulary list.
+  test('authenticated user can save a translated word to their vocabulary', async ({ page }) => {
+    await stubGeminiOnly(page);
     await page.goto('/');
     await navButton(page, 'Translate').click();
-    await page.getByRole('button', { name: 'Paste or Type' }).click();
-    const dialog = page.getByRole('dialog');
-    await dialog.getByPlaceholder('Type or paste your text here...').fill(HEBREW_INPUT);
-    await dialog.getByRole('button', { name: 'Translate' }).click();
+    await pasteHebrew(page);
+    await expect(page.getByText(TRANSLATED_TEXT)).toBeVisible();
 
     await page.getByText(HEBREW_WORD, { exact: true }).click();
     await page.getByRole('button', { name: /Add to Vocabulary/i }).click();
     await expect(page.getByRole('button', { name: /Saved to Vocabulary/i })).toBeVisible();
+
+    // Close the word-definition popup before navigating: its full-screen backdrop
+    // (fixed inset-0, z-999) sits over the nav bar, so a nav click is blocked while
+    // it's open. Clicking the backdrop (off the popup) dismisses it.
+    await page.mouse.click(5, 5);
 
     await navButton(page, 'Vocabulary').click();
     await expect(page.getByText(DEFINE_WORD_WITH_VOWELS)).toBeVisible();
