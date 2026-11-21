@@ -60,36 +60,41 @@ export function FlashcardReviewUI({
   onExit,
 }: FlashcardReviewUIProps) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-linear-to-br from-blue-50 to-blue-100 overflow-y-auto">
+    // Full-screen overlay laid out as a column: fixed top bar, a flexible
+    // scrolling content area, and — when a card is showing — a pinned controls
+    // footer. The root itself does NOT scroll; the card area owns scrolling so
+    // the footer can never be pushed off-screen.
+    <div className="fixed inset-0 z-50 flex flex-col bg-linear-to-br from-blue-50 to-blue-100">
       {/* Top bar */}
-      <div className="flex items-center justify-between p-4 sm:p-6">
+      <div className="shrink-0 flex items-center justify-between p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-bold text-gray-900">Flashcard Review</h2>
         <ExitButton onExit={onExit} />
       </div>
 
-      {/* Scrollable content region. The inner block uses `m-auto` (not parent
-          `items-center justify-center`) so it centers vertically when it fits
-          but top-aligns and stays fully scrollable when it's taller than the
-          viewport — e.g. at browser zoom or a short/landscape screen. With
-          `align-items: center` the overflow is stranded off-screen (the
-          controls row ends up below the fold); auto margins collapse to 0 in
-          that case, keeping Previous/Show-Translation/Next reachable. */}
-      <div className="flex-1 flex p-4 sm:p-6">
-        <div className="w-full max-w-2xl m-auto">
-          {loading ? (
-            <div className="flex items-center justify-center min-h-[300px]">
-              <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-            </div>
-          ) : !currentWord ? (
-            <div className="bg-white rounded-2xl shadow-xl p-10 text-center">
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">No words to review yet</h3>
-              <p className="text-gray-600">
-                Add some vocabulary words first, then come back to practice them with
-                flashcards.
-              </p>
-            </div>
-          ) : (
-            <>
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+        </div>
+      ) : !currentWord ? (
+        <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl p-10 text-center">
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No words to review yet</h3>
+            <p className="text-gray-600">
+              Add some vocabulary words first, then come back to practice them with
+              flashcards.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Scrollable content: card label, the card, and the practice nudge.
+              `min-h-0` lets this region shrink below its content so the controls
+              footer below is never pushed off-screen; `overflow-y-auto` keeps the
+              card itself reachable. The inner block uses `m-auto` so it centers
+              vertically when it fits and top-aligns (fully scrollable) when it's
+              taller than the region — e.g. at browser zoom or a short screen. */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex p-4 sm:p-6">
+            <div className="w-full max-w-2xl m-auto">
               <div className="text-center mb-6">
                 <span className="text-sm font-semibold text-blue-600">
                   Card {currentIndex + 1} of {words.length}
@@ -123,11 +128,21 @@ export function FlashcardReviewUI({
                 )}
               </div>
 
+              <PracticeNudge />
+            </div>
+          </div>
+
+          {/* Controls + progress pinned in a non-scrolling footer so they stay on
+              screen at any zoom or viewport height. This is the fix for the bug
+              where, under zoom, the card alone exceeded the viewport and pushed
+              the controls below the fold. */}
+          <div className="shrink-0 border-t border-blue-200/60 bg-blue-50/90 backdrop-blur px-4 py-3 sm:px-6 sm:py-4">
+            <div className="w-full max-w-2xl mx-auto">
               {/* Controls grouped on one row — Previous / Show-Hide / Next — so
                   there's minimal pointer travel between revealing and advancing.
                   The reveal toggle is the primary (blue) action; stepping is
                   neutral. Wraps gracefully if the row is too narrow. */}
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={onPrevious}
                   disabled={!hasPrevious}
@@ -164,7 +179,7 @@ export function FlashcardReviewUI({
               </div>
 
               {/* Progress dots */}
-              <div className="mt-6 flex justify-center">
+              <div className="mt-3 flex justify-center">
                 <div className="flex flex-wrap gap-2 justify-center">
                   {words.map((_, i) => {
                     const status = getProgressBarStatus(i, currentIndex);
@@ -183,12 +198,10 @@ export function FlashcardReviewUI({
                   })}
                 </div>
               </div>
-
-              <PracticeNudge />
-            </>
-          )}
-        </div>
-      </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

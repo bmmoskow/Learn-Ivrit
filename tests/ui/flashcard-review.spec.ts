@@ -110,16 +110,16 @@ test.describe('Flashcard review — guest mode', () => {
 // ---------------------------------------------------------------------------
 // GUEST — short viewport (regression: controls must not be stranded below fold)
 // ---------------------------------------------------------------------------
-// Regression for the responsive layout bug: the content region used to center
-// the whole card stack with `items-center justify-center`. When the stack was
-// taller than the viewport (browser zoom, or a short/landscape screen), that
-// centering pushed the lower half — the Previous / Show-Translation / Next
-// controls row — below the fold, forcing the user to scroll to reach them. The
-// fix centers the inner block with `m-auto` instead, which collapses to a
-// top-aligned, fully-scrollable layout when it overflows. A short viewport
-// reproduces the overflow; the controls must stay in view without scrolling.
+// Regression for the responsive layout bug: when the card stack is taller than
+// the viewport (browser zoom, or a short/landscape screen), the controls row
+// used to be pushed below the fold, forcing the user to scroll to reach it. The
+// fix pins the controls in a non-scrolling footer so they stay on screen while
+// only the card area scrolls. A deliberately SHORT viewport makes the card alone
+// (min-h-[400px] + large text) exceed the available height; the controls must
+// still be in view without scrolling. This height strands them on the pre-fix
+// layout (verified: the test fails against the old layout, passes with the footer).
 test.describe('Flashcard review — short viewport keeps controls in view', () => {
-  test.use({ viewport: { width: 1024, height: 600 } });
+  test.use({ viewport: { width: 1024, height: 420 } });
 
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
