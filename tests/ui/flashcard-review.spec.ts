@@ -108,6 +108,42 @@ test.describe('Flashcard review — guest mode', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GUEST — short viewport (regression: controls must not be stranded below fold)
+// ---------------------------------------------------------------------------
+// Regression for the responsive layout bug: the content region used to center
+// the whole card stack with `items-center justify-center`. When the stack was
+// taller than the viewport (browser zoom, or a short/landscape screen), that
+// centering pushed the lower half — the Previous / Show-Translation / Next
+// controls row — below the fold, forcing the user to scroll to reach them. The
+// fix centers the inner block with `m-auto` instead, which collapses to a
+// top-aligned, fully-scrollable layout when it overflows. A short viewport
+// reproduces the overflow; the controls must stay in view without scrolling.
+test.describe('Flashcard review — short viewport keeps controls in view', () => {
+  test.use({ viewport: { width: 1024, height: 600 } });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('guestMode', 'true');
+      } catch {
+        /* storage unavailable */
+      }
+    });
+    await page.goto('/');
+    await gotoVocabulary(page);
+  });
+
+  test('the Show Translation control is in the viewport without scrolling', async ({ page }) => {
+    await openReview(page);
+    await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
+
+    // The primary control must be reachable on the first paint — no scroll. Under
+    // the old `items-center` layout this was stranded below the fold at this height.
+    await expect(page.getByRole('button', { name: 'Show Translation', exact: true })).toBeInViewport();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // AUTHED (mocked backend)
 // ---------------------------------------------------------------------------
 
