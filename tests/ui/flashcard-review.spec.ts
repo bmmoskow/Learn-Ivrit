@@ -108,6 +108,42 @@ test.describe('Flashcard review — guest mode', () => {
 });
 
 // ---------------------------------------------------------------------------
+// GUEST — short viewport (regression: controls must not be stranded below fold)
+// ---------------------------------------------------------------------------
+// Regression for the responsive layout bug: when the card stack is taller than
+// the viewport (browser zoom, or a short/landscape screen), the controls row
+// used to be pushed below the fold, forcing the user to scroll to reach it. The
+// fix pins the controls in a non-scrolling footer so they stay on screen while
+// only the card area scrolls. A deliberately SHORT viewport makes the card alone
+// (min-h-[400px] + large text) exceed the available height; the controls must
+// still be in view without scrolling. This height strands them on the pre-fix
+// layout (verified: the test fails against the old layout, passes with the footer).
+test.describe('Flashcard review — short viewport keeps controls in view', () => {
+  test.use({ viewport: { width: 1024, height: 420 } });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem('guestMode', 'true');
+      } catch {
+        /* storage unavailable */
+      }
+    });
+    await page.goto('/');
+    await gotoVocabulary(page);
+  });
+
+  test('the Show Translation control is in the viewport without scrolling', async ({ page }) => {
+    await openReview(page);
+    await expect(page.getByText(/Card 1 of \d+/)).toBeVisible();
+
+    // The primary control must be reachable on the first paint — no scroll. Under
+    // the old `items-center` layout this was stranded below the fold at this height.
+    await expect(page.getByRole('button', { name: 'Show Translation', exact: true })).toBeInViewport();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // AUTHED (mocked backend)
 // ---------------------------------------------------------------------------
 
