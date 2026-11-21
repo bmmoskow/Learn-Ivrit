@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { ReactNode } from 'react';
-import { AuthProvider } from '@/contexts/AuthContext/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext/AuthContext';
 import { createTestUser, cleanupTestUser, TEST_USER_PASSWORD } from '@/test/testUser';
 import { hashUserId } from '@/utils/hashId/hashUserId';
 import { useTranslationPanel } from './useTranslationPanel';
@@ -146,20 +146,31 @@ describe.skipIf(!admin)('translation cache (real backend, through useTranslation
     });
     expect(seedError).toBeNull();
 
-    const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+    const { result } = renderHook(
+      () => ({ tp: useTranslationPanel(), auth: useAuth() }),
+      { wrapper },
+    );
+
+    // Wait for AuthProvider to resolve the signed-in user BEFORE translating.
+    // The cache-hit log insert reads `user?.id` and falls back to "guest-user"
+    // when auth hasn't loaded yet; translating too early writes the usage-log row
+    // under "guest-user" instead of this user's hashed id, and the assertion
+    // below could never match. (Mirrors how the flashcard integration test waits
+    // for its authed load before driving the hook.)
+    await waitFor(() => expect(result.current.auth.user?.id).toBe(testUserId));
 
     // Translate the seeded input. Because the row exists, translateChunk returns
     // the cached translation and never fetches the edge function.
     await act(async () => {
-      await result.current.translateText(text, DIRECTION);
+      await result.current.tp.translateText(text, DIRECTION);
     });
 
     // The hook surfaced the SEEDED value verbatim (proves the cache was read and
     // Gemini was not called — a live call would have returned different text).
     await waitFor(() => {
-      expect(result.current.translatedText).toBe(seededTranslation);
+      expect(result.current.tp.translatedText).toBe(seededTranslation);
     });
-    expect(result.current.error).toBe('');
+    expect(result.current.tp.error).toBe('');
 
     // A cache-hit usage log was written: cache_hit = true, ZERO Gemini tokens,
     // model "cache". The insert is fire-and-forget in the hook, so poll for it.
@@ -202,24 +213,32 @@ describe.skipIf(!admin)('translation cache (real backend, through useTranslation
       .eq('content_hash', contentHash);
     expect(before?.length ?? 0).toBe(0);
 
-    const { result } = renderHook(() => useTranslationPanel(), { wrapper });
+    const { result } = renderHook(
+      () => ({ tp: useTranslationPanel(), auth: useAuth() }),
+      { wrapper },
+    );
+
+    // Wait for AuthProvider to resolve the signed-in user before translating, so
+    // the second (cache-hit) invocation logs under this user's hashed id rather
+    // than the "guest-user" fallback. See the note in the first test.
+    await waitFor(() => expect(result.current.auth.user?.id).toBe(testUserId));
 
     // ---- First invocation: cache MISS -> edge function -> Gemini (1 call) ----
     await act(async () => {
-      await result.current.translateText(text, DIRECTION);
+      await result.current.tp.translateText(text, DIRECTION);
     });
-    await waitFor(() => expect(result.current.translating).toBe(false));
+    await waitFor(() => expect(result.current.tp.translating).toBe(false));
 
     // If Gemini credentials/quota are unavailable in this sandbox, skip rather
     // than fail — we cannot exercise the real populate path without a live call.
-    const err = result.current.error;
+    const err = result.current.tp.error;
     if (err && CREDENTIALS_OR_QUOTA.test(err)) {
       ctx.skip(`Gemini unavailable in sandbox; skipping populate->hit round-trip. Edge error: ${err}`);
       return;
     }
     // Any OTHER error is a real failure.
     expect(err).toBe('');
-    expect(result.current.translatedText.trim().length).toBeGreaterThan(0);
+    expect(result.current.tp.translatedText.trim().length).toBeGreaterThan(0);
 
     // The edge function populated the cache for this exact key.
     await waitFor(async () => {
@@ -234,10 +253,10 @@ describe.skipIf(!admin)('translation cache (real backend, through useTranslation
 
     // ---- Second invocation: same text -> cache HIT (no Gemini call) ----
     await act(async () => {
-      await result.current.translateText(text, DIRECTION);
+      await result.current.tp.translateText(text, DIRECTION);
     });
-    await waitFor(() => expect(result.current.translating).toBe(false));
-    expect(result.current.error).toBe('');
+    await waitFor(() => expect(result.current.tp.translating).toBe(false));
+    expect(result.current.tp.error).toBe('');
 
     // A cache-hit usage log now exists for this user: cache_hit = true, zero
     // tokens, model "cache". (The first, miss, call logged cache_hit = false
