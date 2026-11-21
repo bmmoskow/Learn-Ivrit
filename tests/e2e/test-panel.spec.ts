@@ -75,17 +75,39 @@ test.describe('TestPanel (guest)', () => {
 test.describe('TestPanel (authenticated)', () => {
   test.use({ storageState: 'playwright/.auth/user.json' });
 
-  // fill-in-later: needs a seeded test user + auth storageState in the sandbox /
-  // test project. The authed path persists a completed test via
-  // save_complete_test_results (user_tests / test_responses / word_statistics) —
-  // the hook-level integration tests prove that contract today; this asserts it
-  // end to end through the real UI once the fixture exists.
-  test.fixme('authenticated user completes a scored test and sees results', async ({ page }) => {
+  // Backed by the auth storageState fixture (playwright/.auth/user.json) and the
+  // vocabulary the setup project seeds. This proves the authenticated MC path runs
+  // on the user's OWN adaptively-selected deck (select_test_words) through the real
+  // UI — the scored-save contract (user_tests / test_responses / word_statistics)
+  // is pinned at the hook level by useTestPanel.integrationtest.tsx.
+  //
+  // Mirrors the fixture user's seeded words (tests/setup/auth.setup.ts) so Q1 can
+  // be answered correctly and we can assert the deck is really the user's own.
+  const SEEDED_WORDS: Record<string, string> = {
+    'סֵפֶר': 'book',
+    'עֵץ': 'tree',
+    'מַיִם': 'water',
+    'אֶרֶץ': 'land',
+    'שֶׁמֶשׁ': 'sun',
+    'יֶלֶד': 'child',
+  };
+
+  test('authenticated user takes a multiple-choice test on their own vocabulary', async ({ page }) => {
     await page.goto('/');
     await navButton(page, 'Test').click();
     await expect(page.getByRole('heading', { name: 'Test Your Knowledge' })).toBeVisible({ timeout: 15000 });
 
     await page.getByRole('button', { name: /Multiple Choice/ }).click();
     await expect(page.getByText(/Question 1 of \d+/)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Choose the correct translation:')).toBeVisible();
+
+    // The shown word must be one of the user's OWN seeded words — proof the
+    // authenticated adaptive selection ran (not the guest default deck). Answer Q1
+    // with its correct English and confirm the test advances.
+    const hebrew = await currentHebrew(page);
+    const english = SEEDED_WORDS[hebrew];
+    expect(english, `shown Hebrew "${hebrew}" should be one of the fixture's seeded words`).toBeTruthy();
+    await page.getByRole('button', { name: english, exact: true }).click();
+    await expect(page.getByText(/Question 2 of \d+/)).toBeVisible({ timeout: 15000 });
   });
 });
