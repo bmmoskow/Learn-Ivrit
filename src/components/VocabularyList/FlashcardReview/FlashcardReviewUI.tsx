@@ -67,8 +67,15 @@ export function FlashcardReviewUI({
         <ExitButton onExit={onExit} />
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-2xl">
+      {/* Scrollable content region. The inner block uses `m-auto` (not parent
+          `items-center justify-center`) so it centers vertically when it fits
+          but top-aligns and stays fully scrollable when it's taller than the
+          viewport — e.g. at browser zoom or a short/landscape screen. With
+          `align-items: center` the overflow is stranded off-screen (the
+          controls row ends up below the fold); auto margins collapse to 0 in
+          that case, keeping Previous/Show-Translation/Next reachable. */}
+      <div className="flex-1 flex p-4 sm:p-6">
+        <div className="w-full max-w-2xl m-auto">
           {loading ? (
             <div className="flex items-center justify-center min-h-[300px]">
               <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
