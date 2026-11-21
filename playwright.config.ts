@@ -59,8 +59,13 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   projects: [
+    // Creates playwright/.auth/user.json (a real signed-in session) and seeds the
+    // fixture user's vocabulary, for the authenticated e2e describes. Needs a real
+    // backend (local sandbox / CI ephemeral stack); the mocked `ui` project does
+    // NOT depend on it, so `test:ui` stays backend-free.
+    { name: 'setup', testDir: './tests/setup', testMatch: /auth\.setup\.ts/ },
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
-    { name: 'e2e', testDir: './tests/e2e', use: { ...devices['Desktop Chrome'] } },
+    { name: 'e2e', testDir: './tests/e2e', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
     // UI sign-up round-trip. LOCAL-ONLY (needs a confirmations-on stack + local
     // mailbox) — never selected by `test:ui`/`test:e2e`; run only via
     // `npm run test:signup-roundtrip-ui`, which boots the throwaway stack.
