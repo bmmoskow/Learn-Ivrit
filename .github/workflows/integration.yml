@@ -170,6 +170,101 @@ jobs:
         if: always()
         run: supabase stop || true
 
+  integration-tests-local:
+    name: Integration Tests (ephemeral local stack)
+    runs-on: ubuntu-latest
+    needs: [db-push-test, deploy-functions-test]
+    # The remote `integration-tests` job above runs `npm run test:integration`
+    # against the remote TEST project with only the anon key — so the
+    # service-role-only suites (e.g. translationCache.integrationtest.tsx, which
+    # seeds the service-role-only `translation_cache` table and reads admin-only
+    # `api_usage_logs`) guard themselves with `describe.skipIf(!admin)` and
+    # SILENTLY SKIP there. This job runs the SAME suite against its OWN throwaway
+    # local Supabase stack IN THE RUNNER, which issues a real service-role key via
+    # `npm run sandbox:env`, so those suites actually EXECUTE. Mirrors
+    # `signup-roundtrip` above (own local stack, no hosted project, no new secret).
+    #
+    # PHASE: runs in the post-deploy VERIFY phase (B), in PARALLEL with the remote
+    # integration tests, the DB advisors, and the sign-up round-trip. It stands up
+    # its own local stack, so it has no real data-dependency on the remote
+    # deploys — the `needs: [db-push-test, deploy-functions-test]` only places it
+    # in the same phase as the other verification jobs.
+    #
+    # GATING: deliberately NOT in promote-to-ui's `needs` yet, so it is
+    # NON-BLOCKING for promotion while it proves out through its first promotion
+    # cycle. Flip it to gating (add `integration-tests-local` to promote-to-ui's
+    # `needs`) in a follow-up once it has been observed green. Only on a real push
+    # to `integration`.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/integration'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v3
+        with:
+          # Pinned to match db-push.yml / deploy-functions.yml / signup-roundtrip.
+          # NOT `latest`: an unpinned `latest` is what silently adopted CLI 3.0.0
+          # and broke the pipeline (see the v3 migration, PRs #273–#276).
+          version: 3.0.0
+
+      # NOTE: unlike signup-roundtrip, this job does NOT flip
+      # enable_confirmations. The integration suite auto-confirms its users via
+      # the `createTestUser` helper (signUp against the committed config where
+      # enable_confirmations = false); flipping confirmations ON would make those
+      # signups require an emailed code and break the suite.
+
+      - name: Start ephemeral local stack (retry on transient port binds)
+        # Same retry-on-port-bind wrapper as signup-roundtrip: tear down any
+        # partial stack first (a no-op on a clean first attempt), then retry a few
+        # times, because `supabase start` occasionally dies with a transient
+        # "failed to bind host port 0.0.0.0:54322/tcp: address already in use".
+        run: |
+          for attempt in 1 2 3; do
+            supabase stop --no-backup || true
+            docker ps -aq --filter "publish=54322" | xargs -r docker rm -f 2>/dev/null || true
+            if supabase start; then
+              echo "Supabase stack started (attempt $attempt)."
+              exit 0
+            fi
+            echo "::warning::supabase start failed on attempt $attempt; cleaning up and retrying."
+            sleep 5
+          done
+          echo "::error::supabase start failed after 3 attempts."
+          exit 1
+
+      - name: Write .env.local from the running stack (incl. service-role key)
+        run: npm run sandbox:env
+
+      - name: Run integration tests against the local stack
+        run: npm run test:integration
+        env:
+          # Run as a LOCAL invocation (CI unset) ON PURPOSE. Unlike
+          # vitest.roundtrip.config.ts, vitest.integration.config.ts branches on
+          # `process.env.CI`: when CI is truthy it resolves the target from
+          # process.env (the remote TEST project) and IGNORES .env.local. With CI
+          # cleared it takes the local path — reading VITE_SUPABASE_URL,
+          # VITE_SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY from the
+          # .env.local that `sandbox:env` just wrote — which is exactly the
+          # known-good `npm run test:integration` path a developer runs against the
+          # sandbox. The prod guard accepts the localhost target (127.0.0.1:54321)
+          # with no EXPECTED_SUPABASE_PROJECT_REF, so we deliberately do NOT set
+          # that var here.
+          CI: ''
+
+      - name: Stop ephemeral local stack
+        if: always()
+        run: supabase stop || true
+
   promote-to-ui:
     name: Promote to UI
     needs: [integration-tests, db-advisors-test, signup-roundtrip]
