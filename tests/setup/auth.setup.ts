@@ -2,6 +2,13 @@ import { test as setup } from '@playwright/test';
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
+import {
+  AUTH_FILE,
+  FIXTURE_FILE,
+  resolveBackend,
+  resolveServiceRoleKey,
+  type FixtureRecord,
+} from './fixtureBackend';
 
 // Auth fixture for the REAL-backend e2e suite. Produces playwright/.auth/user.json
 // — a Playwright storageState holding a GENUINE signed-in Supabase session — and
@@ -11,17 +18,15 @@ import path from 'path';
 // until this existed.
 //
 // This runs as the `setup` project, a dependency of the `e2e` project (see
-// playwright.config.ts), so it executes once before the e2e tests. It needs the
-// real backend (local Docker sandbox, or the CI ephemeral local stack); the
-// mocked `ui` project does NOT depend on it.
+// playwright.config.ts), so it executes once before the e2e tests. The paired
+// `cleanup` teardown project (auth.teardown.ts) then DELETES this user — and, via
+// ON DELETE CASCADE, everything it created — after the run, so a shared real
+// backend never accumulates fixture cruft. It needs the real backend (local
+// Docker sandbox, or the hosted TEST project); the mocked `ui` project does NOT
+// depend on it.
 
-// Playwright runs from the project root (where playwright.config.ts lives), so
-// cwd is the repo root. Using it keeps this file ESM-safe (no __dirname).
-const REPO_ROOT = process.cwd();
-const AUTH_FILE = path.resolve(REPO_ROOT, 'playwright/.auth/user.json');
-
-// Same password the integration-test helper uses. Not a secret — this user exists
-// only in the disposable local sandbox / test project.
+// Same password the integration-test helper uses. Not a secret — this user is
+// disposable and is deleted by the teardown immediately after the run.
 const PASSWORD = 'TestPassword123!';
 
 // The fixture user's own vocabulary. Enough distinct words that the authed
@@ -37,47 +42,13 @@ const SEED_WORDS = [
   { hebrew_word: 'יֶלֶד', english_translation: 'child', transliteration: 'yeled' },
 ];
 
-// Resolve the backend URL + anon key the same way playwright.config builds the
-// app: prefer .env.local (written by `npm run sandbox:start`, and in CI by the
-// ephemeral-stack job via `npm run sandbox:env`), then process.env. The e2e suite
-// targets a REAL backend, so a real anon key is required — the build's
-// 'local-anon-key' placeholder cannot authenticate.
-function parseEnvFile(file: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  try {
-    for (const raw of fs.readFileSync(file, 'utf8').split('\n')) {
-      const line = raw.trim();
-      if (!line || line.startsWith('#')) continue;
-      const eq = line.indexOf('=');
-      if (eq === -1) continue;
-      let val = line.slice(eq + 1).trim();
-      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-        val = val.slice(1, -1);
-      }
-      out[line.slice(0, eq).trim()] = val;
-    }
-  } catch {
-    /* no .env.local — fall through to process.env */
-  }
-  return out;
-}
-
-function resolveBackend(): { url: string; anon: string } {
-  const fromFile = parseEnvFile(path.resolve(REPO_ROOT, '.env.local'));
-  const url = fromFile.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-  const anon = fromFile.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
-  if (!url || !anon || anon === 'local-anon-key') {
-    throw new Error(
-      'Auth fixture needs a real backend: set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY ' +
-        'in .env.local (run `npm run sandbox:start`) or the environment. The e2e suite ' +
-        'targets a real backend; the build placeholder key cannot authenticate.',
-    );
-  }
-  return { url, anon };
-}
-
 setup('authenticate and seed a fixture user', async () => {
   const { url, anon } = resolveBackend();
+
+  // Fail fast if the run can't be cleaned up afterwards: don't create a user the
+  // teardown won't be able to delete. (We don't use the key here — seeding goes
+  // through the user's own RLS — but asserting it now ties creation to deletion.)
+  resolveServiceRoleKey();
 
   // Capture EXACTLY what supabase-js persists, by giving the real library an
   // in-memory storage and letting it write the session itself. The storageState
@@ -136,4 +107,10 @@ setup('authenticate and seed a fixture user', async () => {
 
   fs.mkdirSync(path.dirname(AUTH_FILE), { recursive: true });
   fs.writeFileSync(AUTH_FILE, JSON.stringify(storageState, null, 2));
+
+  // Record who to delete in teardown. Written last, so its presence means the
+  // user was fully created — if setup throws earlier, teardown finds no record
+  // and correctly does nothing.
+  const record: FixtureRecord = { userId: data.user.id, email };
+  fs.writeFileSync(FIXTURE_FILE, JSON.stringify(record, null, 2));
 });
