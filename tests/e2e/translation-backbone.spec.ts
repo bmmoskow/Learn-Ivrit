@@ -266,7 +266,12 @@ test.describe('Translation backbone (authenticated)', () => {
 
     await page.getByText(HEBREW_WORD, { exact: true }).click();
     await page.getByRole('button', { name: /Add to Vocabulary/i }).click();
-    await expect(page.getByRole('button', { name: /Saved to Vocabulary/i })).toBeVisible();
+    // This is the first REAL-backend write of the e2e run, against a freshly
+    // started (cold) stack, so the insert + button flip can exceed the default
+    // 5s. Match the generous real-backend timeout used elsewhere in this file.
+    await expect(page.getByRole('button', { name: /Saved to Vocabulary/i })).toBeVisible({
+      timeout: 15000,
+    });
 
     // Close the word-definition popup before navigating: its full-screen backdrop
     // (fixed inset-0, z-999) sits over the nav bar, so a nav click is blocked while
@@ -274,6 +279,11 @@ test.describe('Translation backbone (authenticated)', () => {
     await page.mouse.click(5, 5);
 
     await navButton(page, 'Vocabulary').click();
-    await expect(page.getByText(DEFINE_WORD_WITH_VOWELS)).toBeVisible();
+    // `.first()` keeps this retry-safe: each attempt inserts the word into the
+    // fixture user's real vocabulary, so a Playwright retry would otherwise see
+    // multiple copies and fail the (strict-mode) locator on a duplicate match —
+    // dooming the test on any slow first attempt. We only need to prove the saved
+    // word reached the real list, so the first match is sufficient.
+    await expect(page.getByText(DEFINE_WORD_WITH_VOWELS).first()).toBeVisible({ timeout: 15000 });
   });
 });
