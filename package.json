@@ -28,6 +28,7 @@
     "sandbox:stop": "node scripts/supabase-local.mjs stop",
     "sandbox:status": "node scripts/supabase-local.mjs status",
     "sandbox:env": "node scripts/setup-sandbox-env.mjs",
+    "sandbox:test-env": "node scripts/setup-test-env.mjs",
     "test:watch": "vitest",
     "security:audit": "node scripts/security-audit.js",
     "security:base": "npm audit --audit-level=moderate && npx audit-ci --moderate"

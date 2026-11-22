@@ -46,6 +46,11 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          # e2e only: the auth fixture's teardown deletes its fixture user (and,
+          # via ON DELETE CASCADE, all its data) through the admin API after the
+          # run, which needs the service-role key. The mocked `ui` suite has no
+          # backend and no setup/teardown, so it is given nothing.
+          SUPABASE_SERVICE_ROLE_KEY: ${{ inputs.suite == 'e2e' && secrets.SUPABASE_SERVICE_ROLE_KEY || '' }}
 
       - name: Upload Playwright report
         if: always()
