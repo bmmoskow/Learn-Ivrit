@@ -61,9 +61,13 @@ export default defineConfig({
   projects: [
     // Creates playwright/.auth/user.json (a real signed-in session) and seeds the
     // fixture user's vocabulary, for the authenticated e2e describes. Needs a real
-    // backend (local sandbox / CI ephemeral stack); the mocked `ui` project does
-    // NOT depend on it, so `test:ui` stays backend-free.
-    { name: 'setup', testDir: './tests/setup', testMatch: /auth\.setup\.ts/ },
+    // backend (local sandbox / hosted TEST project); the mocked `ui` project does
+    // NOT depend on it, so `test:ui` stays backend-free. `teardown: 'cleanup'`
+    // runs the `cleanup` project after the e2e run to DELETE this user (and, via
+    // ON DELETE CASCADE, all its data), so a shared real backend doesn't leak it.
+    { name: 'setup', testDir: './tests/setup', testMatch: /auth\.setup\.ts/, teardown: 'cleanup' },
+    // Deletes the fixture user after the e2e project finishes (pass or fail).
+    { name: 'cleanup', testDir: './tests/setup', testMatch: /auth\.teardown\.ts/ },
     { name: 'ui', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },
     { name: 'e2e', testDir: './tests/e2e', use: { ...devices['Desktop Chrome'] }, dependencies: ['setup'] },
     // UI sign-up round-trip. LOCAL-ONLY (needs a confirmations-on stack + local
