@@ -127,9 +127,14 @@ jobs:
     name: E2E suite (real test backend)
     runs-on: ubuntu-latest
     # Real-browser E2E against the real TEST backend (tests/e2e). Uses the repo-
-    # level TEST values (public URL + anon key) ONLY — never the pipeline or
-    # deployment environments — so it runs on main and can never reach prod.
-    # Skips cleanly until those repo values are configured.
+    # level TEST values ONLY — never the pipeline or deployment environments — so
+    # it runs on main and can never reach prod. Besides the public URL + anon key,
+    # the e2e auth fixture now needs the TEST project's service-role key to delete
+    # its fixture user (and, via ON DELETE CASCADE, all its data) after the run —
+    # hence repo-level TEST_SUPABASE_SERVICE_ROLE_KEY, the main-reachable twin of
+    # the `pipeline` environment's SUPABASE_SERVICE_ROLE_KEY (mirrors how
+    # TEST_SUPABASE_ANON_KEY twins VITE_SUPABASE_ANON_KEY). Skips cleanly until all
+    # three repo values are configured.
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -150,9 +155,13 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.TEST_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          # The e2e auth fixture's teardown deletes its fixture user through the
+          # admin API, which needs the service-role key. Guarded below so the
+          # heartbeat skips (not fails) until this repo secret is added.
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ]; then
-            echo "::warning::Heartbeat e2e: repo-level TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY not set — skipping until configured."
+          if [ -z "$VITE_SUPABASE_URL" ] || [ -z "$VITE_SUPABASE_ANON_KEY" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::warning::Heartbeat e2e: repo-level TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY / TEST_SUPABASE_SERVICE_ROLE_KEY not all set — skipping until configured."
             exit 0
           fi
           npm run test:e2e
