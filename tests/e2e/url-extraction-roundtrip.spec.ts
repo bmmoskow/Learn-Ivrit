@@ -157,8 +157,23 @@ test.beforeAll(async () => {
       const body = (JSON.parse(m[1]) as { articleBody?: string }).articleBody || '';
       fixtureParagraphs = body.trim().split(/\n\n+/).filter(Boolean);
     } catch {
-      /* fall through — paragraphs stay empty, teardown still clears by url/word */
+      /* fall through — paragraphs stay empty, handled by the content guard below */
     }
+  }
+
+  // A 200 is NOT enough to call the fixture "deployed": learn-ivrit.com is an SPA
+  // that serves its app shell (HTTP 200) for ANY path, so a not-yet-deployed
+  // fixture URL still "succeeds" — and then extract-url pulls the shell, no Hebrew
+  // renders, and the test times out (exactly the CI failure this guards against).
+  // Only run when the response actually IS the fixture: its JSON-LD article parsed
+  // AND the distinctive target word is present. Otherwise skip cleanly.
+  const isFixtureContent =
+    fixtureParagraphs.length > 0 && html.normalize('NFC').includes(TARGET_WORD);
+  if (!isFixtureContent) {
+    skipReason =
+      `fixture URL returned HTTP 200 but not the fixture content (SPA shell?) — ` +
+      `deploy public/test-fixtures/ first: ${FIXTURE_URL}`;
+    return;
   }
 
   fixtureReachable = true;
