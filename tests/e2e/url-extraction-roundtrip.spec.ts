@@ -178,6 +178,34 @@ test.describe('URL extraction roundtrip (real backend)', () => {
       await expect(page.getByText(TARGET_WORD).first()).toBeVisible({ timeout: 30000 });
     }
 
+    // Reads the SETTLED English translation out of the synced display. The
+    // English cells are `<div lang="en">` (the only divs so tagged — the
+    // `<html lang="en">` root is not a div), so this captures the translation
+    // without a component change. Polls past the "Translating…/Translation will
+    // appear here…" placeholders so we never snapshot a transient state.
+    const PLACEHOLDER = /Translation will appear here|Translating\.\.\./;
+    async function readTranslation(): Promise<string> {
+      const cells = page.locator('div[lang="en"]');
+      await expect
+        .poll(
+          async () => {
+            const text = (await cells.allInnerText()).join('\n').trim();
+            return text.length > 0 && !PLACEHOLDER.test(text);
+          },
+          { timeout: 30000 },
+        )
+        .toBe(true);
+      return (await cells.allInnerText()).map((t) => t.trim().normalize('NFC')).join('\n');
+    }
+
+    // Reads the definition popup's full text. The popup carries no role, so the
+    // component tags it data-testid="word-definition-popup" (the only prod touch).
+    async function readDefinition(): Promise<string> {
+      const popup = page.getByTestId('word-definition-popup');
+      await expect(popup).toBeVisible({ timeout: 30000 });
+      return (await popup.innerText()).trim().normalize('NFC');
+    }
+
     // --- Phase 1: first load — extract MISS + translate MISS ---------------
     await enterFixtureUrl();
     expect(extractCalls).toBe(1); // sefaria_cache miss -> one real extract-url call
@@ -198,11 +226,20 @@ test.describe('URL extraction roundtrip (real backend)', () => {
       .toBe(true);
     await page.waitForTimeout(1500);
     const translatesAfterFirst = translateCalls;
+    // Snapshot the real, cache-populating translation so Phase 2 can prove the
+    // cached reload renders the SAME text — the direct check that "the
+    // translation is exactly the same once extraction takes place".
+    const translationFirst = await readTranslation();
+    expect(translationFirst.length).toBeGreaterThan(0);
 
     // --- Phase 2: reload the same URL — extract HIT + translate HIT --------
     await enterFixtureUrl();
     expect(extractCalls).toBe(1); // still one: served from sefaria_cache
     expect(translateCalls).toBe(translatesAfterFirst); // zero new: translation_cache hit
+    // Byte-identical translation on reload. Present + equal + zero new /translate
+    // calls ⇒ genuinely served from translation_cache (and not silently skipped,
+    // which a call-count check alone could not distinguish).
+    expect(await readTranslation()).toBe(translationFirst);
 
     // The word is clickable on this (cache-served) page. Click it — define MISS.
     await page.getByText(TARGET_WORD).first().click();
@@ -210,6 +247,9 @@ test.describe('URL extraction roundtrip (real backend)', () => {
       timeout: 30000,
     });
     expect(defineCalls).toBe(1); // word_definitions miss -> one real define call
+    // Capture the real (cache-populating) definition for the Phase 3 comparison.
+    const definitionFirst = await readDefinition();
+    expect(definitionFirst.length).toBeGreaterThan(0);
     await page.waitForTimeout(1500); // let the edge function persist the definition
 
     // --- Phase 3: fresh reload, click the same word — define HIT -----------
@@ -221,5 +261,7 @@ test.describe('URL extraction roundtrip (real backend)', () => {
       timeout: 30000,
     });
     expect(defineCalls).toBe(1); // still one: served from word_definitions cache
+    // Same definition rendered from word_definitions on the cached click.
+    expect(await readDefinition()).toBe(definitionFirst);
   });
 });
