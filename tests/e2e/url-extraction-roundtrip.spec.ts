@@ -80,10 +80,49 @@ async function cleanupCaches(extraChunks: string[] = []): Promise<void> {
   // translation_cache is keyed by content_hash, but carries the source text in
   // `hebrew_text`; delete exactly the paragraph rows we know are ours (the
   // fixture's own paragraphs, plus whatever extraction actually produced).
-  const texts = Array.from(
+  const texts = ourTranslationTexts(extraChunks);
+  if (texts.length) await admin.from('translation_cache').delete().in('hebrew_text', texts);
+}
+
+/** The exact `hebrew_text` values our translation_cache rows are keyed under —
+ *  the fixture's own paragraphs ∪ whatever extraction actually produced. Shared
+ *  by cleanup (delete) and the direct-state assertions (count) so they agree. */
+function ourTranslationTexts(extraChunks: string[] = []): string[] {
+  return Array.from(
     new Set([...fixtureParagraphs, ...extraChunks].map((t) => t.normalize('NFC'))),
   ).filter(Boolean);
-  if (texts.length) await admin.from('translation_cache').delete().in('hebrew_text', texts);
+}
+
+// Direct cache-STATE reads via the service role — the authoritative "the row was
+// actually written" receipt, complementing the network-count proof (reload never
+// re-called the backend) and the render-equality proof (same text shown).
+async function translationRowsPresent(extraChunks: string[] = []): Promise<number> {
+  if (!admin) return 0;
+  const texts = ourTranslationTexts(extraChunks);
+  if (!texts.length) return 0;
+  const { data } = await admin
+    .from('translation_cache')
+    .select('id, translation')
+    .in('hebrew_text', texts);
+  return (data ?? []).filter((r) => !!(r as { translation?: string }).translation).length;
+}
+async function sefariaRowPresent(): Promise<boolean> {
+  if (!admin) return false;
+  const { data } = await admin
+    .from('sefaria_cache')
+    .select('reference')
+    .eq('reference', FIXTURE_URL)
+    .maybeSingle();
+  return !!data;
+}
+async function definitionRowPresent(): Promise<boolean> {
+  if (!admin) return false;
+  const { data } = await admin
+    .from('word_definitions')
+    .select('word')
+    .eq('word', TARGET_WORD)
+    .maybeSingle();
+  return !!data;
 }
 
 test.beforeAll(async () => {
@@ -132,6 +171,11 @@ test.afterAll(async () => {
   // rows (fixture-derived and the ones extraction actually created this run).
   const chunks = capturedContent ? capturedContent.trim().split(/\n\n+/).filter(Boolean) : [];
   await cleanupCaches(chunks);
+  // Prove cleanup actually removed our rows (also proves the deletes match the
+  // same keys the writes used). Trivially satisfied when the spec was skipped.
+  expect(await translationRowsPresent(chunks)).toBe(0);
+  expect(await sefariaRowPresent()).toBe(false);
+  expect(await definitionRowPresent()).toBe(false);
 });
 
 test.describe('URL extraction roundtrip (real backend)', () => {
@@ -231,6 +275,12 @@ test.describe('URL extraction roundtrip (real backend)', () => {
     // translation is exactly the same once extraction takes place".
     const translationFirst = await readTranslation();
     expect(translationFirst.length).toBeGreaterThan(0);
+    // Direct DB receipt: the caches were actually WRITTEN (not merely rendered).
+    // `capturedContent` is the exact text extraction returned this run, so we look
+    // for the rows under the same keys the app would have used.
+    const chunks1 = capturedContent ? capturedContent.trim().split(/\n\n+/).filter(Boolean) : [];
+    expect(await translationRowsPresent(chunks1)).toBeGreaterThan(0); // translation_cache populated
+    expect(await sefariaRowPresent()).toBe(true); // sefaria_cache populated (extracted content)
 
     // --- Phase 2: reload the same URL — extract HIT + translate HIT --------
     await enterFixtureUrl();
@@ -251,6 +301,7 @@ test.describe('URL extraction roundtrip (real backend)', () => {
     const definitionFirst = await readDefinition();
     expect(definitionFirst.length).toBeGreaterThan(0);
     await page.waitForTimeout(1500); // let the edge function persist the definition
+    expect(await definitionRowPresent()).toBe(true); // word_definitions populated
 
     // --- Phase 3: fresh reload, click the same word — define HIT -----------
     await enterFixtureUrl();
