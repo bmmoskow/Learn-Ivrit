@@ -1,14 +1,19 @@
 User-agent: Googlebot
+Disallow: /test-fixtures/
 Allow: /
 
 User-agent: Bingbot
+Disallow: /test-fixtures/
 Allow: /
 
 User-agent: Twitterbot
+Disallow: /test-fixtures/
 Allow: /
 
 User-agent: facebookexternalhit
+Disallow: /test-fixtures/
 Allow: /
 
 User-agent: *
+Disallow: /test-fixtures/
 Allow: /
