@@ -1,0 +1,39 @@
+<!doctype html>
+<!--
+  Learn-Ivrit TEST FIXTURE — not real content.
+  A small, deterministic Hebrew article that the URL-extraction roundtrip e2e
+  test (tests/e2e/url-extraction-roundtrip.spec.ts) points `extract-url` at, so
+  the roundtrip never depends on a live third-party site. The remote extract-url
+  edge function fetches this page over the public internet, which is why it must
+  be served from a public host (the app's own deploy), not localhost.
+  Content is benign (a public garden) and marked noindex so it isn't findable.
+  The JSON-LD articleBody MUST match the visible <article> prose verbatim.
+-->
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>הַגַּן הַצִּבּוּרִי בָּעִיר — דף בדיקה של Learn Ivrit</title>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      "headline": "הַגַּן הַצִּבּוּרִי בָּעִיר",
+      "inLanguage": "he",
+      "articleBody": "הַגַּן הַצִּבּוּרִי שֶׁבְּמֶרְכַּז הָעִיר הוּא מָקוֹם שָׁקֵט וְנָעִים לְטִיּוּל בַּבֹּקֶר. רַבִּים בָּאִים לְשָׁם כְּדֵי לָנוּחַ עַל הַסַּפְסָלִים וְלִשְׁמֹעַ אֶת צִפְצוּף הַצִּפּוֹרִים.\n\nבְּאֶמְצַע הַגַּן יֵשׁ בְּרֵכָה קְטַנָּה וּסְבִיבָהּ פְּרָחִים צִבְעוֹנִיִּים רַבִּים. הַיְלָדִים אוֹהֲבִים לְשַׂחֵק עַל הַדֶּשֶׁא הַיָּרֹק וְהָרָחָב.\n\nבִּימֵי הַקַּיִץ הַחַמִּים מֵצֵל הַגַּן בְּעֵצָיו הַגְּבוֹהִים עַל הַמְּבַקְּרִים. הָאֲוִיר שָׁם צָלוּל וְרַעֲנָן, וְהַשֶּׁקֶט מַרְגִּיעַ אֶת כֻּלָּם."
+    }
+    </script>
+  </head>
+  <body>
+    <p style="color:#b45309;font-family:sans-serif">
+      זהו דף בדיקה אוטומטי של Learn Ivrit — אין בו תוכן אמיתי.
+    </p>
+    <article>
+      <h1>הַגַּן הַצִּבּוּרִי בָּעִיר</h1>
+      <p>הַגַּן הַצִּבּוּרִי שֶׁבְּמֶרְכַּז הָעִיר הוּא מָקוֹם שָׁקֵט וְנָעִים לְטִיּוּל בַּבֹּקֶר. רַבִּים בָּאִים לְשָׁם כְּדֵי לָנוּחַ עַל הַסַּפְסָלִים וְלִשְׁמֹעַ אֶת צִפְצוּף הַצִּפּוֹרִים.</p>
+      <p>בְּאֶמְצַע הַגַּן יֵשׁ בְּרֵכָה קְטַנָּה וּסְבִיבָהּ פְּרָחִים צִבְעוֹנִיִּים רַבִּים. הַיְלָדִים אוֹהֲבִים לְשַׂחֵק עַל הַדֶּשֶׁא הַיָּרֹק וְהָרָחָב.</p>
+      <p>בִּימֵי הַקַּיִץ הַחַמִּים מֵצֵל הַגַּן בְּעֵצָיו הַגְּבוֹהִים עַל הַמְּבַקְּרִים. הָאֲוִיר שָׁם צָלוּל וְרַעֲנָן, וְהַשֶּׁקֶט מַרְגִּיעַ אֶת כֻּלָּם.</p>
+    </article>
+  </body>
+</html>
