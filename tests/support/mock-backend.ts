@@ -48,3 +48,6 @@ export const test = base.extend({
 });
 
 export { expect };
+// Re-export the Playwright Page type so specs can import it from this fixture
+// module alongside `test`/`expect` (several ui specs do).
+export type { Page } from '@playwright/test';
