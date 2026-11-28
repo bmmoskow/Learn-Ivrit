@@ -26,6 +26,24 @@ export async function handleTranslate(
   const cacheKey = `${sourceLanguage}->${targetLanguage}:${text}`;
   const contentHash = await hashText(cacheKey);
   const textLength = text.length;
+
+  // Server-side cache check. The frontend also checks translation_cache before
+  // calling this endpoint, but RLS grants SELECT only to authenticated users, so
+  // guests can't read it and always reach this endpoint — even for text that's
+  // already cached. Checking here with the service-role client lets guests (and
+  // any caller racing a concurrent translate of the same text) reuse an existing
+  // translation instead of paying for Gemini again.
+  const cached = await lookupCachedTranslation(supabase, contentHash);
+  if (cached) {
+    console.log("✓ Server-side cache hit for hash:", contentHash);
+    // Keep access stats and cost logs consistent with the frontend cache-hit path.
+    supabase.rpc("increment_translation_access", { cache_id: cached.id }).then();
+    logCacheHit(supabase, rateLimitId).catch((err: unknown) =>
+      console.error("Failed to log translate cache hit:", err),
+    );
+    return createJsonResponse({ translation: cached.translation });
+  }
+
   console.log(
     `Translating ${sourceLanguage} to ${targetLanguage} - hash:`,
     contentHash,
@@ -94,6 +112,44 @@ export async function handleTranslate(
   );
 
   return createJsonResponse({ translation });
+}
+
+async function lookupCachedTranslation(
+  supabase: SupabaseClient,
+  contentHash: string,
+): Promise<{ id: string; translation: string } | null> {
+  const { data, error } = await supabase
+    .from("translation_cache")
+    .select("id, translation")
+    .eq("content_hash", contentHash)
+    .maybeSingle();
+
+  if (error) {
+    // On a lookup failure, fall through to Gemini rather than failing the request.
+    console.error("Failed to read translation cache:", error);
+    return null;
+  }
+  return data?.translation ? { id: data.id, translation: data.translation } : null;
+}
+
+// Mirror the frontend's cache-hit log (zero tokens, model "cache") so admin cost
+// tracking still records guest/racing cache hits that never touch Gemini.
+async function logCacheHit(supabase: SupabaseClient, rateLimitId: string): Promise<void> {
+  const hashedUserId = await hashText(rateLimitId);
+  const { error } = await supabase.from("api_usage_logs").insert({
+    user_id: hashedUserId,
+    request_type: "translate",
+    endpoint: "/translate",
+    prompt_tokens: 0,
+    candidates_tokens: 0,
+    thinking_tokens: 0,
+    cache_hit: true,
+    model: "cache",
+  });
+
+  if (error) {
+    console.error("Failed to log translate cache hit:", error);
+  }
 }
 
 async function cacheTranslation(
