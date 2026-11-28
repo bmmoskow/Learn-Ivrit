@@ -138,27 +138,16 @@ jobs:
         # ephemeral stack, so signups email a real 6-digit code.
         run: sed -i 's/^enable_confirmations = false/enable_confirmations = true/' supabase/config.toml
 
-      - name: Start ephemeral local stack (retry on transient port binds)
+      - name: Start ephemeral local stack (fresh free ports per attempt)
         # `supabase start` occasionally dies with "failed to bind host port
-        # 0.0.0.0:54322/tcp: address already in use" when a container from a racy
-        # or half-up start momentarily holds the port. On a fresh ubuntu-latest VM
-        # there's nothing to leak in across jobs, so this is a transient race — a
-        # single attempt turns a one-time hiccup into a hard failure that blocks
-        # promotion. So: tear down any partial stack first (a no-op on the clean
-        # first attempt — measure 2), then retry a few times (measure 1).
-        run: |
-          for attempt in 1 2 3; do
-            supabase stop --no-backup || true
-            docker ps -aq --filter "publish=54322" | xargs -r docker rm -f 2>/dev/null || true
-            if supabase start; then
-              echo "Supabase stack started (attempt $attempt)."
-              exit 0
-            fi
-            echo "::warning::supabase start failed on attempt $attempt; cleaning up and retrying."
-            sleep 5
-          done
-          echo "::error::supabase start failed after 3 attempts."
-          exit 1
+        # 0.0.0.0:54322/tcp: address already in use": a partial/rolled-back start
+        # can leave the host-port binding held briefly, so a plain retry on the
+        # fixed port could lose every attempt to one stuck port. This starter picks
+        # fresh free ports (api/db/shadow/studio) on each of 3 attempts, so a retry
+        # never reuses a wedged port. [local_smtp] stays on 54324 (the mail readers
+        # default to it). See scripts/ci-start-ephemeral-stack.mjs. The sed above
+        # runs first; the starter only rewrites port lines, preserving it.
+        run: node scripts/ci-start-ephemeral-stack.mjs
 
       - name: Write .env.local from the running stack (incl. service-role key)
         run: npm run sandbox:env
@@ -223,24 +212,13 @@ jobs:
       # enable_confirmations = false); flipping confirmations ON would make those
       # signups require an emailed code and break the suite.
 
-      - name: Start ephemeral local stack (retry on transient port binds)
-        # Same retry-on-port-bind wrapper as signup-roundtrip: tear down any
-        # partial stack first (a no-op on a clean first attempt), then retry a few
-        # times, because `supabase start` occasionally dies with a transient
-        # "failed to bind host port 0.0.0.0:54322/tcp: address already in use".
-        run: |
-          for attempt in 1 2 3; do
-            supabase stop --no-backup || true
-            docker ps -aq --filter "publish=54322" | xargs -r docker rm -f 2>/dev/null || true
-            if supabase start; then
-              echo "Supabase stack started (attempt $attempt)."
-              exit 0
-            fi
-            echo "::warning::supabase start failed on attempt $attempt; cleaning up and retrying."
-            sleep 5
-          done
-          echo "::error::supabase start failed after 3 attempts."
-          exit 1
+      - name: Start ephemeral local stack (fresh free ports per attempt)
+        # Same free-port starter as signup-roundtrip: picks fresh
+        # api/db/shadow/studio ports on each of 3 attempts, so a retry never
+        # reuses a port a rolled-back start left wedged (the old fixed-port retry
+        # could lose all 3 attempts to one stuck 54322). [local_smtp] stays 54324.
+        # See scripts/ci-start-ephemeral-stack.mjs.
+        run: node scripts/ci-start-ephemeral-stack.mjs
 
       - name: Write .env.local from the running stack (incl. service-role key)
         run: npm run sandbox:env
