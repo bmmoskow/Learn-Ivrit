@@ -248,13 +248,13 @@ test.describe('URL extraction roundtrip (real backend)', () => {
       await expect
         .poll(
           async () => {
-            const text = (await cells.allInnerText()).join('\n').trim();
+            const text = (await cells.allInnerTexts()).join('\n').trim();
             return text.length > 0 && !PLACEHOLDER.test(text);
           },
           { timeout: 30000 },
         )
         .toBe(true);
-      return (await cells.allInnerText()).map((t) => t.trim().normalize('NFC')).join('\n');
+      return (await cells.allInnerTexts()).map((t) => t.trim().normalize('NFC')).join('\n');
     }
 
     // Reads the definition popup's full text. The popup carries no role, so the
