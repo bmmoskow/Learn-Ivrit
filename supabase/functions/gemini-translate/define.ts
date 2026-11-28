@@ -6,6 +6,7 @@ import {
   logApiUsage,
   extractUsageMetadata,
   createJsonResponse,
+  hashText,
   SupabaseClient,
   GeminiUsageMetadata,
 } from "./shared.ts";
@@ -21,6 +22,37 @@ export async function handleDefine(
   rateLimitId: string,
 ): Promise<Response> {
   const { word }: DefinitionRequest = await req.json();
+
+  // Server-side cache check. The frontend checks word_definitions before calling
+  // this endpoint, but RLS grants SELECT only to authenticated users, so guests
+  // can't read it and always reach this endpoint — re-paying Gemini for words
+  // another user already defined. Checking here with the service-role client lets
+  // guests (and any caller racing the same word) reuse an existing definition.
+  // A hit is free, so it skips the rate-limit check and Gemini entirely.
+  const cached = await lookupCachedDefinition(supabase, word);
+  if (cached) {
+    console.log("✓ Server-side cache hit for word:", word);
+    // Bump access stats and log a zero-cost hit, mirroring the frontend path.
+    supabase
+      .from("word_definitions")
+      .update({
+        last_accessed: new Date().toISOString(),
+        access_count: (cached.access_count || 0) + 1,
+      })
+      .eq("word", word)
+      .then(() => {});
+    logCacheHit(supabase, rateLimitId).catch((err: unknown) =>
+      console.error("Failed to log define cache hit:", err),
+    );
+    return createJsonResponse({
+      wordWithVowels: cached.word_with_vowels,
+      definition: cached.definition,
+      examples: cached.examples ?? [],
+      notes: cached.notes ?? "",
+      forms: cached.forms ?? [],
+      transliteration: cached.transliteration ?? "",
+    });
+  }
 
   const rateLimitCheck = await checkRateLimit(supabase, rateLimitId, "word_definition");
   if (!rateLimitCheck.allowed) {
@@ -199,4 +231,52 @@ FORMS:
   }
 
   return response;
+}
+
+interface CachedDefinition {
+  word_with_vowels: string;
+  definition: string;
+  transliteration: string;
+  examples: unknown[];
+  notes: string;
+  forms: unknown[];
+  access_count: number;
+}
+
+async function lookupCachedDefinition(
+  supabase: SupabaseClient,
+  word: string,
+): Promise<CachedDefinition | null> {
+  const { data, error } = await supabase
+    .from("word_definitions")
+    .select("word_with_vowels, definition, transliteration, examples, notes, forms, access_count")
+    .eq("word", word)
+    .maybeSingle();
+
+  if (error) {
+    // On a lookup failure, fall through to Gemini rather than failing the request.
+    console.error("Failed to read word definition cache:", error);
+    return null;
+  }
+  return data?.definition ? (data as CachedDefinition) : null;
+}
+
+// Mirror the frontend's cache-hit log (zero tokens, model "cache") so admin cost
+// tracking still records guest/racing cache hits that never touch Gemini.
+async function logCacheHit(supabase: SupabaseClient, rateLimitId: string): Promise<void> {
+  const hashedUserId = await hashText(rateLimitId);
+  const { error } = await supabase.from("api_usage_logs").insert({
+    user_id: hashedUserId,
+    request_type: "define",
+    endpoint: "/define",
+    prompt_tokens: 0,
+    candidates_tokens: 0,
+    thinking_tokens: 0,
+    cache_hit: true,
+    model: "cache",
+  });
+
+  if (error) {
+    console.error("Failed to log define cache hit:", error);
+  }
 }
